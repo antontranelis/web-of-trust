@@ -404,33 +404,26 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    subgraph Safe["Abbruch OK"]
-        Step1["1. App installiert"]
-        Step2["2. Profil angelegt"]
-    end
+    Start(["Onboarding startet"]) --> Step1["App installiert"]
+    Step1 --> Step2["Profil angelegt"]
+    Step2 --> Step3["ID generiert"]
+    Step3 --> Step4["Recovery-Phrase angezeigt"]
+    Step4 --> Step5["Quiz bestanden"]
+    Step5 --> Step6["Verifizierung"]
     
-    subgraph Blocked["Abbruch BLOCKIERT"]
-        Step3["3. ID generiert"]
-        Step4["4. Recovery-Phrase"]
-        Step5["5. Quiz"]
-    end
+    Step1 -->|Abbruch| Cancel1["Kein Problem"]
+    Step2 -->|Abbruch| Cancel2["Profil verworfen"]
     
-    subgraph CanContinue["Abbruch OK - Später fortfahren"]
-        Step6["6. Verifizierung"]
-    end
+    Step3 -->|Abbruch| Cancel3["KRITISCH - ID existiert aber Phrase nicht angezeigt"]
     
-    Step1 --> Step2 --> Step3 --> Step4 --> Step5 --> Step6 --> Done(["Fertig"])
+    Step4 -->|Abbruch| Cancel4["KRITISCH - Phrase angezeigt, Quiz nicht bestanden"]
     
-    style Safe fill:#E4FFE4
-    style Blocked fill:#FFE4E4
-    style CanContinue fill:#E4F4FF
+    Step5 -->|Abbruch| Cancel5["ID und Backup bestätigt - OK"]
+    Step6 -->|Abbruch| Cancel6["Status Pending - OK"]
+    
+    style Cancel3 fill:#FFB6C1
+    style Cancel4 fill:#FFB6C1
 ```
-
-| Phase | Was passiert bei Abbruch? |
-|-------|---------------------------|
-| 1-2 | Kein Problem, nichts gespeichert |
-| 3-5 | **Blockiert!** App lässt nicht schließen bis Quiz bestanden |
-| 6 | OK - ID und Backup gesichert, nur noch nicht vernetzt |
 
 **Wichtig:** 
 - Nach Schritt 3 (ID generiert) blockiert die App das Schließen/Zurückgehen
