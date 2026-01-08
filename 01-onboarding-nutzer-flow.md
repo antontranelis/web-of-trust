@@ -84,6 +84,7 @@ sequenceDiagram
 
     Note over A,B: Ben ist im Netzwerk!
     Note over B: Sieht Annas Content - Kann eigenen Content teilen
+    Note over A: Kann Content mit Ben teilen - Sieht Bens Content
 ```
 
 ## Variante: Selbstständiges Onboarding
