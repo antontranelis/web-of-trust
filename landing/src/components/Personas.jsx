@@ -18,7 +18,7 @@ const personas = [
   {
     icon: Wrench,
     emoji: '🔧',
-    name: 'Kemal (34)',
+    name: 'Alexander (34)',
     role: 'Der Macher',
     background: 'Kann alles reparieren, kennt viele Leute, organisiert Nachbarschaftshilfe.',
     needs: [
