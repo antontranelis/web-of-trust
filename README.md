@@ -1,16 +1,6 @@
 # Web of Trust - Spezifikation
 
-> Dezentrales Vertrauensnetzwerk für lokale Gemeinschaften
-
----
-
-## Übersicht
-
-Das Web of Trust ermöglicht es Menschen, sich lokal zu vernetzen - basierend auf echten Begegnungen statt Algorithmen. Ein Netzwerk, das nur wächst, wenn Menschen sich im echten Leben treffen und füreinander bürgen.
-
-Dieses Repository enthält die vollständige Spezifikation des Systems.
-
----
+Das Web of Trust vernetzt Menschen, die sich im echten Leben treffen, kooperieren und gegenseitig vertrauen.
 
 ## Dokumentation
 
