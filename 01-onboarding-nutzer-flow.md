@@ -12,7 +12,7 @@ flowchart TD
     How -->|Selbstständig| Solo["Erstellt ID alleine"]
     
     Invited --> Verify["Gegenseitige Verifizierung"]
-    Verify --> Connected["Sofort vernetzt - Sieht Content"]
+    Verify --> Connected["Vernetzt - Sieht Content"]
     
     Solo --> Alone["Hat ID aber leeres Netzwerk"]
     Alone --> Later["Muss später Menschen treffen"]
@@ -84,6 +84,7 @@ sequenceDiagram
 
     Note over A,B: Ben ist im Netzwerk!
     Note over B: Sieht Annas Content - Kann eigenen Content teilen
+    Note over A: Kann Content mit Ben teilen - Sieht Bens Content
 ```
 
 ## Variante: Selbstständiges Onboarding
