@@ -18,7 +18,8 @@ erDiagram
         string ownerDid FK
         string title
         string content "JSON, verschlüsselt"
-        string visibility "all, selected, group"
+        string visibility "contacts, groups, selective"
+        array groupDids "bei visibility=groups"
         datetime createdAt
         datetime updatedAt
         boolean deleted
@@ -39,7 +40,7 @@ erDiagram
     USER ||--o{ ITEM : "erstellt"
     ITEM ||--o{ ITEM_KEY : "hat"
     USER ||--o{ ITEM_KEY : "empfängt"
-    ITEM }o--o| GROUP : "gehört zu"
+    ITEM }o--o{ GROUP : "gehört zu"
 ```
 
 ## Item-Dokument Struktur
@@ -51,7 +52,7 @@ erDiagram
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "CalendarItem",
   "id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
-  "owner": "did:wot:anna123",
+  "owner": "did:key:anna123",
   "title": "Gartentreffen",
   "content": {
     "startDate": "2025-01-15T14:00:00Z",
@@ -63,13 +64,13 @@ erDiagram
     "description": "Wir bereiten die Beete für das Frühjahr vor."
   },
   "visibility": {
-    "type": "all"
+    "type": "contacts"
   },
   "createdAt": "2025-01-08T10:00:00Z",
   "updatedAt": "2025-01-08T10:00:00Z",
   "proof": {
     "type": "Ed25519Signature2020",
-    "verificationMethod": "did:wot:anna123#key-1",
+    "verificationMethod": "did:key:anna123#key-1",
     "proofValue": "z58DAdFfa9..."
   }
 }
@@ -82,7 +83,7 @@ erDiagram
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "MapItem",
   "id": "urn:uuid:660e8400-e29b-41d4-a716-446655440001",
-  "owner": "did:wot:anna123",
+  "owner": "did:key:anna123",
   "title": "Werkzeugverleih",
   "content": {
     "coordinates": [51.0504, 13.7373],
@@ -90,7 +91,7 @@ erDiagram
     "description": "Hier kann man sich Werkzeug ausleihen."
   },
   "visibility": {
-    "type": "all"
+    "type": "contacts"
   },
   "createdAt": "2025-01-08T10:00:00Z",
   "proof": { ... }
@@ -104,7 +105,7 @@ erDiagram
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "OfferItem",
   "id": "urn:uuid:770e8400-e29b-41d4-a716-446655440002",
-  "owner": "did:wot:ben456",
+  "owner": "did:key:ben456",
   "title": "Kann bei Umzug helfen",
   "content": {
     "category": "help",
@@ -112,7 +113,7 @@ erDiagram
     "availability": "Wochenenden"
   },
   "visibility": {
-    "type": "all"
+    "type": "contacts"
   },
   "createdAt": "2025-01-08T10:00:00Z",
   "proof": { ... }
@@ -144,11 +145,11 @@ flowchart TD
 
     Visibility -->|Alle Kontakte| EncryptAll["Verschlüssele Item Key für jeden aktiven Kontakt"]
     Visibility -->|Ausgewählte| EncryptSelected["Verschlüssele Item Key für ausgewählte"]
-    Visibility -->|Gruppe| EncryptGroup["Verschlüssele Item Key mit Group Key"]
+    Visibility -->|Gruppen| EncryptGroups["Verschlüssele Item Key mit Group Key(s)"]
 
     EncryptAll --> Store["Speichere lokal"]
     EncryptSelected --> Store
-    EncryptGroup --> Store
+    EncryptGroups --> Store
 
     Store --> Queue["In Sync-Queue"]
 
@@ -176,17 +177,19 @@ sequenceDiagram
     A_App->>A_App: generateItemKey() AES-256
     A_App->>A_App: encryptContent(itemKey)
 
-    alt Visibility: all
+    alt Visibility: contacts
         A_App->>A_App: getActiveContacts()
         loop Für jeden Kontakt
             A_App->>A_App: encryptItemKey(contact.publicKey)
         end
-    else Visibility: selected
+    else Visibility: selective
         loop Für jeden ausgewählten
             A_App->>A_App: encryptItemKey(selected.publicKey)
         end
-    else Visibility: group
-        A_App->>A_App: encryptItemKey(groupKey)
+    else Visibility: groups
+        loop Für jede ausgewählte Gruppe
+            A_App->>A_App: encryptItemKey(group.groupKey)
+        end
     end
 
     A_App->>A_Store: saveItem(encryptedItem, itemKeys)
@@ -249,18 +252,18 @@ flowchart LR
 {
   "encryptedItem": {
     "id": "urn:uuid:550e8400...",
-    "owner": "did:wot:anna123",
+    "owner": "did:key:anna123",
     "ciphertext": "base64...",
     "nonce": "base64...",
     "proof": { ... }
   },
   "itemKeys": [
     {
-      "recipientDid": "did:wot:anna123",
+      "recipientDid": "did:key:anna123",
       "encryptedKey": "base64..."
     },
     {
-      "recipientDid": "did:wot:ben456",
+      "recipientDid": "did:key:ben456",
       "encryptedKey": "base64..."
     }
   ]
@@ -296,11 +299,11 @@ flowchart TD
 
 ## Sichtbarkeits-Optionen
 
-### Typ: all (Alle Kontakte)
+### Typ: contacts (Alle Kontakte)
 
 ```mermaid
 flowchart TD
-    All(["Sichtbarkeit: all"]) --> GetContacts["Lade alle aktiven Kontakte"]
+    All(["Sichtbarkeit: contacts"]) --> GetContacts["Lade alle aktiven Kontakte"]
 
     GetContacts --> Loop{"Für jeden Kontakt"}
 
@@ -312,13 +315,13 @@ flowchart TD
     Loop -->|Fertig| Store["Speichere alle verschlüsselten Keys"]
 ```
 
-**Bei neuem Kontakt:** Wenn Anna später einen neuen Kontakt verifiziert, werden alle Items mit `visibility: all` automatisch für diesen Kontakt neu verschlüsselt.
+**Bei neuem Kontakt:** Wenn Anna später einen neuen Kontakt verifiziert, werden alle Items mit `visibility: contacts` automatisch für diesen Kontakt neu verschlüsselt.
 
-### Typ: selected (Ausgewählte)
+### Typ: selective (Ausgewählte)
 
 ```mermaid
 flowchart TD
-    Selected(["Sichtbarkeit: selected"]) --> Choose["Nutzer wählt Personen"]
+    Selected(["Sichtbarkeit: selective"]) --> Choose["Nutzer wählt Personen"]
 
     Choose --> Loop{"Für jeden Ausgewählten"}
 
@@ -332,18 +335,26 @@ flowchart TD
 
 **Bei neuem Kontakt:** Neue Kontakte sehen diesen Content NICHT automatisch.
 
-### Typ: group (Gruppe)
+### Typ: groups (Eine oder mehrere Gruppen)
 
 ```mermaid
 flowchart TD
-    Group(["Sichtbarkeit: group"]) --> GetGroupKey["Lade Group Key"]
+    Groups(["Sichtbarkeit: groups"]) --> Select["Nutzer wählt Gruppen"]
 
-    GetGroupKey --> EncryptOnce["Verschlüssele Item Key mit Group Key"]
+    Select --> Loop{"Für jede Gruppe"}
 
-    EncryptOnce --> Store["Speichere"]
+    Loop --> GetKey["Lade Group Key"]
+    GetKey --> Encrypt["Verschlüssele Item Key mit Group Key"]
+
+    Encrypt --> Next["Nächste Gruppe"]
+    Next --> Loop
+
+    Loop -->|Fertig| Store["Speichere alle verschlüsselten Keys"]
 ```
 
-**Effizienz:** Nur eine Verschlüsselung nötig, egal wie viele Gruppenmitglieder.
+**Multi-Gruppen:** Ein Item kann für mehrere Gruppen gleichzeitig freigegeben werden. Jede Gruppe erhält einen eigenen verschlüsselten Item Key.
+
+**Effizienz:** Pro Gruppe nur eine Verschlüsselung nötig, egal wie viele Gruppenmitglieder.
 
 ---
 
@@ -413,7 +424,7 @@ flowchart TD
   "deletedAt": "2025-01-08T16:00:00Z",
   "proof": {
     "type": "Ed25519Signature2020",
-    "verificationMethod": "did:wot:anna123#key-1",
+    "verificationMethod": "did:key:anna123#key-1",
     "proofValue": "z58DAdFfa9..."
   }
 }
@@ -507,7 +518,7 @@ const nearbyItems = await db.items
   "type": "item_created",
   "itemId": "urn:uuid:550e8400...",
   "itemType": "CalendarItem",
-  "ownerDid": "did:wot:anna123",
+  "ownerDid": "did:key:anna123",
   "ownerName": "Anna Müller",
   "title": "Gartentreffen",
   "createdAt": "2025-01-08T10:00:00Z"

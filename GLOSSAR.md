@@ -68,12 +68,15 @@ Eine global eindeutige Kennung für eine Identität, die ohne zentrale Registrie
 
 **Format im Web of Trust:**
 ```
-did:wot:7Hy3kPqR9mNx2Wb5vLz8
-     │   └─── Base58-kodierte ersten 16 Bytes von SHA256(publicKey)
-     └─────── Method name
+did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
+        │ └──────────────────────────────────────────────┘
+        │                    Ed25519 Public Key
+        └─ Multibase-Präfix (z = base58btc)
 ```
 
-Siehe auch: [DID:WOT Method](datenmodell/did-wot-method.md)
+Der Public Key ist direkt im DID enthalten - kein Server-Lookup nötig.
+
+Siehe auch: [did:key Verwendung](datenmodell/did-key-usage.md)
 
 ---
 

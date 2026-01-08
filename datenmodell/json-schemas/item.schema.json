@@ -29,13 +29,17 @@
     },
     "visibility": {
       "type": "string",
-      "enum": ["private", "contacts", "group", "selective"],
+      "enum": ["private", "contacts", "groups", "selective"],
       "description": "Sichtbarkeitseinstellung"
     },
-    "groupDid": {
-      "type": "string",
-      "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$",
-      "description": "Zielgruppe (nur bei visibility=group)"
+    "groupDids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^did:key:z[1-9A-HJ-NP-Za-km-z]+$"
+      },
+      "minItems": 1,
+      "description": "Zielgruppen (eine oder mehrere, bei visibility=groups)"
     },
     "selectiveRecipients": {
       "type": "array",
@@ -69,10 +73,10 @@
   "allOf": [
     {
       "if": {
-        "properties": { "visibility": { "const": "group" } }
+        "properties": { "visibility": { "const": "groups" } }
       },
       "then": {
-        "required": ["groupDid"]
+        "required": ["groupDids"]
       }
     },
     {
@@ -101,8 +105,11 @@
       "type": "MapItem",
       "title": "Reparatur-Café",
       "encryptedContent": "base64encodedAESGCMciphertext...",
-      "visibility": "group",
-      "groupDid": "did:key:z6MkgYGF3thn8k1Fv4p4dWXKtsXCnLH7q9yw4QgNPULDmDKB",
+      "visibility": "groups",
+      "groupDids": [
+        "did:key:z6MkgYGF3thn8k1Fv4p4dWXKtsXCnLH7q9yw4QgNPULDmDKB",
+        "did:key:z6MkpTHR8VNsBxYaaLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+      ],
       "ownerDid": "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
       "createdAt": "2025-01-07T14:00:00Z",
       "updatedAt": "2025-01-07T14:00:00Z",

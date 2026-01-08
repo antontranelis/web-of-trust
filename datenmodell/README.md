@@ -84,7 +84,8 @@ Ein Inhaltselement (Kalender, Karte, Projekt, etc.).
 | type | Enum | `calendar`, `map`, `project`, ... |
 | title | String | Titel |
 | content | Encrypted | Verschlüsselter Inhalt |
-| visibility | Enum | `private`, `contacts`, `group`, `selective` |
+| visibility | Enum | `private`, `contacts`, `groups`, `selective` |
+| groupDids | `did:key[]` | Zielgruppen (bei `groups`) |
 | ownerDid | `did:key` | Besitzer |
 | createdAt | DateTime | Erstellungszeitpunkt |
 

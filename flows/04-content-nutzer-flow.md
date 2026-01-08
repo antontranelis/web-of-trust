@@ -56,15 +56,15 @@ flowchart TD
 
     Visibility --> All["Alle meine Kontakte"]
     Visibility --> Selected["Ausgewählte Personen"]
-    Visibility --> Group["Eine Gruppe"]
+    Visibility --> Groups["Eine oder mehrere Gruppen"]
 
     All --> AutoGroup["Verschlüsselt mit Auto-Gruppe Key"]
     Selected --> Individual["Verschlüsselt für jeden einzeln"]
-    Group --> GroupKey["Verschlüsselt mit Group Key"]
+    Groups --> GroupKeys["Verschlüsselt mit Group Key(s)"]
 
     AutoGroup --> Sync["Sync"]
     Individual --> Sync
-    GroupKey --> Sync
+    GroupKeys --> Sync
 ```
 
 ### Sichtbarkeit nachträglich ändern
@@ -152,7 +152,10 @@ Content kann nach dem Erstellen erweitert werden (mehr Personen hinzufügen), ab
 │                                 │
 │   (•) Alle meine Kontakte       │
 │   ( ) Ausgewählte Personen      │
-│   ( ) Gruppe: [Auswählen ▼]     │
+│   ( ) Gruppen:                  │
+│       [ ] Gemeinschaftsgarten   │
+│       [ ] Nachbarschaftshilfe   │
+│       [ ] Reparatur-Café        │
 │                                 │
 │   [ Termin erstellen ]          │
 │                                 │

@@ -278,8 +278,26 @@ Ein Inhaltselement des Nutzers.
 |------------|-----------|
 | `private` | Nur für mich |
 | `contacts` | Alle aktiven Kontakte (Auto-Gruppe) |
-| `group` | Bestimmte Gruppe |
+| `groups` | Eine oder mehrere Gruppen |
 | `selective` | Ausgewählte Kontakte |
+
+### Beispiel: Item für mehrere Gruppen
+
+```json
+{
+  "id": "urn:uuid:abc12345-e89b-12d3-a456-426614174000",
+  "type": "CalendarItem",
+  "title": "Nachbarschaftsfest",
+  "visibility": "groups",
+  "groupDids": [
+    "did:key:z6MkgYGF3thn8k1Fv4p4dWXKtsXCnLH7q9yw4QgNPULDmDKB",
+    "did:key:z6MkpTHR8VNsBxYaaLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+  ],
+  "ownerDid": "did:key:z6Mkf5rGMoatrSj1f..."
+}
+```
+
+Das Item ist für alle Mitglieder beider Gruppen sichtbar.
 
 ---
 
