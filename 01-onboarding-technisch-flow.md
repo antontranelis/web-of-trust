@@ -339,7 +339,7 @@ stateDiagram-v2
     QuizPassed --> PartialSetup: Abbruch OK
     state PartialSetup {
         [*] --> HasID
-        HasID: ID und Backup verifiziert
+        HasID: ID und Backup verifiziert - Keine Kontakte!
     }
 ```
 
