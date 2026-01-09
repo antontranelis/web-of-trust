@@ -1,11 +1,13 @@
-name: Deploy Landing Page to GitHub Pages
+name: Deploy Landing + Demo to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
+      - 'apps/demo/**'
       - 'apps/landing/**'
-      - '.github/workflows/deploy-landing.yml'
+      - 'packages/wot-core/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -38,8 +40,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build landing page
+      - name: Build wot-core
+        run: pnpm --filter @web-of-trust/core build
+
+      - name: Build landing
         run: pnpm --filter landing build
+
+      - name: Build demo with base path
+        run: pnpm --filter demo build
+        env:
+          VITE_BASE_PATH: /demo/
+
+      - name: Combine builds
+        run: |
+          mkdir -p combined
+          cp -r apps/landing/dist/* combined/
+          mkdir -p combined/demo
+          cp -r apps/demo/dist/* combined/demo/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -47,7 +64,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/landing/dist
+          path: combined
 
   deploy:
     environment:
