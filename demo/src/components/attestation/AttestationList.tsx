@@ -57,6 +57,7 @@ export function AttestationList() {
                 issuerName={getContactName(attestation.issuerDid)}
                 subjectName={getContactName(attestation.subjectDid)}
                 showIssuer={false}
+                showExport={true}
               />
             ))}
           </div>

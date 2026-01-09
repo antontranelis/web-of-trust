@@ -79,4 +79,38 @@ export class AttestationService {
     const all = await this.storage.getAttestations()
     return all.filter((a) => a.type === type)
   }
+
+  async importAttestation(encoded: string): Promise<Attestation> {
+    // Decode base64
+    let attestation: Attestation
+    try {
+      const decoded = atob(encoded.trim())
+      attestation = JSON.parse(decoded)
+    } catch {
+      throw new Error('Ungültiges Format. Bitte einen gültigen Attestation-Code einfügen.')
+    }
+
+    // Validate required fields
+    if (!attestation.id || !attestation.issuerDid || !attestation.subjectDid ||
+        !attestation.content || !attestation.signature || !attestation.createdAt) {
+      throw new Error('Unvollständige Attestation. Erforderliche Felder fehlen.')
+    }
+
+    // Check if already exists
+    const existing = await this.storage.getAttestation(attestation.id)
+    if (existing) {
+      throw new Error('Diese Attestation existiert bereits.')
+    }
+
+    // Verify signature
+    const isValid = await this.verifyAttestation(attestation)
+    if (!isValid) {
+      throw new Error('Ungültige Signatur. Die Attestation konnte nicht verifiziert werden.')
+    }
+
+    // Save to storage
+    await this.storage.addAttestation(attestation)
+
+    return attestation
+  }
 }

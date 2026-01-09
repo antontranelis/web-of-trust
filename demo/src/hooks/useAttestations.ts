@@ -85,6 +85,22 @@ export function useAttestations() {
     [attestationService]
   )
 
+  const importAttestation = useCallback(
+    async (encoded: string) => {
+      try {
+        setError(null)
+        const attestation = await attestationService.importAttestation(encoded)
+        await loadAttestations()
+        return attestation
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error('Failed to import attestation')
+        setError(err)
+        throw err
+      }
+    },
+    [attestationService, loadAttestations]
+  )
+
   // Filter attestations by current user
   const myAttestations = identity
     ? attestations.filter((a) => a.issuerDid === identity.did)
@@ -101,6 +117,7 @@ export function useAttestations() {
     isLoading,
     error,
     createAttestation,
+    importAttestation,
     getAttestationsAbout,
     verifyAttestation,
     refresh: loadAttestations,
