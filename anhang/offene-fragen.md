@@ -46,6 +46,33 @@
 | Quiz bei Onboarding? | **Ja, Pflicht** | Absicherung gegen "nicht notiert" |
 | Phrase später anzeigen? | **Nein** | Sicherheitsrisiko |
 
+### Gruppen-Verwaltung
+
+| Frage | Entscheidung | Begründung |
+|-------|--------------|------------|
+| Admin-Modell oder Quorum? | **Admin-Modell** | Einfacher, CRDT-kompatibel |
+| Was wenn Admin weg? | **Multi-Admin empfehlen** | UI-Warnung bei nur 1 Admin |
+
+**Admin-Rechte:**
+- Mitglieder einladen/entfernen
+- Gruppe umbenennen
+- Andere zu Admins machen
+- Module aktivieren/deaktivieren
+
+**Später:** Quorum-basiertes Modell als Alternative → [Quorum-Konzept](quorum-konzept.md)
+
+### Offline-Verifizierung
+
+| Frage | Entscheidung | Begründung |
+|-------|--------------|------------|
+| Offline-Verifizierung möglich? | **Ja** | Durch Offline-First-Architektur bereits abgedeckt |
+
+Ablauf:
+1. QR-Code scannen (braucht kein Netz)
+2. Verification lokal signieren und speichern
+3. Bei nächster Verbindung: Sync zum Server
+4. Kontakt wird "active" sobald beide Verifications synchronisiert
+
 ---
 
 ## Offene Fragen
@@ -54,9 +81,7 @@
 
 | Frage | Kontext | Vorschlag |
 |-------|---------|-----------|
-| Multi-Device ohne Recovery? | Nutzer will 2. Gerät ohne Phrase eintippen | QR-Code mit verschlüsseltem Key? |
-| Gruppen-Admin-Rotation | Was wenn einziger Admin Gerät verliert? | Multi-Admin empfehlen |
-| Offline-Verifizierung | Beide offline, wollen verifizieren | Lokal speichern, bei Sync abgleichen |
+| Multi-Device ohne Recovery? | Nutzer will 2. Gerät ohne Phrase eintippen | **Vorerst nein** - Key-Schutz hat Priorität |
 
 ### Konzeptionell
 

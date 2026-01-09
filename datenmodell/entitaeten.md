@@ -353,12 +353,54 @@ Eine vom Nutzer erstellte Gruppe.
 }
 ```
 
-### Rollen
+### Rollen und Rechte
 
-| Rolle | Rechte |
-|-------|--------|
-| `member` | Inhalte sehen und erstellen |
-| `admin` | + Mitglieder einladen/entfernen |
+| Rolle | Beschreibung |
+|-------|--------------|
+| `member` | Normales Gruppenmitglied |
+| `admin` | Gruppenmitglied mit Verwaltungsrechten |
+
+### Aktionen und Berechtigungen
+
+| Aktion | Member | Admin | Key-Operation |
+|--------|--------|-------|---------------|
+| Inhalte sehen | ✅ | ✅ | - |
+| Inhalte erstellen | ✅ | ✅ | - |
+| Gruppe verlassen | ✅ | ✅ | Key Rotation* |
+| Mitglied einladen | ❌ | ✅ | Key verteilen |
+| Mitglied entfernen | ❌ | ✅ | Key Rotation |
+| Gruppe umbenennen | ❌ | ✅ | - |
+| Anderen zum Admin machen | ❌ | ✅ | - |
+| Modul aktivieren | ❌ | ✅ | - |
+| Modul deaktivieren | ❌ | ✅ | - |
+
+*Key Rotation beim Verlassen wird von einem Admin durchgeführt.
+
+### Key Rotation
+
+Wenn ein Mitglied entfernt wird oder die Gruppe verlässt:
+
+1. Ein Admin generiert einen neuen Group Key
+2. Der neue Key wird für alle verbleibenden Mitglieder verschlüsselt
+3. Neue Inhalte werden mit dem neuen Key verschlüsselt
+4. Das entfernte Mitglied kann alte Inhalte noch lesen, aber keine neuen
+
+```mermaid
+flowchart TD
+    Remove["Mitglied entfernt"] --> NewKey["Admin generiert neuen Key"]
+    NewKey --> Distribute["Key an verbleibende Mitglieder verteilen"]
+    Distribute --> Encrypt["Neue Inhalte mit neuem Key"]
+```
+
+### Empfehlung: Mehrere Admins
+
+Um das Risiko zu minimieren, dass eine Gruppe "verwaist" (alle Admins verlieren Zugang), wird empfohlen:
+
+- Mindestens 2 Admins pro Gruppe
+- UI zeigt Warnung bei nur einem Admin
+- Bei Gruppen-Erstellung: Hinweis "Füge einen zweiten Admin hinzu"
+
+> **Hinweis:** Ein alternatives Quorum-basiertes Modell ohne Admin-Rolle ist für eine spätere Phase konzipiert. Siehe [Quorum-Konzept](../anhang/quorum-konzept.md).
 
 ---
 

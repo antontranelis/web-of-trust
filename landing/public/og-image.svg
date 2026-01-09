@@ -1,32 +1,144 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1200"
+   height="630"
+   viewBox="0 0 1200 630"
+   version="1.1"
+   id="svg35"
+   sodipodi:docname="og-image.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview37"
+     pagecolor="#ffffff"
+     bordercolor="#111111"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.26875"
+     inkscape:cx="785.11628"
+     inkscape:cy="-100.46512"
+     inkscape:window-width="1280"
+     inkscape:window-height="768"
+     inkscape:window-x="295"
+     inkscape:window-y="1080"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg35" />
   <!-- Background -->
-  <rect width="1200" height="630" fill="#f8fafc"/>
-  <rect width="1200" height="630" fill="url(#gradient)" opacity="0.5"/>
-
-  <defs>
-    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#eff6ff;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#f0fdf4;stop-opacity:1" />
+  <rect
+     width="1200"
+     height="630"
+     fill="#f8fafc"
+     id="rect2" />
+  <rect
+     width="1200"
+     height="630"
+     fill="url(#gradient)"
+     opacity="0.5"
+     id="rect4" />
+  <defs
+     id="defs11">
+    <linearGradient
+       id="gradient"
+       x1="0%"
+       y1="0%"
+       x2="100%"
+       y2="100%">
+      <stop
+         offset="0%"
+         style="stop-color:#eff6ff;stop-opacity:1"
+         id="stop6" />
+      <stop
+         offset="100%"
+         style="stop-color:#f0fdf4;stop-opacity:1"
+         id="stop8" />
     </linearGradient>
   </defs>
-
-  <!-- Logo - larger and centered -->
-  <g transform="translate(450, 50)">
-    <circle cx="150" cy="150" r="140" fill="#2563eb" />
-    <g transform="rotate(12, 150, 150)">
-      <circle cx="90" cy="114" r="24" fill="white" />
-      <circle cx="210" cy="114" r="24" fill="white" />
-      <circle cx="150" cy="216" r="24" fill="white" />
-      <line x1="90" y1="114" x2="210" y2="114" stroke="white" stroke-width="9" />
-      <line x1="90" y1="114" x2="150" y2="216" stroke="white" stroke-width="9" />
-      <line x1="210" y1="114" x2="150" y2="216" stroke="white" stroke-width="9" />
+  <!-- Logo + Title + Subtitle -->
+  <g
+     transform="translate(200, 200)"
+     id="g33">
+    <!-- Blue rounded square -->
+    <rect
+       x="0.4115189"
+       y="51.525253"
+       width="120"
+       height="120"
+       rx="20"
+       ry="20"
+       fill="#2563eb"
+       id="rect13" />
+    <!-- Triangle network icon -->
+    <g
+       transform="rotate(12,-500.3402,343.15123)"
+       id="g27">
+      <circle
+         cx="-25"
+         cy="-20"
+         r="12"
+         fill="#ffffff"
+         id="circle15" />
+      <circle
+         cx="25"
+         cy="-20"
+         r="12"
+         fill="#ffffff"
+         id="circle17" />
+      <circle
+         cx="0"
+         cy="30"
+         r="12"
+         fill="#ffffff"
+         id="circle19" />
+      <line
+         x1="-25"
+         y1="-20"
+         x2="25"
+         y2="-20"
+         stroke="#ffffff"
+         stroke-width="5"
+         id="line21" />
+      <line
+         x1="-25"
+         y1="-20"
+         x2="0"
+         y2="30"
+         stroke="#ffffff"
+         stroke-width="5"
+         id="line23" />
+      <line
+         x1="25"
+         y1="-20"
+         x2="0"
+         y2="30"
+         stroke="#ffffff"
+         stroke-width="5"
+         id="line25" />
     </g>
+    <!-- Title next to logo -->
+    <text
+       x="149.56679"
+       y="116.51458"
+       font-family="Inter, '-apple-system', BlinkMacSystemFont, sans-serif"
+       font-size="72px"
+       font-weight="700"
+       fill="#0f172a"
+       id="text29">Web of Trust</text>
+    <!-- Subtitle below -->
+    <text
+       x="149.5038"
+       y="160.72002"
+       font-family="Inter, '-apple-system', BlinkMacSystemFont, sans-serif"
+       font-size="36px"
+       font-weight="400"
+       fill="#64748b"
+       id="text31"
+       style="font-size:32px">Vertrauen entsteht durch echte Begegnungen</text>
   </g>
-
-  <!-- Title - larger -->
-  <text x="600" y="450" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="64" font-weight="700" fill="#0f172a" text-anchor="middle">Web of Trust</text>
-
-  <!-- Subtitle - larger -->
-  <text x="600" y="540" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif" font-size="42" font-weight="400" fill="#64748b" text-anchor="middle">Vertrauen entsteht durch echte Begegnungen</text>
-
 </svg>

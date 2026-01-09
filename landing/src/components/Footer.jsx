@@ -56,10 +56,10 @@ export default function Footer() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="w-6 h-6 text-white rotate-12" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                    <circle cx="7" cy="8" r="3" />
-                    <circle cx="17" cy="8" r="3" />
-                    <circle cx="12" cy="17" r="3" />
+                  <svg viewBox="0 0 24 24" className="w-10 h-10 text-white rotate-12" fill="currentColor" stroke="currentColor" strokeWidth="1">
+                    <circle cx="7" cy="8" r="2" />
+                    <circle cx="17" cy="8" r="2" />
+                    <circle cx="12" cy="17" r="2" />
                     <path d="M7 8L17 8M7 8L12 17M17 8L12 17" strokeWidth="1.5" fill="none" />
                   </svg>
                 </div>
