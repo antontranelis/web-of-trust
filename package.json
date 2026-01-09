@@ -1,0 +1,19 @@
+{
+  "name": "web-of-trust",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "dev:demo": "pnpm --filter demo dev",
+    "dev:landing": "pnpm --filter landing dev",
+    "build:core": "pnpm --filter @web-of-trust/core build"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "~5.7.2"
+  }
+}
