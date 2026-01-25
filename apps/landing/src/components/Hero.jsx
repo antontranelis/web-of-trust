@@ -2,30 +2,55 @@ import { ArrowDown, Users, Shield, Sparkles } from 'lucide-react'
 import { Button } from '@real-life-stack/toolkit'
 import GitHubIcon from './icons/GitHubIcon'
 import { useLanguage } from '../i18n/LanguageContext'
+import { useAudience } from '../audience'
 
 export default function Hero() {
   const { t } = useLanguage()
+  const { getContent, audience, isEnabled } = useAudience()
+
+  // Only use audience content when enabled via URL param
+  const showAudienceContent = isEnabled && audience !== 'default'
+  const audienceHero = showAudienceContent ? getContent('hero') : null
+  const audiencePhilosophy = showAudienceContent ? getContent('philosophy') : null
 
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-primary/8 via-background to-secondary/8 flex items-center pt-16 overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
+          {/* Badge - Audience-aware */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-8">
             <Sparkles size={16} />
-            <span>{t.hero.badge}</span>
+            <span>{audienceHero?.tagline || t.hero.badge}</span>
           </div>
 
-          {/* Main Headline */}
+          {/* Main Headline - Audience-aware */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground mb-6">
-          {t.hero.titleStart}{' '}
-            <span className="text-primary">{t.hero.titleHighlight}</span>
+            {showAudienceContent ? (
+              <span className="text-primary">{audienceHero?.title}</span>
+            ) : (
+              <>
+                {t.hero.titleStart}{' '}
+                <span className="text-primary">{t.hero.titleHighlight}</span>
+              </>
+            )}
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-10">
-          {t.hero.subtitle}
+          {/* Subheadline - Audience-aware */}
+          <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-6">
+            {audienceHero?.subtitle || t.hero.subtitle}
           </p>
+
+          {/* Philosophy Quote - Only shown when audience mode is enabled */}
+          {showAudienceContent && audiencePhilosophy && (
+            <div className="relative max-w-xl mx-auto mb-10 p-6 bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 rounded-2xl border border-primary/10">
+              <blockquote className="text-lg italic text-foreground/80 mb-2">
+                "{audiencePhilosophy.quote}"
+              </blockquote>
+              <p className="text-sm text-muted-foreground">
+                — {audiencePhilosophy.headline}
+              </p>
+            </div>
+          )}
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">

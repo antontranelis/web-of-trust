@@ -3,12 +3,16 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@real-life-stack/toolkit'
 import GitHubIcon from './icons/GitHubIcon'
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n/LanguageContext'
+import { useAudience, AUDIENCES } from '../audience'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [langDropdownOpen, setLangDropdownOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const [audienceDropdownOpen, setAudienceDropdownOpen] = useState(false)
+  const langDropdownRef = useRef(null)
+  const audienceDropdownRef = useRef(null)
   const { language, setLanguage, t } = useLanguage()
+  const { audience, setAudience, currentAudience, isEnabled: audienceEnabled } = useAudience()
 
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language)
 
@@ -19,11 +23,14 @@ export default function Header() {
     { label: t.nav.faq, href: '#faq' },
   ]
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(event.target)) {
         setLangDropdownOpen(false)
+      }
+      if (audienceDropdownRef.current && !audienceDropdownRef.current.contains(event.target)) {
+        setAudienceDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -33,6 +40,11 @@ export default function Header() {
   const handleLanguageSelect = (code) => {
     setLanguage(code)
     setLangDropdownOpen(false)
+  }
+
+  const handleAudienceSelect = (code) => {
+    setAudience(code)
+    setAudienceDropdownOpen(false)
   }
 
   return (
@@ -64,8 +76,46 @@ export default function Header() {
               </a>
             ))}
 
+            {/* Audience Dropdown - only shown when ?personas or ?audience param is present */}
+            {audienceEnabled && (
+              <div className="relative" ref={audienceDropdownRef}>
+                <button
+                  onClick={() => setAudienceDropdownOpen(!audienceDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"
+                  title={currentAudience?.description}
+                >
+                  <span>{currentAudience?.icon}</span>
+                  <span className="hidden lg:inline">{currentAudience?.label}</span>
+                  <ChevronDown size={14} className={`transition-transform ${audienceDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {audienceDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg py-1 z-50">
+                    <div className="px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider border-b border-border">
+                      Perspektive
+                    </div>
+                    {AUDIENCES.map((aud) => (
+                      <button
+                        key={aud.code}
+                        onClick={() => handleAudienceSelect(aud.code)}
+                        className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-muted transition-colors ${
+                          audience === aud.code ? 'text-primary font-medium bg-muted/50' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <span className="text-lg">{aud.icon}</span>
+                        <div>
+                          <div>{aud.label}</div>
+                          <div className="text-xs text-muted-foreground/70">{aud.description}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Language Dropdown */}
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={langDropdownRef}>
               <button
                 onClick={() => setLangDropdownOpen(!langDropdownOpen)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted"
@@ -128,12 +178,39 @@ export default function Header() {
                 </a>
               ))}
 
+              {/* Mobile Audience Select - only shown when ?personas or ?audience param is present */}
+              {audienceEnabled && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                    Perspektive
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {AUDIENCES.map((aud) => (
+                      <button
+                        key={aud.code}
+                        onClick={() => {
+                          setAudience(aud.code)
+                        }}
+                        className={`px-3 py-2 text-sm rounded-md flex items-center gap-2 transition-colors ${
+                          audience === aud.code
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        <span>{aud.icon}</span>
+                        <span>{aud.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Mobile Language Select */}
               <div className="border-t border-border pt-4">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 px-1">
                   {language === 'de' ? 'Sprache' : 'Language'}
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
@@ -141,7 +218,7 @@ export default function Header() {
                         setLanguage(lang.code)
                         setMobileMenuOpen(false)
                       }}
-                      className={`flex-1 px-4 py-2 text-sm rounded-md flex items-center justify-center gap-2 transition-colors ${
+                      className={`px-3 py-2 text-sm rounded-md flex items-center gap-2 transition-colors ${
                         language === lang.code
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
