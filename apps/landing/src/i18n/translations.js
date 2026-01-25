@@ -3308,4 +3308,335 @@ export const translations = {
       },
     },
   },
+
+  tr: {
+    // Header
+    nav: {
+      concept: 'Konsept',
+      howItWorks: 'Nasıl çalışır',
+      apps: 'Uygulamalar',
+      personas: 'Kimin için?',
+      faq: 'SSS',
+    },
+
+    // Hero
+    hero: {
+      badge: 'Açık Kaynak Araştırma Projesi',
+      titleStart: 'Güven',
+      titleHighlight: 'gerçek karşılaşmalarla',
+      subtitle: 'Yerel topluluklar için merkezi olmayan bir güven ağı; verilerin yalnızca arkadaşlar ve gruplarla şifreli olarak paylaşıldığı, kendi kendine organize işbirliği araçlarıyla.',
+      cta: 'Daha fazla bilgi',
+      github: 'GitHub\'da görüntüle',
+      features: {
+        verification: 'Kişisel doğrulama',
+        encrypted: 'Uçtan uca şifreli',
+        offline: 'Çevrimdışı çalışır',
+      },
+    },
+
+    // ProblemSolution
+    problemSolution: {
+      title: 'Farklı bir yaklaşım',
+      subtitle: 'Global platformlar yerine yerel topluluklara odaklanıyoruz. Algoritmalar yerine gerçek karşılaşmalar üzerine inşa ediyoruz.',
+      today: 'Bugün',
+      better: 'Daha iyi',
+      problems: [
+        { before: 'Sosyal medya dikkati ele geçiriyor', after: 'Gerçek hayatta bağlan' },
+        { before: 'Verileriniz şirketlerde', after: 'Verileriniz sizinle kalır' },
+        { before: 'Beğeniler ve yıldızlarla güven', after: 'Gerçek karşılaşmalarla güven' },
+        { before: 'Ekran başında yalnız hesap oluşturma', after: 'Arkadaşlar zinciriyle katılım' },
+        { before: 'Sunuculara ve bağlantıya bağımlı', after: 'İnternet olmadan çalışır' },
+      ],
+      pillarsTitle: 'Üç sütun',
+      pillars: [
+        {
+          title: 'Doğrula',
+          description: 'Kişisel karşılaşma ile kimliği onayla',
+          detail: 'Her ilişki gerçek bir karşılaşmayla başlar. QR kod tarayarak onaylarsın: "Bu gerçekten bu kişi."',
+        },
+        {
+          title: 'İşbirliği yap',
+          description: 'Şifreli içerik paylaş',
+          detail: 'Takvimler, konumlar ve projeleri ağınla paylaş. Her şey uçtan uca şifreli.',
+        },
+        {
+          title: 'Tanıklık et',
+          description: 'Gerçek eylemlerle itibar oluştur',
+          detail: 'Başkalarının ne yaptığını onayla. Bu tanıklıklar zamanla görünür güven oluşturur.',
+        },
+      ],
+      note: {
+        title: 'Doğrulama ≠ Güven',
+        text: 'Doğrulama sadece şunu onaylar: "Bu gerçekten bu kişi." Gerçek güven zamanla tanıklıklarla gelişir.',
+      },
+    },
+
+    // HowItWorks
+    howItWorks: {
+      title: 'Nasıl çalışır',
+      subtitle: 'İlk karşılaşmadan ilk tanıklığa - ağa giden yol.',
+      step: 'Adım',
+      steps: [
+        {
+          title: 'QR kodu tara',
+          description: 'Anna ve Ben buluşur. Ben, uygulama ile Anna\'nın QR kodunu tarar.',
+          detail: 'QR kod Anna\'nın açık anahtarını içerir. Ben\'in uygulaması otomatik olarak kendi kimliğini oluşturur.',
+        },
+        {
+          title: 'Kimliği onayla',
+          description: 'Ben onaylar: "Anna ile şahsen tanıştım."',
+          detail: 'Bu doğrulama kriptografik olarak imzalanır ve anahtarlar eş zamanlı olarak değiştirilir.',
+        },
+        {
+          title: 'İçeriği gör',
+          description: 'Ben artık Anna\'nın paylaştığı içeriği görebilir.',
+          detail: 'Takvim, harita işaretleri, projeler - Anna\'nın kişileriyle paylaştığı her şey Ben için çözülebilir hale gelir.',
+        },
+        {
+          title: 'Tanıklık oluştur',
+          description: 'Birlikte çalıştıktan sonra: Anna, Ben\'in yardımını tanıklar.',
+          detail: '"Ben bahçede 3 saat yardım etti" - bu imzalı ifade Ben\'in profilinin bir parçası olur.',
+        },
+      ],
+      result: {
+        title: 'Sonuç',
+        text: 'Gerçek ilişkilerden oluşan büyüyen bir ağ. Her bağlantı kişisel bir karşılaşmaya dayanır. Her tanıklık gerçek bir eyleme.',
+      },
+    },
+
+    // Apps
+    apps: {
+      title: 'Bununla ne yapabilirsin',
+      subtitle: 'Web of Trust güven katmanıdır. Çeşitli uygulamalar yerel işbirliğini sağlamak için bunun üzerine inşa edilir.',
+      items: [
+        {
+          title: 'Harita',
+          description: 'Yakındaki insanları, yerleri ve teklifleri bul. Kimin ne yapabileceğini ve nerede olduğunu gör.',
+        },
+        {
+          title: 'Takvim',
+          description: 'Ortak etkinlikler planla, tarihleri koordine et ve etkinliklere davet et.',
+        },
+        {
+          title: 'Pazar yeri',
+          description: 'Teklifleri ve istekleri paylaş. Güvendiğin insanlarla kaynak değiş tokuşu yap.',
+        },
+        {
+          title: 'Takdir',
+          description: 'Dijital kuponlarla teşekkür et. Zaman, yardım veya teşekkür hediye et.',
+        },
+      ],
+      note: {
+        prefix: 'Tüm uygulamalar',
+        suffix: 'üzerine inşa edilmiştir – yerel ağlar için modüler açık kaynaklı araç seti.',
+      },
+    },
+
+    // Personas
+    personas: {
+      title: 'Web of Trust kimin için?',
+      subtitle: 'Gerçek bağlantılar kurmak isteyen yerel topluluklardan insanlar.',
+      needsLabel: 'İhtiyaçlar',
+      howItHelpsLabel: 'Web of Trust nasıl yardımcı olur',
+      items: [
+        {
+          name: 'Hanna (62)',
+          role: 'Bahçıvan',
+          background: 'Topluluk bahçesinde aktif, teknoloji konusunda uzman değil, ağırlıklı olarak WhatsApp kullanıyor.',
+          needs: [
+            'Kimin ne zaman suladığını bilmek',
+            'Yeni yardımcılar bulmak',
+            'Teknolojiyle uğraşmamak',
+          ],
+          howItHelps: 'Komşusu Tom uygulamayı kurar ve onu doğrular. Bahçe takvimini görür ve "Teşekkürler"e dokunabilir - bu bir tanıklık olur.',
+        },
+        {
+          name: 'Alexander (34)',
+          role: 'Usta',
+          background: 'Her şeyi tamir edebilir, birçok insan tanıyor, mahalle yardımı organize ediyor.',
+          needs: [
+            'Kimin ne yapabileceğine genel bakış',
+            'Talepleri koordine etmek',
+            'WhatsApp grup kaosu olmadan',
+          ],
+          howItHelps: 'Buluşmalarda yeni insanları aktif olarak doğrular. Tanıklıklar oluşturur: "Bisiklet tamir edebilir", "Elektrik işi yapabilir". Haritada kimin ne sunduğunu görür.',
+        },
+        {
+          name: 'Lena (28)',
+          role: 'Şüpheci',
+          background: 'Yazılım geliştirici, gizlilik bilincinde, birçok "merkezi olmayan" projenin başarısız olduğunu gördü.',
+          needs: [
+            'Teknik olarak nasıl çalıştığını anlamak',
+            'Verilerin şifrelendiğinden emin olmak',
+            'Satıcı kilidi olmadan',
+          ],
+          howItHelps: 'Açık kaynak - kodu kontrol edebilir. Yerel anahtarlarla E2E şifreleme. Tüm veriler dışa aktarılabilir.',
+        },
+        {
+          name: 'Kowalski Ailesi',
+          role: 'Yeni gelenler',
+          background: 'Şehirde yeni, kimseyi tanımıyorlar, bağlantı bulmak istiyorlar.',
+          needs: [
+            'Komşularla tanışmak',
+            'Güvenilir teklifler bulmak',
+            'Bir topluluğun parçası olmak',
+          ],
+          howItHelps: 'Sokak festivalinde ilk doğrulamalar. Kimin tanıklığı olduğunu hemen görürler. Kendileri de tanıklık toplayabilirler.',
+        },
+      ],
+      note: 'Ağ sadece gerçek karşılaşmalarla büyür - bu zaman alır, ama mesele de bu. Toplu davetler yok, sahte hesaplar yok.',
+    },
+
+    // Principles
+    principles: {
+      title: 'İlkeler',
+      subtitle: 'Web of Trust\'ı ne tanımlar - ve kasıtlı olarak ne değildir.',
+      items: [
+        {
+          title: 'Veriler seninle',
+          description: 'Tüm verilerin cihazında şifreli. Sadece doğruladığın kişiler şifresini çözebilir.',
+        },
+        {
+          title: 'Gerçek karşılaşmalar',
+          description: 'Ağdaki her ilişki kişisel bir karşılaşmaya dayanır. Bu sahte hesapları ve spam\'i önler.',
+        },
+        {
+          title: 'Çevrimdışı çalışır',
+          description: 'İçerik oluştur, insanları doğrula, tanıklık ver - her şey internet olmadan çalışır. Senkronizasyon sonra olur.',
+        },
+        {
+          title: 'Açık Kaynak',
+          description: 'Tüm kod halka açık. Nasıl çalıştığını kontrol edebilir ve hatta katkıda bulunabilirsin.',
+        },
+        {
+          title: 'Anahtar sende',
+          description: 'Kriptografik kimliğin sana ait. Kurtarma ifadesiyle istediğin zaman geri yükleyebilirsin.',
+        },
+        {
+          title: 'Veriler dışa aktarılabilir',
+          description: 'Satıcı kilidi yok. Tüm verilerini istediğin zaman dışa aktarabilirsin.',
+        },
+      ],
+      notTitle: {
+        prefix: 'Web of Trust ne',
+        highlight: 'değildir',
+        suffix: '',
+      },
+      notFeatures: [
+        'Kaydırma için sosyal medya değil',
+        'Reklam veya izleme yok',
+        'Ne gördüğüne karar veren algoritma yok',
+        'Blok zinciri veya kripto token yok',
+      ],
+      note: 'Bu bir araştırma projesi - sürekli öğreniyoruz ve gelişiyoruz',
+    },
+
+    // FAQ
+    faq: {
+      title: 'Sık Sorulan Sorular',
+      subtitle: 'Web of Trust hakkında en önemli soruların cevapları.',
+      moreQuestions: 'Daha fazla soru?',
+      askOnGithub: 'GitHub\'da sor',
+      categories: [
+        {
+          category: 'Temel Bilgiler',
+          questions: [
+            {
+              q: 'Bu WhatsApp gruplarından ne farkı var?',
+              a: 'Verilerin seninle kalır, Meta\'da değil. Her şey çevrimdışı çalışır. Tanıklıklar görünür itibar oluşturur. 200 okunmamış mesajlı grup kaosu yok.',
+            },
+            {
+              q: 'Neden biriyle şahsen tanışmam gerekiyor?',
+              a: 'Bu konseptin özü. Kişisel doğrulama Sybil direnci mekanizmasıdır. Onsuz herkes 1000 sahte hesap oluşturabilir.',
+            },
+            {
+              q: 'Kimseyi doğrulamamışsam ne görürüm?',
+              a: 'Kendi profilin dışında hiçbir şey. Ağ sadece gerçek ilişkilerin kadar büyük.',
+            },
+            {
+              q: 'İnsanları tanışmadan davet edebilir miyim?',
+              a: 'Hayır. Bu kasıtlı. Ağdaki her ilişki gerçek bir karşılaşmaya dayanır.',
+            },
+          ],
+        },
+        {
+          category: 'Güven ve Tanıklıklar',
+          questions: [
+            {
+              q: 'Doğrulama ve tanıklık arasındaki fark nedir?',
+              a: 'Doğrulama: "Bu kişiyle tanıştım, gerçekten o." Tanıklık: "Bu kişi X yaptı / Y yapabilir." Doğrulama kimlik çapasıdır. Tanıklıklar gerçek güvendir.',
+            },
+            {
+              q: 'Tanıklığı geri alabilir miyim?',
+              a: 'Hayır. Tanıklıklar geçmiş olaylar hakkında imzalı ifadelerdir. İlişki değişirse, sadece yeni oluşturmazsın.',
+            },
+            {
+              q: 'Biri kötü davranırsa ne olur?',
+              a: 'Kişiyi gizlersin. Eski tanıklıklarını tutar (iyi işleri yaptı), ama artık içeriğini görmezsin. Başkaları da aynısını yapabilir.',
+            },
+          ],
+        },
+        {
+          category: 'Teknik',
+          questions: [
+            {
+              q: 'Telefonumu kaybedersem ne olur?',
+              a: 'Kurtarma ifaden varsa: Her şey kurtarılabilir. Yoksa: Dijital kimliğin kayboldu. Baştan başlamalı ve tekrar doğrulanmalısın.',
+            },
+            {
+              q: 'Verilerim nerede saklanıyor?',
+              a: 'Cihazında yerel olarak. Şifreli. Sadece doğruladığın kişiler şifresini çözebilir.',
+            },
+            {
+              q: 'Sunucu var mı?',
+              a: 'Cihazlar arası senkronizasyon altyapıya ihtiyaç duyar. Ama sadece şifreli bloblar saklar - operatör hiçbir şey okuyamaz.',
+            },
+          ],
+        },
+        {
+          category: 'Ölçekleme ve Sınırlar',
+          questions: [
+            {
+              q: '10.000 kişi bunu kullanırsa ne olur?',
+              a: 'Ağ geleneksel anlamda "ölçeklenmez". Sadece doğruladığın kişilerden içerik görürsün. 10.000 kullanıcıyla, birçok küçük örtüşen ağ var.',
+            },
+            {
+              q: '"Arkadaşların arkadaşları" olan kişileri görebilir miyim?',
+              a: 'Temel durumda: Hayır. Sadece kendin doğruladığın kişilerden içerik görürsün. Güven zincirleri için uzantılar düşünülebilir, ama ilk adımda değil.',
+            },
+          ],
+        },
+      ],
+    },
+
+    // Footer
+    footer: {
+      cta: {
+        title: 'Gerçek bağlantılara hazır mısın?',
+        subtitle: 'Denemek için topluluklar, UX ve konsept hakkında geri bildirim ve bizimle birlikte inşa edecek geliştiriciler arıyoruz.',
+        github: 'GitHub\'da görüntüle',
+        spec: 'Şartnameyi oku',
+      },
+      projectTitle: 'Proje',
+      contributeTitle: 'Katkıda Bulun',
+      links: {
+        project: {
+          concept: 'Konsept',
+          prototype: 'Prototip',
+          specification: 'Şartname',
+        },
+        contribute: {
+          issues: 'GitHub Issues',
+          feedback: 'Geri bildirim ver',
+          code: 'Kod katkısı yap',
+        },
+      },
+      description: 'Yerel topluluklar için merkezi olmayan güven ağı. Gerçek karşılaşmaları algoritmaların önüne koyan bir araştırma projesi.',
+      license: 'MIT Lisansı altında açık kaynak',
+      madeWith: {
+        prefix: 'Yapıldı',
+        suffix: 'yerel topluluklar için',
+      },
+    },
+  },
 }

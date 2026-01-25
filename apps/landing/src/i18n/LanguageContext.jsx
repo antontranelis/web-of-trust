@@ -6,12 +6,13 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
   { code: 'es', label: 'Español', flag: '🇪🇸' },
   { code: 'pt', label: 'Português', flag: '🇧🇷' },
+  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
+  { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
   { code: 'ar', label: 'العربية', flag: '🇸🇦', rtl: true },
   { code: 'zh', label: '中文', flag: '🇨🇳' },
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
   { code: 'uk', label: 'Українська', flag: '🇺🇦' },
   { code: 'he', label: 'עברית', flag: '🇮🇱', rtl: true },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹' },
 ]
 
 const LanguageContext = createContext()
