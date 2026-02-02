@@ -79,18 +79,21 @@ erDiagram
         array excludedMembers
     }
 
-    IDENTITY ||--o{ CONTACT : "verifiziert"
-    IDENTITY ||--o{ VERIFICATION : "erstellt"
-    IDENTITY ||--o{ ATTESTATION : "erstellt"
+    %% Lokale Strukturen
+    IDENTITY ||--o{ CONTACT : "kennt (lokal)"
     IDENTITY ||--o{ ITEM : "besitzt"
     IDENTITY }o--o{ GROUP : "ist Mitglied"
 
-    CONTACT ||--o{ VERIFICATION : "hat"
-    CONTACT ||--o{ ATTESTATION : "erhält"
-
-    ITEM ||--o{ ITEM_KEY : "verschlüsselt für"
-
+    %% Auto-Gruppe: abgeleitet aus CONTACTs
     IDENTITY ||--|| AUTO_GROUP : "hat"
+    AUTO_GROUP ||--o{ CONTACT : "enthält (abgeleitet)"
+
+    %% Empfänger-Prinzip: Verifications/Attestations werden beim Empfänger gespeichert
+    IDENTITY ||--o{ VERIFICATION : "empfängt (to)"
+    IDENTITY ||--o{ ATTESTATION : "empfängt (to)"
+
+    %% Verschlüsselung
+    ITEM ||--o{ ITEM_KEY : "verschlüsselt für"
 ```
 
 ---
