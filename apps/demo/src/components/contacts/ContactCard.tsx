@@ -1,6 +1,6 @@
 import { User, Shield, Trash2, Award } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { Contact } from '@web-of-trust/core'
+import type { Contact } from '@real-life/wot-core'
 
 interface ContactCardProps {
   contact: Contact

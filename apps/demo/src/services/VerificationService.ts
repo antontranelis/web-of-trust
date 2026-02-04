@@ -7,7 +7,7 @@ import type {
   Identity,
   KeyPair,
   Proof,
-} from '@web-of-trust/core'
+} from '@real-life/wot-core'
 
 export class VerificationService {
   constructor(

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAdapters } from '../context'
 import { useIdentity } from './useIdentity'
-import type { Attestation } from '@web-of-trust/core'
+import type { Attestation } from '@real-life/wot-core'
 
 export function useAttestations() {
   const { attestationService } = useAdapters()

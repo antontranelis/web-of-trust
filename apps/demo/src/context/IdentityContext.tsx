@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAdapters } from './AdapterContext'
-import type { Identity, Profile, KeyPair } from '@web-of-trust/core'
+import type { Identity, Profile, KeyPair } from '@real-life/wot-core'
 
 interface IdentityContextValue {
   identity: Identity | null

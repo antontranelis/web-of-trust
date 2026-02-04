@@ -6,7 +6,7 @@ import {
   type StorageAdapter,
   type CryptoAdapter,
   type SyncAdapter,
-} from '@web-of-trust/core'
+} from '@real-life/wot-core'
 import {
   IdentityService,
   ContactService,

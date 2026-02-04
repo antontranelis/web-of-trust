@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAdapters } from '../context'
-import type { Contact, ContactStatus } from '@web-of-trust/core'
+import type { Contact, ContactStatus } from '@real-life/wot-core'
 
 export function useContacts() {
   const { contactService } = useAdapters()

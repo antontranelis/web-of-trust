@@ -1,4 +1,4 @@
-import type { StorageAdapter, Contact, ContactStatus } from '@web-of-trust/core'
+import type { StorageAdapter, Contact, ContactStatus } from '@real-life/wot-core'
 
 export class ContactService {
   constructor(private storage: StorageAdapter) {}

@@ -1,4 +1,4 @@
-import type { StorageAdapter, CryptoAdapter, Identity, Profile, KeyPair } from '@web-of-trust/core'
+import type { StorageAdapter, CryptoAdapter, Identity, Profile, KeyPair } from '@real-life/wot-core'
 
 const KEYPAIR_STORAGE_KEY = 'wot-keypair'
 

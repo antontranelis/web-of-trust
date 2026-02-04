@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Award, User, Calendar, Copy, Check } from 'lucide-react'
-import type { Attestation } from '@web-of-trust/core'
+import type { Attestation } from '@real-life/wot-core'
 
 interface AttestationCardProps {
   attestation: Attestation

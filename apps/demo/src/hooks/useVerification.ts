@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useAdapters } from '../context'
 import { useIdentity } from './useIdentity'
 import { useContacts } from './useContacts'
-import type { VerificationChallenge, VerificationResponse } from '@web-of-trust/core'
+import type { VerificationChallenge, VerificationResponse } from '@real-life/wot-core'
 
 type VerificationStep = 'idle' | 'initiating' | 'responding' | 'completing' | 'done' | 'error'
 

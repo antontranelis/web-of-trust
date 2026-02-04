@@ -4,7 +4,7 @@ import type {
   Attestation,
   KeyPair,
   Proof,
-} from '@web-of-trust/core'
+} from '@real-life/wot-core'
 
 export class AttestationService {
   constructor(
