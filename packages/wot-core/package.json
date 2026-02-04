@@ -1,6 +1,16 @@
 {
-  "name": "@web-of-trust/core",
+  "name": "@real-life/wot-core",
   "version": "0.1.0",
+  "description": "Core library for building decentralized Web of Trust applications",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antontranelis/web-of-trust.git",
+    "directory": "packages/wot-core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
