@@ -1,12 +1,16 @@
 import { useWotIdentity } from '../context'
 import { useState, useEffect } from 'react'
-import { Copy, Check, KeyRound, Fingerprint, Shield } from 'lucide-react'
+import { Copy, Check, KeyRound, Fingerprint, Shield, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export function Identity() {
   const { identity, did } = useWotIdentity()
+  const navigate = useNavigate()
   const [copiedDid, setCopiedDid] = useState(false)
   const [copiedPubKey, setCopiedPubKey] = useState(false)
   const [pubKey, setPubKey] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (identity) {
@@ -28,6 +32,22 @@ export function Identity() {
     await navigator.clipboard.writeText(pubKey)
     setCopiedPubKey(true)
     setTimeout(() => setCopiedPubKey(false), 2000)
+  }
+
+  const handleDeleteIdentity = async () => {
+    if (!identity) return
+
+    try {
+      setIsDeleting(true)
+      await identity.deleteStoredIdentity()
+
+      // Reload the page to trigger re-initialization
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Failed to delete identity:', error)
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+    }
   }
 
   return (
@@ -116,6 +136,64 @@ export function Identity() {
               du deine Identität auf anderen Geräten wiederherstellen.
             </div>
           </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-medium text-red-900 mb-1">Gefahrenzone</h3>
+            <p className="text-sm text-red-700">
+              Das Löschen deiner Identität ist endgültig und kann nicht rückgängig gemacht werden.
+            </p>
+          </div>
+
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Trash2 size={16} />
+              <span>Identität löschen</span>
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
+                <p className="text-sm text-red-900 font-medium">
+                  ⚠️ Bist du sicher? Diese Aktion kann nicht rückgängig gemacht werden!
+                </p>
+                <p className="text-sm text-red-800 mt-1">
+                  Alle lokalen Daten (Identität, Kontakte, Verifikationen) werden gelöscht.
+                  Stelle sicher, dass du deine 12-Wort Recovery Phrase gesichert hast!
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleDeleteIdentity}
+                  disabled={isDeleting}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      <span>Lösche...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      <span>Ja, endgültig löschen</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
