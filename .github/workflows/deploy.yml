@@ -39,7 +39,7 @@ jobs:
         run: pnpm install
 
       - name: Build wot-core
-        run: pnpm --filter @web-of-trust/core build
+        run: pnpm --filter @real-life/wot-core build
 
       - name: Build landing
         run: pnpm --filter landing build
