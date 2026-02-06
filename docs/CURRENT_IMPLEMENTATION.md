@@ -8,7 +8,7 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 ## Letzte Aktualisierung
 
 **Datum:** 2026-02-06
-**Phase:** Week 1 - Identity Foundation Complete
+**Phase:** Week 2 - In-Person Verification Complete
 
 ---
 
@@ -138,6 +138,169 @@ Sichere Seed-Verschlüsselung und -Speicherung:
 
 ---
 
+## Week 2: In-Person Verification ✅
+
+### Übersicht Week 2
+
+Das bestehende Verification-System wurde auf WotIdentity migriert und vollständig getestet. Challenge-Response-Protokoll mit Ed25519-Signaturen funktioniert end-to-end.
+
+### Implementiert Week 2
+
+#### ContactStorage Class (`packages/wot-core/src/contact/ContactStorage.ts`)
+
+IndexedDB-basierte Contact-Verwaltung:
+
+- ✅ **CRUD Operations** - Add, Get, Update, Remove Contacts
+- ✅ **Status Management** - Pending → Active nach Verification
+- ✅ **DID-based Lookup** - Contacts via did:key identifiziert
+- ✅ **Timestamp Tracking** - createdAt, updatedAt, verifiedAt
+- ✅ **Active Contact Filter** - Schneller Zugriff auf verifizierte Contacts
+
+**API Methods:**
+
+```typescript
+addContact(contact: Contact): Promise<void>
+getContact(did: string): Promise<Contact | null>
+getAllContacts(): Promise<Contact[]>
+updateContact(did: string, updates: Partial<Contact>): Promise<void>
+activateContact(did: string): Promise<void>
+removeContact(did: string): Promise<void>
+getActiveContacts(): Promise<Contact[]>
+```
+
+#### VerificationHelper Class (`packages/wot-core/src/verification/VerificationHelper.ts`)
+
+Challenge-Response-Protokoll mit WotIdentity:
+
+- ✅ **Challenge Creation** - Nonce + Timestamp + DID + Public Key
+- ✅ **Challenge Response** - Responder fügt eigene Identity-Info hinzu
+- ✅ **Signature Creation** - Ed25519 signature via WotIdentity.sign()
+- ✅ **Signature Verification** - Multibase public key conversion + WebCrypto verify
+- ✅ **Nonce Validation** - Schutz gegen Replay-Angriffe
+- ✅ **Base64 Encoding** - QR-Code-kompatibel
+
+**API Methods:**
+
+```typescript
+createChallenge(identity: WotIdentity, name: string): Promise<string>
+respondToChallenge(code: string, identity: WotIdentity, name: string): Promise<string>
+completeVerification(code: string, identity: WotIdentity, nonce: string): Promise<Verification>
+verifySignature(verification: Verification): Promise<boolean>
+publicKeyFromDid(did: string): string
+multibaseToBytes(multibase: string): Uint8Array
+```
+
+**Verification Flow:**
+
+1. **Anna (Initiator):** `createChallenge()` → Challenge Code (Base64)
+2. **Ben (Responder):** `respondToChallenge(code)` → Response Code (Base64)
+3. **Anna (Completes):** `completeVerification(responseCode)` → Signed Verification
+4. **Storage:** Verification gespeichert bei Anna (Empfänger-Prinzip)
+5. **Contacts:** Beide fügen sich gegenseitig als "active" Contact hinzu
+
+#### Demo App Services
+
+**VerificationService** - Vereinfacht zu thin wrapper:
+- Core-Logik delegiert an VerificationHelper
+- Storage-Persistenz für Verification-Records
+- Encoding/Decoding-Helpers für QR-Codes
+
+**ContactService** - Migriert zu ContactStorage:
+- Ersetzt StorageAdapter-Calls durch ContactStorage
+- Gleiche API-Oberfläche beibehalten
+- Nutzt IndexedDB statt localStorage
+
+#### Demo App Hooks
+
+**useVerification** - Migriert zu WotIdentity:
+- Ersetzt `useIdentity + KeyPair` durch `useWotIdentity`
+- Nutzt VerificationHelper aus wot-core
+- Challenge/Response-Flow unverändert
+- Automatic contact activation nach Verification
+
+### Tests Week 2
+
+**35 neue Tests** (zusätzlich zu 29 Week 1 Tests):
+
+#### ContactStorage Tests (18 Tests)
+
+```typescript
+✓ addContact() - store contact with did:key format
+✓ addContact() - store multibase public key
+✓ addContact() - default status is pending
+✓ addContact() - throws if contact already exists
+
+✓ getContact() - retrieve by DID
+✓ getContact() - returns null for non-existent
+
+✓ getAllContacts() - returns all stored contacts
+✓ getAllContacts() - returns empty array when empty
+
+✓ updateContact() - update name
+✓ updateContact() - update status
+✓ updateContact() - update multiple fields
+✓ updateContact() - throws if contact not found
+
+✓ activateContact() - changes status to active
+✓ activateContact() - sets verifiedAt timestamp
+
+✓ removeContact() - deletes contact from storage
+✓ removeContact() - no error for non-existent
+
+✓ getActiveContacts() - filters by active status
+✓ getActiveContacts() - returns empty array when none active
+```
+
+#### VerificationIntegration Tests (17 Tests)
+
+```typescript
+✓ Challenge Creation - with WotIdentity DID and public key
+✓ Challenge Creation - encodes to base64
+✓ Challenge Creation - includes timestamp and nonce
+✓ Challenge Creation - includes challenger name
+
+✓ Challenge Response - responder adds own identity
+✓ Challenge Response - preserves original nonce
+✓ Challenge Response - encodes to base64
+✓ Challenge Response - includes responder name
+
+✓ Complete Verification - validates nonce match
+✓ Complete Verification - throws on nonce mismatch
+✓ Complete Verification - creates Ed25519Signature2020 proof
+✓ Complete Verification - signs with initiator identity
+
+✓ Signature Verification - verifies valid signature
+✓ Signature Verification - rejects invalid signature
+
+✓ Public Key Exchange - extracts key from did:key format
+✓ Public Key Exchange - converts multibase to bytes
+✓ Public Key Exchange - handles Ed25519 0xed01 prefix correctly
+```
+
+**Gesamt:** 64 Tests (29 Week 1 + 35 Week 2) - alle passing ✅
+
+### Demo App Integration Week 2
+
+- ✅ **useWotIdentity Hook** - Demo nutzt WotIdentity statt alte Identity
+- ✅ **Verification Flow** - Challenge/Response mit VerificationHelper
+- ✅ **Contact Management** - ContactStorage in AdapterContext
+- ✅ **Status Management** - Pending → Active nach Verification
+- ✅ **Build Success** - TypeScript clean, keine Errors
+
+### Verifizierter End-to-End Flow Week 2
+
+User-Bestätigung: "Läuft noch und es funktioniert" ✅
+
+1. Identity Creation in Browser
+2. Challenge Generation
+3. Challenge Code Copy/Paste (oder QR in Zukunft)
+4. Response Generation
+5. Response Code Copy/Paste
+6. Verification Completion
+7. Contact Storage (beide Seiten)
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -178,24 +341,23 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ---
 
-## Nächste Schritte (Week 2+)
+## Nächste Schritte (Week 3+)
 
-### In-Person Verification (Week 2)
-
-Die Verify-Seite (`/verify`) existiert bereits, nutzt aber noch das alte Identity-System:
-
-**Zu migrieren:**
-- ❌ `useIdentity` → `useWotIdentity`
-- ❌ `VerificationFlow` aktualisieren
-- ❌ QR-Code Format anpassen an `did:key`
-- ❌ Challenge-Response mit WotIdentity.sign()
-
-### Contact Management (Week 2)
+### QR-Code Enhancement (Optional Week 2 Extension)
 
 **Geplant:**
-- ContactStorage mit IndexedDB
-- Verification Record Speicherung
-- Contact List UI
+
+- ❌ QR-Code Generation in ShowCode.tsx (mit `qrcode` npm package)
+- ❌ QR-Code Scanner in ScanCode.tsx (mit `html5-qrcode`)
+- ❌ URL Format: `wot://verify?did=<did>&name=<name>&pk=<publicKey>`
+
+### Contact List UI (Week 3)
+
+**Geplant:**
+
+- Contact List View auf `/contacts`
+- Filter: Alle / Active / Pending
+- Contact Details mit Verification-Info
 
 ### Sync Protocol (Week 3+)
 

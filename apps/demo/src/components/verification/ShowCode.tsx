@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Copy, Check, RefreshCw } from 'lucide-react'
+import QRCode from 'qrcode'
 
 interface ShowCodeProps {
   code: string
@@ -10,6 +11,31 @@ interface ShowCodeProps {
 
 export function ShowCode({ code, title, description, onRefresh }: ShowCodeProps) {
   const [copied, setCopied] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string>('')
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Generate QR code when code changes
+  useEffect(() => {
+    const generateQR = async () => {
+      try {
+        const dataUrl = await QRCode.toDataURL(code, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#1e293b', // slate-900
+            light: '#ffffff',
+          },
+        })
+        setQrDataUrl(dataUrl)
+      } catch (err) {
+        console.error('Failed to generate QR code:', err)
+      }
+    }
+
+    if (code) {
+      generateQR()
+    }
+  }, [code])
 
   const copyCode = async () => {
     await navigator.clipboard.writeText(code)
@@ -24,39 +50,53 @@ export function ShowCode({ code, title, description, onRefresh }: ShowCodeProps)
         <p className="text-sm text-slate-600">{description}</p>
       </div>
 
-      <div className="bg-slate-100 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Code (Dev-Mode)
-          </span>
-          <div className="flex gap-1">
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white rounded transition-colors"
-                title="Neuen Code generieren"
-              >
-                <RefreshCw size={16} />
-              </button>
-            )}
-            <button
-              onClick={copyCode}
-              className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white rounded transition-colors"
-              title="Kopieren"
-            >
-              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
-            </button>
+      {/* QR Code Display */}
+      {qrDataUrl && (
+        <div className="flex justify-center">
+          <div className="bg-white rounded-lg p-4 border-2 border-slate-200 shadow-sm">
+            <img src={qrDataUrl} alt="QR Code" className="w-64 h-64" />
           </div>
         </div>
-        <textarea
-          readOnly
-          value={code}
-          className="w-full h-24 bg-white border border-slate-200 rounded p-2 text-xs font-mono text-slate-700 resize-none focus:outline-none"
-        />
-      </div>
+      )}
+
+      {/* Dev Mode: Text Code */}
+      <details className="bg-slate-100 rounded-lg">
+        <summary className="cursor-pointer p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Code ansehen (Dev-Mode)
+            </span>
+            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white rounded transition-colors"
+                  title="Neuen Code generieren"
+                >
+                  <RefreshCw size={16} />
+                </button>
+              )}
+              <button
+                onClick={copyCode}
+                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-white rounded transition-colors"
+                title="Kopieren"
+              >
+                {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} />}
+              </button>
+            </div>
+          </div>
+        </summary>
+        <div className="px-4 pb-4">
+          <textarea
+            readOnly
+            value={code}
+            className="w-full h-24 bg-white border border-slate-200 rounded p-2 text-xs font-mono text-slate-700 resize-none focus:outline-none"
+          />
+        </div>
+      </details>
 
       <p className="text-xs text-slate-500 text-center">
-        Im Dev-Mode kannst du den Code kopieren und im anderen Browser-Tab einfügen.
+        Scanne den QR-Code mit der anderen Person oder nutze im Dev-Mode Copy & Paste.
       </p>
     </div>
   )
