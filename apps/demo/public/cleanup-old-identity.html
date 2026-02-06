@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cleanup Old Identity</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    button {
+      background: #ef4444;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #dc2626;
+    }
+    .success {
+      color: #22c55e;
+      margin-top: 20px;
+    }
+    .info {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧹 Cleanup Old Identity</h1>
+
+  <div class="info">
+    <strong>Info:</strong> Dies löscht die alte Identity aus dem alten System und die neue SecureWotIdentity.
+    Du kannst danach eine komplett neue Identität erstellen.
+  </div>
+
+  <button onclick="cleanup()">Alle Identitäten löschen</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function cleanup() {
+      const result = document.getElementById('result');
+      result.innerHTML = 'Lösche...';
+
+      try {
+        // Clear localStorage
+        localStorage.clear();
+
+        // Delete old wot-identity DB
+        await new Promise((resolve, reject) => {
+          const req = indexedDB.deleteDatabase('wot-identity');
+          req.onsuccess = resolve;
+          req.onerror = reject;
+        });
+
+        // Delete wot DB (old system)
+        await new Promise((resolve, reject) => {
+          const req = indexedDB.deleteDatabase('wot');
+          req.onsuccess = resolve;
+          req.onerror = reject;
+        });
+
+        result.innerHTML = '<div class="success">✅ Erfolgreich gelöscht! Du kannst jetzt eine neue Identität erstellen.<br><a href="/">Zurück zur App</a></div>';
+      } catch (error) {
+        result.innerHTML = `<div style="color: red">Fehler: ${error.message}</div>`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -219,6 +219,30 @@ export class SecureWotIdentity {
     return crypto.subtle.exportKey('jwk', publicKey)
   }
 
+  /**
+   * Get public key as multibase encoded string (same format as in DID)
+   */
+  async getPublicKeyMultibase(): Promise<string> {
+    if (!this.identityKeyPair) {
+      throw new Error('Identity not unlocked')
+    }
+
+    // Export public key
+    const publicKeyJwk = await crypto.subtle.exportKey(
+      'jwk',
+      this.identityKeyPair.publicKey
+    )
+
+    // Encode as multibase (same as in DID generation)
+    const publicKeyBytes = this.base64UrlToArrayBuffer(publicKeyJwk.x!)
+    const multicodecPrefix = new Uint8Array([0xed, 0x01]) // Ed25519 public key
+    const combined = new Uint8Array(multicodecPrefix.length + publicKeyBytes.byteLength)
+    combined.set(multicodecPrefix)
+    combined.set(new Uint8Array(publicKeyBytes), multicodecPrefix.length)
+
+    return 'z' + this.base58Encode(combined)
+  }
+
   // Private methods
 
   private async deriveIdentityKeyPair(): Promise<void> {

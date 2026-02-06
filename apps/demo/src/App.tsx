@@ -1,23 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AdapterProvider, IdentityProvider, useIdentity } from './context'
-import { AppShell, CreateIdentity } from './components'
+import { AdapterProvider, IdentityProvider, SecureIdentityProvider, useSecureIdentity } from './context'
+import { AppShell, IdentityManagement } from './components'
 import { Home, Identity, Contacts, Verify, Attestations } from './pages'
 
 function RequireIdentity({ children }: { children: React.ReactNode }) {
-  const { hasIdentity, isLoading } = useIdentity()
+  const { identity, did, setIdentity } = useSecureIdentity()
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-500">Lade...</div>
-      </div>
-    )
-  }
-
-  if (!hasIdentity) {
+  if (!identity || !did) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <CreateIdentity />
+        <IdentityManagement
+          onComplete={(newIdentity, newDid) => {
+            setIdentity(newIdentity, newDid)
+          }}
+        />
       </div>
     )
   }
@@ -47,7 +43,9 @@ export default function App() {
     <BrowserRouter>
       <AdapterProvider>
         <IdentityProvider>
-          <AppRoutes />
+          <SecureIdentityProvider>
+            <AppRoutes />
+          </SecureIdentityProvider>
         </IdentityProvider>
       </AdapterProvider>
     </BrowserRouter>
