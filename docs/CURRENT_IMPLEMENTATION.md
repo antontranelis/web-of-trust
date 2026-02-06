@@ -218,6 +218,24 @@ multibaseToBytes(multibase: string): Uint8Array
 - Challenge/Response-Flow unverändert
 - Automatic contact activation nach Verification
 
+#### QR-Code Support (Week 2 Extension)
+
+**ShowCode Component** - QR-Code Generation:
+
+- ✅ **Automatische QR-Generierung** - 256x256px QR-Code mit `qrcode` package
+- ✅ **Visuell prominent** - QR-Code zentral angezeigt
+- ✅ **Dev-Mode Fallback** - Text-Code in collapsible `<details>`
+- ✅ **Copy & Paste** - Für Development ohne QR-Scanner
+
+**ScanCode Component** - QR-Scanner:
+
+- ✅ **Kamera-Scanner** - `html5-qrcode` mit live preview
+- ✅ **"QR-Code scannen" Button** - Startet Kamera mit Permission-Request
+- ✅ **Stop-Button** - Rotes X zum Abbrechen des Scans
+- ✅ **Auto-Fill** - Gescannter Code wird automatisch eingetragen
+- ✅ **Dev-Mode Fallback** - Manuelle Text-Eingabe in collapsible details
+- ⚠️ **Kamera-Permission** - Benötigt HTTPS oder localhost für Browser-Kamera-Zugriff
+
 ### Tests Week 2
 
 **35 neue Tests** (zusätzlich zu 29 Week 1 Tests):
@@ -343,13 +361,15 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte (Week 3+)
 
-### QR-Code Enhancement (Optional Week 2 Extension)
+### QR-Code Enhancement (Week 2 Extension) ✅
 
-**Geplant:**
+**Implementiert:**
 
-- ❌ QR-Code Generation in ShowCode.tsx (mit `qrcode` npm package)
-- ❌ QR-Code Scanner in ScanCode.tsx (mit `html5-qrcode`)
-- ❌ URL Format: `wot://verify?did=<did>&name=<name>&pk=<publicKey>`
+- ✅ QR-Code Generation in ShowCode.tsx (mit `qrcode` npm package)
+- ✅ QR-Code Scanner in ScanCode.tsx (mit `html5-qrcode`)
+- ⚠️ Base64-encoded Challenge/Response (kein custom URL-Format)
+
+**Hinweis:** Kamera-Scanner benötigt HTTPS oder localhost für Browser-Permissions
 
 ### Contact List UI (Week 3)
 

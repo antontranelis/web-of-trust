@@ -41,6 +41,9 @@ export function ScanCode({
       setError(null)
       setIsScanning(true)
 
+      // Wait for DOM to render the scanner element
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       const scanner = new Html5Qrcode(scannerElementId)
       scannerRef.current = scanner
 
