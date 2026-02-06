@@ -19,4 +19,9 @@ export default defineConfig({
       external: ['react', 'idb'],
     },
   },
+  test: {
+    environment: 'happy-dom', // Browser-like environment for IndexedDB
+    globals: true,
+    setupFiles: ['./tests/setup.ts'],
+  },
 })

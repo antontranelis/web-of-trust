@@ -22,156 +22,187 @@ pnpm add @web-of-trust/core
 ## Quick Start
 
 ```typescript
-import {
-  WebCryptoAdapter,
-  LocalStorageAdapter,
-  createDid
-} from '@web-of-trust/core'
-
-// Initialize adapters
-const crypto = new WebCryptoAdapter()
-const storage = new LocalStorageAdapter()
+import { WotIdentity } from '@web-of-trust/core'
 
 // Create a new identity
-const keyPair = await crypto.generateKeyPair()
-const did = createDid(keyPair.publicKey)
+const identity = new WotIdentity()
+const result = await identity.create('your-secure-passphrase', true)
 
-console.log(did) // did:key:z6Mk...
+console.log(result.mnemonic) // 12-word BIP39 mnemonic
+console.log(result.did)      // did:key:z6Mk...
+
+// Later: Unlock from storage
+const identity2 = new WotIdentity()
+await identity2.unlockFromStorage('your-secure-passphrase')
+console.log(identity2.getDid()) // Same DID
 ```
 
 ## Core Concepts
 
+### Identity Management with WotIdentity
+
+`WotIdentity` provides a secure, deterministic identity system based on BIP39 mnemonics:
+
+**Key Features:**
+
+- **BIP39 Mnemonic**: 12-word recovery phrase (128-bit entropy)
+- **Deterministic**: Same mnemonic always produces same DID
+- **Encrypted Storage**: Seed encrypted with PBKDF2 + AES-GCM
+- **Native WebCrypto**: Pure browser crypto, no external dependencies
+- **Non-extractable Keys**: Master key never leaves crypto hardware
+
+```typescript
+import { WotIdentity } from '@web-of-trust/core'
+
+const identity = new WotIdentity()
+
+// Create new identity
+const { mnemonic, did } = await identity.create('passphrase', true)
+// Save the mnemonic securely! It's the only way to recover your identity
+
+// Recover from mnemonic
+await identity.unlock(mnemonic, 'passphrase')
+
+// Sign data
+const signature = await identity.sign('Hello, World!')
+
+// Get public key
+const pubKey = await identity.getPublicKeyMultibase()
+```
+
 ### Decentralized Identifiers (DIDs)
 
-Every identity is a `did:key` - a self-sovereign identifier derived from a cryptographic key pair. No central authority needed.
+Every identity is a `did:key` - a self-sovereign identifier derived from an Ed25519 public key. No central authority needed.
 
 ```typescript
-import { createDid, isValidDid } from '@web-of-trust/core'
-
-const did = createDid(publicKeyBytes)
-isValidDid(did) // true
+const did = identity.getDid()
+console.log(did) // did:key:z6MkpTHz...
 ```
 
-### Signed Data (JWS)
+### Encrypted Storage
 
-All trust data is cryptographically signed using JSON Web Signatures:
+Identity seeds are stored encrypted in IndexedDB:
 
-```typescript
-import { signJws, verifyJws } from '@web-of-trust/core'
-
-const jws = await signJws(payload, privateKey)
-const verified = await verifyJws(jws, publicKey)
-```
-
-### Adapters
-
-The library uses a pluggable adapter pattern:
-
-- **CryptoAdapter** - Key generation, signing, encryption
-- **StorageAdapter** - Persist identities, contacts, verifications
-- **SyncAdapter** - Synchronize data across devices
+- Passphrase → PBKDF2 (600k iterations) → AES-GCM encryption
+- Random salt and IV per storage operation
+- Master key is non-extractable (stays in crypto hardware)
 
 ```typescript
-import type { CryptoAdapter, StorageAdapter } from '@web-of-trust/core'
+// Check if identity exists
+const hasIdentity = await identity.hasStoredIdentity()
 
-// Use built-in implementations
-import { WebCryptoAdapter, LocalStorageAdapter } from '@web-of-trust/core'
-
-// Or implement your own
-class MyStorageAdapter implements StorageAdapter {
-  // ...
-}
-```
-
-## Types
-
-### Identity
-
-```typescript
-interface Identity {
-  did: string
-  publicKey: Uint8Array
-  privateKey?: Uint8Array
-  profile: Profile
-  createdAt: Date
-}
-
-interface Profile {
-  displayName?: string
-  avatar?: string
-}
-```
-
-### Contact
-
-```typescript
-interface Contact {
-  did: string
-  profile: Profile
-  status: ContactStatus
-  verifications: Verification[]
-  attestations: Attestation[]
-}
-
-type ContactStatus = 'pending' | 'verified' | 'blocked'
-```
-
-### Verification
-
-```typescript
-interface Verification {
-  id: string
-  fromDid: string
-  toDid: string
-  location?: GeoLocation
-  timestamp: Date
-  signature: string
-}
-```
-
-### Attestation
-
-```typescript
-interface Attestation {
-  id: string
-  fromDid: string
-  toDid: string
-  type: string
-  content: string
-  metadata: AttestationMetadata
-  signature: string
-}
+// Delete stored identity
+await identity.deleteStoredIdentity()
 ```
 
 ## API Reference
 
-### Crypto Utilities
+### WotIdentity
 
-| Function | Description |
-|----------|-------------|
-| `createDid(publicKey)` | Create a did:key from public key bytes |
-| `didToPublicKeyBytes(did)` | Extract public key from a did:key |
-| `isValidDid(did)` | Validate a did:key format |
-| `signJws(payload, privateKey)` | Sign data as JWS |
-| `verifyJws(jws, publicKey)` | Verify a JWS signature |
-| `extractJwsPayload(jws)` | Get payload without verification |
+Core identity management class.
 
-### Encoding
+#### Constructor
 
-| Function | Description |
-|----------|-------------|
-| `encodeBase58(bytes)` | Encode bytes to Base58 |
-| `decodeBase58(string)` | Decode Base58 to bytes |
-| `encodeBase64Url(bytes)` | Encode bytes to Base64URL |
-| `decodeBase64Url(string)` | Decode Base64URL to bytes |
+```typescript
+const identity = new WotIdentity()
+```
 
-### Adapters
+#### Methods
 
-| Class | Description |
-|-------|-------------|
-| `WebCryptoAdapter` | Browser-native crypto using Web Crypto API |
-| `LocalStorageAdapter` | IndexedDB-based storage for browser |
-| `NoOpSyncAdapter` | Placeholder sync adapter (does nothing) |
+**`create(passphrase: string, storeSeed: boolean): Promise<{ mnemonic: string, did: string }>`**
+
+Create a new identity with a BIP39 mnemonic.
+
+```typescript
+const { mnemonic, did } = await identity.create('secure-passphrase', true)
+// Save mnemonic securely! It's your only recovery method
+```
+
+**`unlock(mnemonic: string, passphrase: string): Promise<void>`**
+
+Restore identity from BIP39 mnemonic.
+
+```typescript
+await identity.unlock(mnemonic, 'secure-passphrase')
+```
+
+**`unlockFromStorage(passphrase: string): Promise<void>`**
+
+Unlock identity from encrypted storage.
+
+```typescript
+await identity.unlockFromStorage('secure-passphrase')
+```
+
+**`sign(data: string): Promise<string>`**
+
+Sign data with Ed25519, returns base64url signature.
+
+```typescript
+const signature = await identity.sign('Hello, World!')
+```
+
+**`getDid(): string`**
+
+Get the current DID (throws if locked).
+
+```typescript
+const did = identity.getDid() // did:key:z6Mk...
+```
+
+**`getPublicKeyMultibase(): Promise<string>`**
+
+Get public key in multibase format (z-prefixed base58btc).
+
+```typescript
+const pubKey = await identity.getPublicKeyMultibase()
+```
+
+**`hasStoredIdentity(): Promise<boolean>`**
+
+Check if encrypted seed exists in storage.
+
+```typescript
+const exists = await identity.hasStoredIdentity()
+```
+
+**`deleteStoredIdentity(): Promise<void>`**
+
+Delete encrypted seed from storage and lock identity.
+
+```typescript
+await identity.deleteStoredIdentity()
+```
+
+**`deriveFrameworkKey(info: string): Promise<Uint8Array>`**
+
+Derive framework-specific keys using HKDF.
+
+```typescript
+const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
+```
+
+### SeedStorage
+
+Low-level encrypted storage for identity seeds.
+
+```typescript
+import { SeedStorage } from '@web-of-trust/core'
+
+const storage = new SeedStorage()
+
+// Store encrypted
+await storage.storeSeed(seedBytes, 'passphrase')
+
+// Load and decrypt
+const seed = await storage.loadSeed('passphrase')
+
+// Check existence
+const exists = await storage.hasSeed()
+
+// Delete
+await storage.deleteSeed()
+```
 
 ## Development
 
@@ -187,6 +218,20 @@ pnpm test
 
 # Type check
 pnpm typecheck
+```
+
+### Testing
+
+The package includes comprehensive test coverage:
+
+- **29 tests** covering identity creation, encryption, deterministic key derivation
+- Uses Vitest with happy-dom and fake-indexeddb for browser environment simulation
+- Tests validate BIP39 mnemonic generation, PBKDF2+AES-GCM encryption, and Ed25519 signing
+
+Run tests with:
+
+```bash
+pnpm test
 ```
 
 ## Part of the Web of Trust Project
