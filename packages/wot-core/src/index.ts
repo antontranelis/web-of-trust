@@ -58,6 +58,9 @@ export {
   extractJwsPayload,
 } from './crypto/jws'
 
+// Identity
+export { SecureWotIdentity } from './identity'
+
 // Adapter Implementations
 export { WebCryptoAdapter } from './adapters/crypto/WebCryptoAdapter'
 export { LocalStorageAdapter } from './adapters/storage/LocalStorageAdapter'

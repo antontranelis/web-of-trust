@@ -32,6 +32,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/ed25519": "^3.0.0",
+    "@scure/bip39": "^2.0.1",
     "idb": "^8.0.1"
   },
   "devDependencies": {
