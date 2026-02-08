@@ -1,0 +1,27 @@
+{
+  "name": "@real-life/wot-relay",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "better-sqlite3": "^11.7.0"
+  },
+  "devDependencies": {
+    "@real-life/wot-core": "workspace:*",
+    "@types/ws": "^8.5.13",
+    "@types/better-sqlite3": "^7.6.12",
+    "typescript": "~5.7.2",
+    "vitest": "^2.1.8",
+    "tsx": "^4.19.0"
+  }
+}
