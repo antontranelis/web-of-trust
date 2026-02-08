@@ -1,14 +1,34 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useAdapters, useIdentity } from '../context'
 import { useSubscribable } from './useSubscribable'
+import { useMessaging } from './useMessaging'
 import type { Attestation } from '@real-life/wot-core'
 
 export function useAttestations() {
   const { attestationService, reactiveStorage } = useAdapters()
   const { identity: wotIdentity, did } = useIdentity()
+  const { onMessage } = useMessaging()
 
   const attestationsSubscribable = useMemo(() => reactiveStorage.watchReceivedAttestations(), [reactiveStorage])
   const attestations = useSubscribable(attestationsSubscribable)
+
+  // Listen for incoming attestations via relay
+  useEffect(() => {
+    const unsubscribe = onMessage(async (envelope) => {
+      if (envelope.type !== 'attestation') return
+      try {
+        const attestation: Attestation = JSON.parse(envelope.payload)
+        // Verify and save (importAttestation handles dedup + signature check)
+        const encoded = btoa(JSON.stringify(attestation))
+        await attestationService.importAttestation(encoded)
+        console.log('Attestation received via relay:', attestation.id)
+      } catch (error) {
+        // Duplicate or invalid — silently ignore
+        console.debug('Incoming attestation skipped:', error)
+      }
+    })
+    return unsubscribe
+  }, [onMessage, attestationService])
 
   const createAttestation = useCallback(
     async (toDid: string, claim: string, tags?: string[]) => {

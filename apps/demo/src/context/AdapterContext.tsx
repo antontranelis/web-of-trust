@@ -2,10 +2,13 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import {
   WebCryptoAdapter,
   NoOpSyncAdapter,
+  WebSocketMessagingAdapter,
   type StorageAdapter,
   type ReactiveStorageAdapter,
   type CryptoAdapter,
   type SyncAdapter,
+  type MessagingAdapter,
+  type MessagingState,
   type WotIdentity,
 } from '@real-life/wot-core'
 import {
@@ -16,11 +19,15 @@ import {
 import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
 
+const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'ws://localhost:8787'
+
 interface AdapterContextValue {
   storage: StorageAdapter
   reactiveStorage: ReactiveStorageAdapter
   crypto: CryptoAdapter
   sync: SyncAdapter
+  messaging: MessagingAdapter
+  messagingState: MessagingState
   contactService: ContactService
   verificationService: VerificationService
   attestationService: AttestationService
@@ -40,10 +47,12 @@ interface AdapterProviderProps {
  */
 export function AdapterProvider({ children, identity }: AdapterProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
-  const [adapters, setAdapters] = useState<Omit<AdapterContextValue, 'isInitialized'> | null>(null)
+  const [adapters, setAdapters] = useState<Omit<AdapterContextValue, 'isInitialized' | 'messagingState'> | null>(null)
+  const [messagingState, setMessagingState] = useState<MessagingState>('disconnected')
 
   useEffect(() => {
     let cancelled = false
+    let messagingAdapter: WebSocketMessagingAdapter | null = null
 
     async function initEvolu() {
       try {
@@ -54,6 +63,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const storage = new EvoluStorageAdapter(evolu)
         const crypto = new WebCryptoAdapter()
         const sync = new NoOpSyncAdapter()
+        messagingAdapter = new WebSocketMessagingAdapter(RELAY_URL)
+
+        const attestationService = new AttestationService(storage, crypto)
+        attestationService.setMessaging(messagingAdapter)
 
         if (!cancelled) {
           setAdapters({
@@ -61,11 +74,26 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             reactiveStorage: storage,
             crypto,
             sync,
+            messaging: messagingAdapter,
             contactService: new ContactService(storage),
             verificationService: new VerificationService(storage),
-            attestationService: new AttestationService(storage, crypto),
+            attestationService,
           })
           setIsInitialized(true)
+
+          // Connect to relay after adapters are set
+          const did = identity.getDid()
+          if (did && !cancelled) {
+            try {
+              setMessagingState('connecting')
+              await messagingAdapter.connect(did)
+              if (!cancelled) setMessagingState('connected')
+              console.log(`Relay connected: ${RELAY_URL} (${did.slice(0, 20)}...)`)
+            } catch (error) {
+              console.warn('Relay connection failed:', error)
+              if (!cancelled) setMessagingState('error')
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to initialize Evolu:', error)
@@ -73,7 +101,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
     }
 
     initEvolu()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      messagingAdapter?.disconnect()
+    }
   }, [identity])
 
   if (!isInitialized || !adapters) {
@@ -85,7 +116,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
   }
 
   return (
-    <AdapterContext.Provider value={{ ...adapters, isInitialized }}>
+    <AdapterContext.Provider value={{ ...adapters, messagingState, isInitialized }}>
       {children}
     </AdapterContext.Provider>
   )

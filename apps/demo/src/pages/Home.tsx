@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Shield, Award, ArrowRight } from 'lucide-react'
-import { useContacts, useAttestations } from '../hooks'
+import { Users, Shield, Award, ArrowRight, Wifi, WifiOff } from 'lucide-react'
+import { useContacts, useAttestations, useMessaging } from '../hooks'
 import { useIdentity, useAdapters } from '../context'
 
 export function Home() {
@@ -9,6 +9,7 @@ export function Home() {
   const { storage } = useAdapters()
   const { activeContacts } = useContacts()
   const { myAttestations, receivedAttestations } = useAttestations()
+  const { state: relayState, isConnected } = useMessaging()
   const [profileName, setProfileName] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,6 +53,24 @@ export function Home() {
         <p className="text-slate-600">
           Willkommen im Web of Trust Demo.
         </p>
+        <div className="mt-2 flex items-center gap-2 text-sm">
+          {isConnected ? (
+            <>
+              <Wifi size={14} className="text-green-500" />
+              <span className="text-green-600">Relay verbunden</span>
+            </>
+          ) : relayState === 'connecting' ? (
+            <>
+              <Wifi size={14} className="text-amber-500 animate-pulse" />
+              <span className="text-amber-600">Verbinde...</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={14} className="text-slate-400" />
+              <span className="text-slate-500">Relay offline</span>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

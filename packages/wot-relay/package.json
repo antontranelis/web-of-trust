@@ -5,7 +5,7 @@
   "private": true,
   "main": "./src/index.ts",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/start.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",

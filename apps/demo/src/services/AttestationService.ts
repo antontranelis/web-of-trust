@@ -1,15 +1,24 @@
 import type {
   StorageAdapter,
   CryptoAdapter,
+  MessagingAdapter,
   Attestation,
   Proof,
+  MessageEnvelope,
 } from '@real-life/wot-core'
+import { createResourceRef } from '@real-life/wot-core'
 
 export class AttestationService {
+  private messaging: MessagingAdapter | null = null
+
   constructor(
     private storage: StorageAdapter,
     private crypto: CryptoAdapter
   ) {}
+
+  setMessaging(messaging: MessagingAdapter): void {
+    this.messaging = messaging
+  }
 
   /**
    * Create an attestation (as the sender/from)
@@ -56,9 +65,29 @@ export class AttestationService {
       proof,
     }
 
-    // In Empfänger-Prinzip, attestations are stored at the recipient
-    // For demo, we store locally (simulating receiving an attestation)
+    // Store locally (sender keeps a copy)
     await this.storage.saveAttestation(attestation)
+
+    // Send to recipient via relay (Empfänger-Prinzip)
+    if (this.messaging) {
+      try {
+        const envelope: MessageEnvelope = {
+          v: 1,
+          id: attestation.id,
+          type: 'attestation',
+          fromDid: fromDid,
+          toDid: toDid,
+          createdAt: attestation.createdAt,
+          encoding: 'json',
+          payload: JSON.stringify(attestation),
+          signature: attestation.proof.proofValue,
+          ref: createResourceRef('attestation', attestation.id),
+        }
+        await this.messaging.send(envelope)
+      } catch (error) {
+        console.warn('Failed to send attestation via relay:', error)
+      }
+    }
 
     return attestation
   }
