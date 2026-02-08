@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-07
-**Phase:** Week 3 - Evolu Integration
+**Datum:** 2026-02-08
+**Phase:** Week 3+ - Architektur-Revision (Post-Evolu-Analyse)
 
 ---
 
@@ -519,6 +519,66 @@ Evolu bringt SQLite WASM mit (~1MB):
 
 ---
 
+## Week 3+: Architektur-Revision (2026-02-08)
+
+### Übersicht
+
+Während der Evolu-Integration wurde eine fundamentale Lücke offensichtlich: **Evolu kann kein Cross-User Messaging.** Evolu synchronisiert nur innerhalb desselben Owners (Single-User, Multi-Device). SharedOwner-API existiert, ist aber nicht funktional (Discussion #558, Feb 2026).
+
+Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks und einer Erweiterung der Adapter-Architektur.
+
+### Zentrale Erkenntnis
+
+> **Ein einzelnes Framework kann unsere Anforderungen nicht erfüllen.**
+>
+> CRDT/Sync (Zustandskonvergenz) und Messaging (Cross-User Delivery) sind
+> zwei orthogonale Probleme, die unterschiedliche Lösungen brauchen.
+
+### Was passiert ist
+
+1. **Evolu-Limitation erkannt** — SharedOwner nicht funktional, kein Cross-User Messaging
+2. **8 Frameworks evaluiert** — Nostr, Matrix, DIDComm, ActivityPub, Iroh, Willow/Earthstar + Updates für DXOS, p2panda
+3. **6 eliminiert** — ActivityPub (kein E2EE), Nostr (secp256k1 ≠ Ed25519), DXOS (P-256 ≠ Ed25519), DIDComm (stale JS-Libs), Iroh (nur Networking-Layer), p2panda (kein JS SDK)
+4. **2-Achsen-Architektur definiert** — CRDT/Sync-Achse + Messaging-Achse
+5. **6-Adapter-Architektur v2** — 3 neue Interfaces (MessagingAdapter, ReplicationAdapter, AuthorizationAdapter)
+6. **3 Sharing-Patterns identifiziert** — Group Spaces, Selective Sharing, 1:1 Delivery
+7. **UCAN-ähnliche Capabilities** als cross-cutting Concern erkannt
+
+### Neue Adapter-Architektur (v2)
+
+| Adapter | Status | Implementierung |
+|---------|--------|----------------|
+| StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
+| ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
+| CryptoAdapter | ✅ Implementiert | WebCryptoAdapter |
+| MessagingAdapter | **Interface definiert** | Custom WebSocket Relay (POC) |
+| ReplicationAdapter | **Interface definiert** | NoOp (Evolu Personal Space) |
+| AuthorizationAdapter | **Interface definiert** | NoOp (Creator = Admin) |
+
+### Empfohlener Stack
+
+| Achse | POC | Produktion |
+|-------|-----|------------|
+| CRDT/Sync | Evolu (lokale Persistenz + Multi-Device) | Automerge (Cross-User Spaces) |
+| Messaging | Custom WebSocket Relay | Matrix (Gruppen-E2EE, Federation) |
+| Authorization | NoOp (Creator = Admin) | Custom UCAN-like (Delegation Chains) |
+
+### Was sich NICHT geändert hat
+
+- **wot-core Package** — Alle Types, Interfaces und Implementierungen bleiben stabil
+- **77 Tests** — Alle passing, keine Regressionen
+- **WotIdentity** — BIP39, Ed25519, HKDF, did:key — alles unverändert
+- **Evolu als Storage** — Bleibt für lokale Persistenz + Multi-Device Sync
+- **Empfänger-Prinzip** — Bestätigt als fundamentales Designprinzip
+
+### Neue Dokumentation
+
+- [Framework-Evaluation v2](./protokolle/framework-evaluation.md) — 16 Frameworks evaluiert, Anforderungs-Matrix
+- [Adapter-Architektur v2](./protokolle/adapter-architektur-v2.md) — 6-Adapter-Spezifikation, Interaction-Flows
+- [Architektur](./datenmodell/architektur.md) — Schichtenmodell aktualisiert
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -573,27 +633,32 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ---
 
-## Nächste Schritte (laut poc-plan.md)
+## Nächste Schritte
 
-### DID Server (poc-plan Week 2) - AUSSTEHEND
+### Priorität 1: Messaging-Fundament
 
-- DIDProvider Interface + DidWebProvider
-- Hono Server auf Vercel
-- POST `/api/did/publish`, GET `/.well-known/did.json`
-- Vercel KV für Storage
-- Domain: `poc.real-life-stack.de`
+- **MessagingAdapter Interface** in wot-core definieren
+- **Custom WebSocket Relay** implementieren (minimal, DID-basiert)
+- **Attestation Delivery E2E** — erstellen, signieren, zustellen, empfangen, speichern
+- **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert)
 
-### Evolu Integration (poc-plan Week 3) - ✅ ERLEDIGT
+### Priorität 2: Selektives Teilen
 
-- ✅ EvoluAdapter mit `deriveFrameworkKey('evolu-storage-v1')`
-- ✅ Schema mit 4 Tabellen (contact, verification, attestation, attestationMetadata)
-- ⏳ Sync zwischen 2 Tabs/Devices (transports noch leer)
+- **Item-Key-Modell** in CryptoAdapter (AES-256-GCM pro Item, encrypted per Recipient)
+- **Item-Key Delivery** über MessagingAdapter
+- **AuthorizationAdapter** Basis-Capabilities (read/write)
 
-### RLS Integration (poc-plan Week 4) - AUSSTEHEND
+### Priorität 3: Gruppen & Module
 
-- DataInterface + WotConnector
-- Kanban Module + Calendar Module
-- `packages/modules/` in real-life-stack Repo
+- **ReplicationAdapter** mit Automerge für Shared Spaces
+- **RLS Module Integration** — Kanban, Kalender, Karte
+- **Group Key Management** — Rotation bei Member-Änderung
+
+### Zurückgestellt
+
+- **DID Server** (poc-plan Week 2) — did:key reicht für POC, kein Server nötig
+- **Evolu Sync Transports** — Kommt wenn Multi-Device relevant wird
+- **Matrix Integration** — Erst nach POC-Phase wenn Federation nötig
 
 ---
 
@@ -823,10 +888,11 @@ packages/wot-core/tests/
 
 ### Für nächste Weeks
 
+- **MessagingAdapter implementieren** - Custom WebSocket Relay für Cross-User Delivery
+- **Attestation Delivery E2E** - Attestation erstellen → über MessagingAdapter zustellen → Empfänger speichert
 - **Evolu Sync** - Transports konfigurieren für Multi-Tab/Device Sync
 - **Social Recovery (Shamir)** - Seed-Backup über verifizierte Kontakte
-- **RLS Module Integration** - DataInterface + WotConnector
-- **Error Messages verbessern** - Nutzerfreundlicher
+- **Alte Identity entfernen** - IdentityService/useIdentity konsolidieren (Plan existiert)
 
 ---
 
@@ -866,9 +932,16 @@ Unser WoT ist gleichzeitig das Guardian-Netzwerk: Verifizierte Kontakte = natür
 
 Details: [docs/konzepte/social-recovery.md](./konzepte/social-recovery.md)
 
-### UCAN (beobachten)
+### UCAN → AuthorizationAdapter (aktiv geplant)
 
-Murmurations nutzt UCAN (User Controlled Authorization Networks) für capability-basierte Delegation. Relevant für uns wenn wir Zeitgutscheine und Rollen einführen.
+Murmurations nutzt UCAN (User Controlled Authorization Networks) für capability-basierte Delegation. In der Architektur-Revision v2 ist dies zum **AuthorizationAdapter** geworden — inspiriert von UCAN und Willow/Meadowcap:
+
+- Signierte, delegierbare Capabilities
+- Attenuation (jede Delegation kann nur einschränken)
+- Offline-verifizierbare Proof Chains
+- Phasen: NoOp (POC) → Basis-Capabilities (Phase 2) → Volle UCAN-Kompatibilität (Phase 4)
+
+Details: [Adapter-Architektur v2](./protokolle/adapter-architektur-v2.md#authorizationadapter)
 
 ---
 

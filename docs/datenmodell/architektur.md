@@ -1,10 +1,14 @@
 # Architektur
 
 > Framework-agnostische Architektur des Web of Trust
+>
+> Aktualisiert: 2026-02-08 (v2: 6-Adapter-Architektur)
 
 ## Überblick
 
-Das Web of Trust ist **framework-agnostisch** aufgebaut. Die Kernlogik ist unabhängig von der konkreten Implementierung der Datenhaltung, Kryptografie und Synchronisation.
+Das Web of Trust ist **framework-agnostisch** aufgebaut. Die Kernlogik ist unabhängig von der konkreten Implementierung der Datenhaltung, Kryptografie, Messaging und Synchronisation.
+
+### Schichtenmodell (v2)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -14,25 +18,49 @@ Das Web of Trust ist **framework-agnostisch** aufgebaut. Die Kernlogik ist unabh
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │              WoT Domain Layer                        │   │
 │  │  • Identity, Contact, Verification, Attestation     │   │
+│  │  • Item, Group, AutoGroup                           │   │
 │  │  • Business Logic (Empfänger-Prinzip)               │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                           │                                 │
 │                           ▼                                 │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │              Adapter Interfaces                      │   │
-│  │  • StorageAdapter                                    │   │
-│  │  • CryptoAdapter                                     │   │
-│  │  • SyncAdapter                                       │   │
+│  │           6 Adapter Interfaces                       │   │
+│  │                                                      │   │
+│  │  Bestehend (v1, implementiert):                      │   │
+│  │  • StorageAdapter        (lokale Persistenz)         │   │
+│  │  • ReactiveStorageAdapter (Live Queries)             │   │
+│  │  • CryptoAdapter         (Signing/Encryption/DID)    │   │
+│  │                                                      │   │
+│  │  Neu (v2):                                           │   │
+│  │  • MessagingAdapter      (Cross-User Delivery)       │   │
+│  │  • ReplicationAdapter    (CRDT Sync + Spaces)        │   │
+│  │  • AuthorizationAdapter  (UCAN-like Capabilities)    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                           │                                 │
-│           ┌───────────────┼───────────────┐                │
-│           ▼               ▼               ▼                │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │IndexedDB    │  │   Evolu     │  │    Jazz     │        │
-│  │Adapter      │  │  Adapter    │  │   Adapter   │        │
-│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│     ┌─────────┬───────────┼───────────┬─────────┐          │
+│     ▼         ▼           ▼           ▼         ▼          │
+│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐       │
+│  │Evolu  │ │WebSock│ │Auto-  │ │Matrix │ │Custom │       │
+│  │Storage│ │Relay  │ │merge  │ │Client │ │UCAN   │       │
+│  └───────┘ └───────┘ └───────┘ └───────┘ └───────┘       │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
+```
+
+### Zwei orthogonale Achsen
+
+```
+CRDT/Sync-Achse                    Messaging-Achse
+(Zustandskonvergenz)               (Zustellung zwischen DIDs)
+
+"Wie konvergiert der Zustand        "Wie erreicht eine Nachricht
+ über Geräte und Nutzer?"            den Empfänger?"
+
+→ ReplicationAdapter                → MessagingAdapter
+→ Evolu (POC) / Automerge (Ziel)   → Custom WS (POC) / Matrix (Ziel)
+
+Eine Nachricht enthält NICHT den Zustand, sondern nur den Trigger/Pointer.
+Der Zustand lebt im CRDT und konvergiert unabhängig.
 ```
 
 ## Adapter-Pattern
@@ -41,10 +69,11 @@ Die Adapter-Interfaces ermöglichen es, verschiedene Frameworks auszuprobieren, 
 
 ### Warum Framework-agnostisch?
 
-1. **Flexibilität**: Verschiedene Backends können getestet werden
-2. **Zukunftssicherheit**: Neue Frameworks können integriert werden
-3. **Community**: Unterschiedliche Teams können verschiedene Implementierungen beitragen
-4. **Testing**: Einfaches Mocking für Unit-Tests
+1. **Kein Framework passt zu 100%** — WoT-spezifische Anforderungen erfordern eigene Implementierung
+2. **Zwei verschiedene Achsen** — CRDT/Sync und Messaging sind orthogonale Probleme
+3. **Technologie-Landschaft bewegt sich** — NextGraph, p2panda, Willow könnten in 12 Monaten reif sein
+4. **Phased Migration** — Custom WS → Matrix, Evolu → Automerge ohne Business-Logik-Änderung
+5. **Testing** — Einfaches Mocking für Unit-Tests (NoOp-Implementierungen)
 
 ## Kernkonzepte
 
@@ -67,6 +96,27 @@ Anna → Attestation → Ben
 - Keine Konflikte beim Schreiben (jeder schreibt nur in seinen eigenen Speicher)
 - Einfachere CRDT-Konfliktauflösung
 - Privacy: Ich entscheide, was über mich sichtbar ist
+
+### Drei Sharing-Patterns
+
+Die Architektur unterstützt drei fundamental verschiedene Sharing-Patterns:
+
+```
+1. GROUP SPACES (Kanban, Kalender, Karte)
+   Mechanismus: ReplicationAdapter (CRDT Sync)
+   Verschlüsselung: Group Key
+   → Alle Members sehen alle Daten im Space
+
+2. SELECTIVE SHARING (Event für 3 von 10 Kontakten)
+   Mechanismus: MessagingAdapter (Item-Key Delivery)
+   Verschlüsselung: Item-Key pro Item, encrypted per Recipient
+   → Nur ausgewählte Empfänger können entschlüsseln
+
+3. 1:1 DELIVERY (Attestation, Verification)
+   Mechanismus: MessagingAdapter (Fire-and-forget)
+   Verschlüsselung: E2EE mit Empfänger-PublicKey
+   → Empfänger-Prinzip: gespeichert beim Empfänger
+```
 
 ### Verification = Gegenseitige Bestätigung
 
@@ -128,39 +178,76 @@ Contact {
 
 Die konkreten Interface-Definitionen befinden sich in `packages/wot-core/src/adapters/interfaces/`.
 
-### StorageAdapter
+### Bestehend (v1, implementiert)
+
+#### StorageAdapter
 
 Verantwortlich für:
 - Persistierung aller Daten (Identity, Contacts, Verifications, Attestations)
 - Lokale Metadaten (AttestationMetadata mit `accepted`)
 
 **Implementierungen:**
-- `LocalStorageAdapter` (IndexedDB) - enthalten in wot-core
-- `EvolAdapter` - geplant
-- `JazzAdapter` - geplant
+- `EvoluStorageAdapter` (Demo-App) - aktiv genutzt
+- `LocalStorageAdapter` (IndexedDB) - in wot-core
 
-### CryptoAdapter
+#### ReactiveStorageAdapter
+
+Verantwortlich für:
+- Live Queries die auf Datenänderungen reagieren
+- Mapped auf React's `useSyncExternalStore` via `Subscribable<T>`
+
+**Implementierungen:**
+- `EvoluStorageAdapter` (implementiert beide Interfaces)
+
+#### CryptoAdapter
 
 Verantwortlich für:
 - Key-Generierung (Ed25519)
-- Mnemonic / Recovery Phrase (BIP39)
+- Mnemonic / Recovery Phrase (BIP39, deutsche Wortliste)
 - Signieren und Verifizieren
-- Verschlüsselung (X25519 + AES-GCM)
+- Verschlüsselung (X25519 + AES-256-GCM)
 - DID-Konvertierung (did:key)
 
 **Implementierungen:**
-- `WebCryptoAdapter` - enthalten in wot-core (teilweise)
+- `WebCryptoAdapter` (noble/ed25519 + Web Crypto API)
 
-### SyncAdapter
+### Neu (v2, Interface-Phase)
+
+#### MessagingAdapter
 
 Verantwortlich für:
-- Verbindung zu Peers / Server
-- Push und Pull von Änderungen
-- Konfliktauflösung (CRDT)
+- Cross-User Delivery zwischen DIDs
+- Attestation/Verification Zustellung (Empfänger-Prinzip)
+- Item-Key Delivery (selektive Sichtbarkeit)
+- DID-Auflösung (wie findet man den Empfänger?)
 
-**Implementierungen:**
-- `NoOpSyncAdapter` - Placeholder
-- CRDT-basierte Implementierung - geplant
+**Geplante Implementierungen:**
+- Custom WebSocket Relay (POC)
+- Matrix Client (Produktion)
+
+#### ReplicationAdapter
+
+Verantwortlich für:
+- Multi-Device Sync (Personal Space)
+- Multi-User Sync (Shared Spaces: Kanban, Kalender, Karte)
+- Membership Management (wer ist in welchem Space?)
+
+**Geplante Implementierungen:**
+- Evolu (Personal Space, POC)
+- Automerge (Shared Spaces, Produktion)
+
+#### AuthorizationAdapter
+
+Verantwortlich für:
+- UCAN-ähnliche Capabilities (signiert, delegierbar)
+- Read/Write/Delete/Delegate Granularität
+- Proof Chains (offline-verifizierbar)
+
+**Geplante Implementierungen:**
+- NoOp (POC: Creator = Admin)
+- Custom UCAN-like (Produktion)
+
+> Vollständige Interface-Spezifikationen: [Adapter-Architektur v2](../protokolle/adapter-architektur-v2.md)
 
 ## Referenz: wot-core
 
@@ -177,8 +264,10 @@ packages/wot-core/src/
 ├── adapters/
 │   └── interfaces/
 │       ├── StorageAdapter.ts
+│       ├── ReactiveStorageAdapter.ts
+│       ├── Subscribable.ts
 │       ├── CryptoAdapter.ts
-│       └── SyncAdapter.ts
+│       └── SyncAdapter.ts          # → wird durch Messaging + Replication ersetzt
 └── crypto/
     ├── did.ts           # did:key Implementierung
     ├── jws.ts           # JSON Web Signature
@@ -187,11 +276,12 @@ packages/wot-core/src/
 
 ## Framework-Evaluation
 
-Für eine detaillierte Analyse möglicher CRDT/E2EE Frameworks siehe:
-→ [Framework-Evaluation](../protokolle/framework-evaluation.md)
+Für eine detaillierte Analyse aller evaluierten CRDT/E2EE/Messaging Frameworks siehe:
+→ [Framework-Evaluation v2](../protokolle/framework-evaluation.md)
 
 ## Weiterführend
 
+- [Adapter-Architektur v2](../protokolle/adapter-architektur-v2.md) - 6-Adapter-Spezifikation (NEU)
 - [Entitäten](entitaeten.md) - Datenmodell im Detail
 - [Sync-Protokoll](../protokolle/sync-protokoll.md) - Wie Daten synchronisiert werden
 - [Verschlüsselung](../protokolle/verschluesselung.md) - E2E-Verschlüsselung
