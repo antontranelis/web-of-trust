@@ -19,7 +19,7 @@ import {
 import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
 
-const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'ws://localhost:8787'
+const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'wss://relay.utopia-lab.org'
 
 interface AdapterContextValue {
   storage: StorageAdapter
@@ -67,6 +67,13 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(messagingAdapter)
+
+        // Ensure profile exists in localStorage
+        const did = identity.getDid()
+        const existing = await storage.getIdentity()
+        if (!existing && did) {
+          await storage.createIdentity(did, { name: '' })
+        }
 
         if (!cancelled) {
           setAdapters({

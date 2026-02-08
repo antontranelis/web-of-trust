@@ -158,6 +158,12 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
               <textarea
                 value={mnemonic}
                 onChange={(e) => setMnemonic(e.target.value.toLowerCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isValidWordCount && !isLoading) {
+                    e.preventDefault()
+                    handleValidate()
+                  }
+                }}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 rows={4}
                 placeholder="word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12"
@@ -239,6 +245,11 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                   type={showPassphrase ? 'text' : 'password'}
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && passphrase && passphraseConfirm && !isLoading) {
+                      handleProtect()
+                    }
+                  }}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Mindestens 8 Zeichen"
                   autoFocus
@@ -261,6 +272,11 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                 type={showPassphrase ? 'text' : 'password'}
                 value={passphraseConfirm}
                 onChange={(e) => setPassphraseConfirm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && passphrase && passphraseConfirm && !isLoading) {
+                    handleProtect()
+                  }
+                }}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Passwort wiederholen"
               />

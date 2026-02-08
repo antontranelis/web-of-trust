@@ -551,7 +551,7 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 | StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | CryptoAdapter | ✅ Implementiert | WebCryptoAdapter |
-| MessagingAdapter | **Interface definiert** | Custom WebSocket Relay (POC) |
+| MessagingAdapter | ✅ **Implementiert** | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
 | ReplicationAdapter | **Interface definiert** | NoOp (Evolu Personal Space) |
 | AuthorizationAdapter | **Interface definiert** | NoOp (Creator = Admin) |
 
@@ -576,6 +576,141 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 - [Framework-Evaluation v2](./protokolle/framework-evaluation.md) — 16 Frameworks evaluiert, Anforderungs-Matrix
 - [Adapter-Architektur v2](./protokolle/adapter-architektur-v2.md) — 6-Adapter-Spezifikation, Interaction-Flows
 - [Architektur](./datenmodell/architektur.md) — Schichtenmodell aktualisiert
+
+---
+
+## Week 3++: MessagingAdapter + WebSocket Relay (2026-02-08) ✅
+
+### Übersicht
+
+MessagingAdapter-Interface implementiert, WebSocket Relay Server gebaut, Demo App mit Relay verbunden. **Attestation-Delivery funktioniert end-to-end über den Relay.**
+
+### Implementiert
+
+#### MessagingAdapter Interface + Types (`packages/wot-core`)
+
+Neue Types für Cross-User-Messaging:
+
+- ✅ **MessageEnvelope** — Standardisiertes Envelope-Format (v, id, type, fromDid, toDid, encoding, payload, signature, ref)
+- ✅ **DeliveryReceipt** — Multi-Stage (accepted → delivered → acknowledged → failed)
+- ✅ **MessagingState** — disconnected | connecting | connected | error
+- ✅ **ResourceRef** — Branded string `wot:<type>:<id>` für Ressourcen-Adressierung (5 Typen)
+- ✅ **8 MessageTypes** — verification, attestation, contact-request, item-key, space-invite, group-key-rotation, ack, content
+- ✅ **MessagingAdapter Interface** — connect, disconnect, getState, send, onMessage, onReceipt, registerTransport, resolveTransport
+
+#### InMemoryMessagingAdapter (`packages/wot-core`)
+
+Test-Adapter mit shared-bus Pattern:
+
+- ✅ **Shared static registry** — Map<did, adapter> für In-Memory Message Routing
+- ✅ **Offline Queue** — Nachrichten an nicht-verbundene DIDs werden gepuffert
+- ✅ **resetAll()** — Test-Isolation
+
+#### WebSocket Relay Server (`packages/wot-relay`)
+
+Minimaler Node.js WebSocket Relay (blind, self-hostable):
+
+- ✅ **DID → WebSocket Mapping** — In-Memory, ephemeral
+- ✅ **SQLite Offline Queue** — `better-sqlite3` mit WAL Mode, überlebt Restarts
+- ✅ **Relay-Protokoll** — JSON über WebSocket: register/send → registered/message/receipt/error
+- ✅ **Blind Relay** — Payload ist `Record<string, unknown>`, Relay sieht keinen Inhalt
+- ✅ **CLI Entry Point** — `src/start.ts` mit PORT + DB_PATH Env-Variablen
+- ✅ **Delivery Receipts** — accepted (offline) / delivered (online)
+
+#### WebSocketMessagingAdapter (`packages/wot-core`)
+
+Browser-nativer WebSocket Client:
+
+- ✅ **Browser WebSocket API** — Keine `ws` Dependency in wot-core
+- ✅ **Implements MessagingAdapter** — connect, disconnect, send, onMessage, onReceipt
+- ✅ **Pending Receipts** — Korreliert send() → receipt via Message-ID
+
+#### Demo App Integration
+
+- ✅ **AdapterContext** — WebSocketMessagingAdapter initialisiert, connect(did) nach Evolu-Init
+- ✅ **useMessaging Hook** — send, onMessage, state, isConnected
+- ✅ **Home Page** — Relay-Status-Anzeige (Wifi/WifiOff Icons, grün/amber/grau)
+- ✅ **AttestationService** — Sendet Attestation nach lokaler Speicherung als MessageEnvelope via Relay
+- ✅ **useAttestations** — onMessage-Listener empfängt, verifiziert und speichert eingehende Attestationen automatisch
+- ✅ **Profil-Verwaltung** — Name editierbar auf Identity-Page, Profil wird bei Init automatisch in localStorage angelegt
+- ✅ **RecoveryFlow** — Enter-Navigation in allen Schritten (analog OnboardingFlow)
+
+#### Attestation-Delivery E2E Flow
+
+1. Alice erstellt Attestation → lokal gespeichert + MessageEnvelope an Bobs DID via Relay
+2. Bob empfängt Envelope via onMessage → verifiziert Signatur → speichert lokal
+3. Attestation erscheint automatisch in Bobs UI (via ReactiveStorage/Subscribable)
+4. Funktioniert auch offline: Relay queued in SQLite, liefert bei Reconnect nach
+
+### Tests
+
+**15 neue Tests** (wot-relay, 2 Dateien):
+
+#### Relay Tests (9 Tests)
+```
+✓ Register DID
+✓ Send to online recipient + delivered receipt
+✓ Send to offline + accepted receipt
+✓ Deliver queued messages on connect
+✓ Error without register
+✓ Error on invalid JSON
+✓ Disconnect cleanup
+✓ Multiple clients
+✓ Large envelope
+```
+
+#### Integration Tests (6 Tests)
+```
+✓ Send attestation Alice → Bob over real relay
+✓ All message types
+✓ ResourceRef in envelope
+✓ Offline queuing + delivery
+✓ Receipt callbacks
+✓ Bidirectional messaging
+```
+
+**28 neue Tests** (wot-core, MessagingAdapter + ResourceRef):
+
+#### ResourceRef Tests (14 Tests)
+```
+✓ Create all 5 resource types (attestation, verification, contact, space, item)
+✓ Parse round-trip
+✓ Sub-paths
+✓ DID with colons in ID
+✓ Error cases (unknown type, invalid format)
+```
+
+#### MessagingAdapter Tests (14 Tests)
+```
+✓ Lifecycle (connect, disconnect, getState)
+✓ Send/receive between two adapters
+✓ All 8 message types
+✓ Offline queuing + delivery on connect
+✓ Receipts
+✓ Transport resolution
+✓ resetAll for test isolation
+```
+
+**Gesamt: 102 Tests** (87 wot-core + 15 wot-relay) — alle passing ✅
+
+### Packages (neu)
+
+```json
+// packages/wot-relay/package.json
+{
+  "name": "@real-life/wot-relay",
+  "dependencies": {
+    "ws": "^8.18",
+    "better-sqlite3": "^11.9"
+  }
+}
+```
+
+### Commits
+
+16. **feat: Add MessagingAdapter interface with InMemory implementation** — Types, Interface, InMemory, 28 Tests
+17. **feat: Add WebSocket relay server and WebSocketMessagingAdapter** — wot-relay Package, Integration Tests
+18. **feat: Connect demo app to WebSocket relay for live attestation delivery** — Demo Integration, Profil-Verwaltung, RecoveryFlow Enter-Nav
 
 ---
 
@@ -635,12 +770,12 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte
 
-### Priorität 1: Messaging-Fundament
+### Priorität 1: Profil-Sync + Messaging Polish ⬅️ NÄCHSTER SCHRITT
 
-- **MessagingAdapter Interface** in wot-core definieren
-- **Custom WebSocket Relay** implementieren (minimal, DID-basiert)
-- **Attestation Delivery E2E** — erstellen, signieren, zustellen, empfangen, speichern
-- **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert)
+- **Profil-Name im Verification-Handshake** — `useVerification` sendet echten Namen statt hardcoded `'User'`
+- **`profile-update` MessageType** — Namensänderungen an alle Kontakte broadcasten via Relay
+- **Eingehende Profile-Updates** — Listener in useContacts verarbeitet Updates und ruft `contactService.updateContactName()` auf
+- **Cross-Device Profil-Sync** — Profil aus localStorage in Evolu verschieben (Schema-Erweiterung)
 
 ### Priorität 2: Selektives Teilen
 
@@ -653,6 +788,13 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - **ReplicationAdapter** mit Automerge für Shared Spaces
 - **RLS Module Integration** — Kanban, Kalender, Karte
 - **Group Key Management** — Rotation bei Member-Änderung
+
+### Erledigt (ehemals Priorität 1)
+
+- ~~MessagingAdapter Interface in wot-core definieren~~ ✅
+- ~~Custom WebSocket Relay implementieren~~ ✅
+- ~~Attestation Delivery E2E~~ ✅
+- **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
 
@@ -772,9 +914,14 @@ packages/wot-core/src/
 │   │   ├── StorageAdapter.ts
 │   │   ├── CryptoAdapter.ts
 │   │   ├── SyncAdapter.ts
+│   │   ├── MessagingAdapter.ts       # NEU: Cross-User Messaging
 │   │   └── index.ts
 │   ├── crypto/
 │   │   ├── WebCryptoAdapter.ts
+│   │   └── index.ts
+│   ├── messaging/
+│   │   ├── InMemoryMessagingAdapter.ts  # NEU: Shared-Bus für Tests
+│   │   ├── WebSocketMessagingAdapter.ts # NEU: Browser WebSocket Client
 │   │   └── index.ts
 │   ├── storage/
 │   │   ├── LocalStorageAdapter.ts
@@ -786,6 +933,8 @@ packages/wot-core/src/
 │   ├── verification.ts
 │   ├── attestation.ts
 │   ├── proof.ts
+│   ├── messaging.ts                   # NEU: MessageEnvelope, DeliveryReceipt
+│   ├── resource-ref.ts               # NEU: ResourceRef branded type
 │   └── index.ts
 └── index.ts
 ```
@@ -833,6 +982,7 @@ apps/demo/src/
 │   ├── useContacts.ts
 │   ├── useIdentity.ts
 │   ├── useAttestations.ts
+│   ├── useMessaging.ts                # NEU: Relay send/onMessage/state
 │   └── index.ts
 ├── services/
 │   ├── VerificationService.ts
@@ -859,9 +1009,15 @@ packages/wot-core/tests/
 ├── WotIdentity.test.ts              # 17 Tests
 ├── SeedStorage.test.ts              # 12 Tests
 ├── ContactStorage.test.ts           # 15 Tests
-├── VerificationIntegration.test.ts  # 20 Tests
-├── OnboardingFlow.test.ts           # 13 Tests
+├── VerificationIntegration.test.ts  # 20 Tests  (Anm: 18 nach Dedup)
+├── OnboardingFlow.test.ts           # 13 Tests  (Anm: 12 nach Dedup)
+├── ResourceRef.test.ts              # 14 Tests  NEU
+├── MessagingAdapter.test.ts         # 14 Tests  NEU
 └── setup.ts                         # fake-indexeddb setup
+
+packages/wot-relay/tests/
+├── relay.test.ts                    # 9 Tests   NEU
+└── integration.test.ts              # 6 Tests   NEU
 ```
 
 ---
@@ -888,11 +1044,12 @@ packages/wot-core/tests/
 
 ### Für nächste Weeks
 
-- **MessagingAdapter implementieren** - Custom WebSocket Relay für Cross-User Delivery
-- **Attestation Delivery E2E** - Attestation erstellen → über MessagingAdapter zustellen → Empfänger speichert
+- ~~MessagingAdapter implementieren~~ ✅ (Week 3++)
+- ~~Attestation Delivery E2E~~ ✅ (Week 3++)
+- **Profil-Sync** — Name bei Verification mitschicken + profile-update Broadcast
+- **Relay Deployment** — Docker + öffentliche URL für Remote-Testing
 - **Evolu Sync** - Transports konfigurieren für Multi-Tab/Device Sync
 - **Social Recovery (Shamir)** - Seed-Backup über verifizierte Kontakte
-- **Alte Identity entfernen** - IdentityService/useIdentity konsolidieren (Plan existiert)
 
 ---
 

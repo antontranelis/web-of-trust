@@ -1,0 +1,22 @@
+services:
+  wot-relay:
+    build: .
+    container_name: wot-relay
+    hostname: 'wot-relay'
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      - relay-data:/data
+    environment:
+      - PORT=8787
+      - DB_PATH=/data/relay-queue.db
+    networks:
+      - "net"
+
+networks:
+  net:
+    external: true
+
+volumes:
+  relay-data:

@@ -1,14 +1,12 @@
 import { useIdentity } from '../context'
 import { useAdapters } from '../context'
 import { useState, useEffect } from 'react'
-import { Copy, Check, KeyRound, Fingerprint, Shield, Trash2, Database } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Copy, Check, KeyRound, Fingerprint, Shield, Trash2, Database, Pencil, User } from 'lucide-react'
 import { resetEvolu } from '../db'
 
 export function Identity() {
   const { identity, did, clearIdentity } = useIdentity()
-  const { contactService } = useAdapters()
-  const navigate = useNavigate()
+  const { storage } = useAdapters()
   const [copiedDid, setCopiedDid] = useState(false)
   const [copiedPubKey, setCopiedPubKey] = useState(false)
   const [pubKey, setPubKey] = useState<string | null>(null)
@@ -16,12 +14,28 @@ export function Identity() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isResettingDb, setIsResettingDb] = useState(false)
   const [dbResetDone, setDbResetDone] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [nameSaved, setNameSaved] = useState(false)
 
   useEffect(() => {
     if (identity) {
       identity.getPublicKeyMultibase().then(setPubKey)
     }
-  }, [identity])
+    storage.getIdentity().then((id) => {
+      if (id) setProfileName(id.profile.name)
+    })
+  }, [identity, storage])
+
+  const handleSaveName = async () => {
+    const existing = await storage.getIdentity()
+    if (existing) {
+      await storage.updateIdentity({ ...existing, profile: { ...existing.profile, name: profileName.trim() } })
+    }
+    setIsEditingName(false)
+    setNameSaved(true)
+    setTimeout(() => setNameSaved(false), 2000)
+  }
 
   if (!identity || !did || !pubKey) {
     return null // Should never happen due to RequireIdentity guard
@@ -76,6 +90,62 @@ export function Identity() {
       </div>
 
       <div className="space-y-4">
+        {/* Name Card */}
+        <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-slate-700 mb-1">Name</h3>
+              {isEditingName ? (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveName()
+                      if (e.key === 'Escape') setIsEditingName(false)
+                    }}
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="Dein Name"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Speichern
+                  </button>
+                  <button
+                    onClick={() => setIsEditingName(false)}
+                    className="px-3 py-2 text-slate-500 text-sm hover:text-slate-700 transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-slate-900">
+                    {profileName || <span className="text-slate-400 italic">Kein Name gesetzt</span>}
+                  </span>
+                  {nameSaved ? (
+                    <Check size={16} className="text-green-500" />
+                  ) : (
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className="text-slate-400 hover:text-blue-600 transition-colors"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* DID Card */}
         <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-4">
           <div className="flex items-start space-x-3">
