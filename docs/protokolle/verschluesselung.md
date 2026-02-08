@@ -1,6 +1,10 @@
 # Verschlüsselung
 
 > End-to-End-Verschlüsselung im Web of Trust
+>
+> **Hinweis:** Für den POC wurde **Item-Keys** als Verschlüsselungsprotokoll gewählt.
+> Die hier dokumentierten Alternativen (MLS, Keyhive) bleiben als Referenz für spätere Phasen.
+> Siehe [Adapter-Architektur v2](adapter-architektur-v2.md) für die aktuelle Architektur.
 
 ## Anforderungen
 

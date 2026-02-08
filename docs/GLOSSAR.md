@@ -297,6 +297,6 @@ Browser-API für kryptographische Operationen. Ermöglicht sichere Schlüsselgen
 
 ## Siehe auch
 
-- [Konzept](Konzept.md) - Vision und Übersicht
+- [README](../README.md) - Vision und Übersicht
 - [Flows](flows/README.md) - Detaillierte Prozessbeschreibungen
 - [Datenmodell](datenmodell/README.md) - Technische Strukturen

@@ -1,6 +1,10 @@
 # Sync-Protokoll
 
 > Offline-First Synchronisation im Web of Trust
+>
+> **Hinweis:** Dieses Dokument beschreibt das ursprüngliche Sync-Konzept. Die aktuelle Architektur
+> definiert Synchronisation über den `ReplicationAdapter` (CRDT Spaces) und den `MessagingAdapter`
+> (Cross-User-Zustellung). Siehe [Adapter-Architektur v2](adapter-architektur-v2.md).
 
 ## Grundprinzip: Offline-First
 

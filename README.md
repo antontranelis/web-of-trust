@@ -63,9 +63,19 @@ Detaillierte Prozessbeschreibungen aus Nutzer- und technischer Perspektive.
 
 | Dokument | Beschreibung |
 | -------- | ------------ |
+| [Adapter-Architektur v2](docs/protokolle/adapter-architektur-v2.md) | **6-Adapter-Spezifikation, Interaction-Flows** |
+| [Framework-Evaluation v2](docs/protokolle/framework-evaluation.md) | 16 Frameworks evaluiert, Anforderungs-Matrix |
 | [Verschlüsselung](docs/protokolle/verschluesselung.md) | E2E, Protokoll-Vergleich (MLS, Keyhive, Item-Keys) |
 | [Sync-Protokoll](docs/protokolle/sync-protokoll.md) | Offline/Online, CRDTs |
 | [QR-Code Formate](docs/protokolle/qr-code-formate.md) | Alle QR-Strukturen |
+
+### Konzepte
+
+| Dokument | Beschreibung |
+| -------- | ------------ |
+| [DID-Methoden-Vergleich](docs/konzepte/did-methoden-vergleich.md) | Evaluation von 6 DID-Methoden (did:key bestätigt) |
+| [Social Recovery](docs/konzepte/social-recovery.md) | Shamir Secret Sharing über verifizierte Kontakte |
+| [Identity Security](docs/konzepte/identity-security-architecture.md) | Sicherheitsarchitektur, Key-Schutz, Migration |
 
 ### Sicherheit
 
@@ -123,15 +133,19 @@ Das Core-Package exportiert:
 // Types
 import type { Identity, Contact, Verification, Attestation } from '@web-of-trust/core'
 
-// Adapter Interfaces
-import type { StorageAdapter, CryptoAdapter, SyncAdapter } from '@web-of-trust/core'
+// Adapter Interfaces (v1 — implementiert)
+import type { StorageAdapter, CryptoAdapter, ReactiveStorageAdapter } from '@web-of-trust/core'
 
 // Crypto Utilities
 import { createDid, signJws, verifyJws } from '@web-of-trust/core'
 
 // Adapter Implementations
-import { WebCryptoAdapter, LocalStorageAdapter, NoOpSyncAdapter } from '@web-of-trust/core'
+import { WebCryptoAdapter, LocalStorageAdapter } from '@web-of-trust/core'
 ```
+
+> **Adapter-Architektur v2:** Zusätzlich zu den 3 bestehenden Adaptern definiert die v2-Architektur
+> 3 neue Interfaces: `MessagingAdapter`, `ReplicationAdapter`, `AuthorizationAdapter`.
+> Siehe [Adapter-Architektur v2](docs/protokolle/adapter-architektur-v2.md).
 
 ---
 

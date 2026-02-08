@@ -14,15 +14,15 @@
 
 | Frage | Entscheidung | Begründung |
 |-------|--------------|------------|
-| Welches Protokoll für Gruppen? | **Offen** | Abhängig von CRDT-Framework und Gruppengröße |
+| Welches Protokoll für Gruppen? | **Item-Keys (POC)** | Einfach, bewährt, ausreichend für POC-Gruppengröße |
 
 **Evaluierte Optionen:**
 
-| Option | Pro | Con |
-|--------|-----|-----|
-| Item-Keys | Einfach, bewährt | O(N), keine FS |
-| MLS (RFC 9420) | Standard, FS+PCS | Server-Ordering nötig |
-| Keyhive/BeeKEM | Local-First native | Noch Forschung |
+| Option | Pro | Con | Status |
+|--------|-----|-----|--------|
+| Item-Keys | Einfach, bewährt | O(N), keine FS | ✅ Gewählt für POC |
+| MLS (RFC 9420) | Standard, FS+PCS | Server-Ordering nötig | Produktion denkbar |
+| Keyhive/BeeKEM | Local-First native | Noch Forschung | Langfristig beobachten |
 
 → Siehe [Verschlüsselung](../protokolle/verschluesselung.md)
 
@@ -30,7 +30,8 @@
 
 | Frage | Entscheidung | Begründung |
 |-------|--------------|------------|
-| Konkretes CRDT-Framework? | **Offen** | Implementierungsentscheidung |
+| Konkretes CRDT-Framework? | **Evolu (lokal), Automerge (cross-user)** | Evolu für Single-User-Speicher, Automerge für geteilte Spaces |
+| Messaging-Protokoll? | **WebSocket Relay (POC), Matrix (Produktion)** | Matrix: Ed25519-kompatibel, Megolm-E2EE, Federation |
 | Konfliktauflösung? | LWW (Last Writer Wins) | Einfach, deterministisch |
 
 ### Attestationen für ausgeblendete Kontakte
@@ -142,6 +143,14 @@ Ablauf:
 
 ## Entscheidungslog
 
+### 2026-02-08
+
+1. **6-Adapter-Architektur v2**: Storage, ReactiveStorage, Crypto + Messaging, Replication, Authorization
+2. **CRDT-Framework**: Evolu (lokal, Single-User) + Automerge (cross-user Spaces)
+3. **Messaging**: WebSocket Relay (POC), Matrix (Produktion)
+4. **Verschlüsselung**: Item-Keys für POC
+5. **Framework-Evaluation**: 16 Frameworks evaluiert, 6 eliminiert → [Ergebnis](../protokolle/framework-evaluation.md)
+
 ### 2025-02-02
 
 1. **Empfänger-Prinzip**: Verifizierungen und Attestationen werden beim Empfänger (`to`) gespeichert
@@ -163,8 +172,8 @@ Ablauf:
 
 ### Vor Implementierung zu klären
 
-1. CRDT-Framework wählen (Automerge, Yjs, custom?)
-2. Verschlüsselungsprotokoll basierend auf Framework
+1. ~~CRDT-Framework wählen~~ → Evolu (lokal) + Automerge (cross-user)
+2. ~~Verschlüsselungsprotokoll~~ → Item-Keys für POC
 3. Server-Architektur (self-hosted vs. managed)
 
 ### Zu validieren mit Nutzern

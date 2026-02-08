@@ -169,3 +169,4 @@ Maschinenlesbare Schemas für Validierung:
 - [did:key Verwendung](did-key-usage.md) - Wie DIDs generiert und verwendet werden
 - [Graph und Sichtbarkeit](graph-und-sichtbarkeit.md) - Lokaler Graph, Datenhoheit, gemeinsame Kontakte
 - [Verschlüsselung](../protokolle/verschluesselung.md) - Wie Items verschlüsselt werden
+- [Adapter-Architektur v2](../protokolle/adapter-architektur-v2.md) - 6-Adapter-Spezifikation inkl. ReplicationAdapter (CRDT Spaces)
