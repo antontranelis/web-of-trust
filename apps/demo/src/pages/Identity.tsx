@@ -36,10 +36,9 @@ export function Identity() {
       await storage.updateIdentity({
         ...existing,
         profile: {
-          ...existing.profile,
           name: profileName.trim(),
-          ...(profileBio.trim() ? { bio: profileBio.trim() } : { bio: undefined }),
-          ...(profileAvatar ? { avatar: profileAvatar } : { avatar: undefined }),
+          ...(profileBio.trim() ? { bio: profileBio.trim() } : {}),
+          ...(profileAvatar ? { avatar: profileAvatar } : {}),
         },
       })
     }

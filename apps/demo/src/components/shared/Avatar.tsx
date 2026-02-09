@@ -1,6 +1,6 @@
 interface AvatarProps {
-  name?: string
-  avatar?: string
+  name?: string | undefined
+  avatar?: string | undefined
   size?: 'sm' | 'md' | 'lg'
 }
 
