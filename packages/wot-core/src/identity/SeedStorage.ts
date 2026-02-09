@@ -5,6 +5,7 @@
  * - Master seed encrypted with PBKDF2(passphrase) + AES-GCM
  * - Stored in IndexedDB
  * - Never stored unencrypted
+ * - Session cache: non-extractable CryptoKey in IndexedDB with TTL
  */
 
 interface EncryptedSeed {
@@ -13,10 +14,17 @@ interface EncryptedSeed {
   iv: string // base64url for AES-GCM
 }
 
+interface SessionEntry {
+  key: CryptoKey // non-extractable AES-GCM
+  expiresAt: number // Date.now() + ttl
+}
+
 export class SeedStorage {
   private static readonly DB_NAME = 'wot-identity'
   private static readonly STORE_NAME = 'seeds'
+  private static readonly SESSION_STORE_NAME = 'session'
   private static readonly PBKDF2_ITERATIONS = 100000
+  private static readonly DEFAULT_SESSION_TTL = 30 * 60 * 1000 // 30 minutes
   private db: IDBDatabase | null = null
 
   /**
@@ -24,7 +32,7 @@ export class SeedStorage {
    */
   async init(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(SeedStorage.DB_NAME, 1)
+      const request = indexedDB.open(SeedStorage.DB_NAME, 2)
 
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
@@ -36,6 +44,9 @@ export class SeedStorage {
         const db = (event.target as IDBOpenDBRequest).result
         if (!db.objectStoreNames.contains(SeedStorage.STORE_NAME)) {
           db.createObjectStore(SeedStorage.STORE_NAME)
+        }
+        if (!db.objectStoreNames.contains(SeedStorage.SESSION_STORE_NAME)) {
+          db.createObjectStore(SeedStorage.SESSION_STORE_NAME)
         }
       }
     })
@@ -86,7 +97,8 @@ export class SeedStorage {
   }
 
   /**
-   * Load and decrypt seed
+   * Load and decrypt seed using passphrase.
+   * On success, caches the derived CryptoKey as session key.
    *
    * @param passphrase - User's passphrase
    * @returns Decrypted seed or null if not found
@@ -117,11 +129,83 @@ export class SeedStorage {
         ciphertext
       )
 
+      // Cache session key for reload-without-passphrase
+      await this.storeSessionKey(encryptionKey)
+
       return new Uint8Array(decrypted)
     } catch (error) {
       // Decryption failed - wrong passphrase
       throw new Error('Invalid passphrase')
     }
+  }
+
+  /**
+   * Load and decrypt seed using cached session key (no passphrase needed).
+   * Returns null if no session key, session expired, or decryption fails.
+   */
+  async loadSeedWithSessionKey(): Promise<Uint8Array | null> {
+    if (!this.db) {
+      await this.init()
+    }
+
+    // Load session key
+    const session = await this.getSessionEntry()
+    if (!session) {
+      return null
+    }
+
+    // Check expiry
+    if (Date.now() > session.expiresAt) {
+      await this.clearSessionKey()
+      return null
+    }
+
+    // Load encrypted seed
+    const encrypted = await this.getEncryptedSeed()
+    if (!encrypted) {
+      return null
+    }
+
+    try {
+      const iv = this.base64UrlToArrayBuffer(encrypted.iv)
+      const ciphertext = this.base64UrlToArrayBuffer(encrypted.ciphertext)
+
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        session.key,
+        ciphertext
+      )
+
+      // Refresh session TTL on successful use
+      await this.storeSessionKey(session.key)
+
+      return new Uint8Array(decrypted)
+    } catch {
+      // Session key invalid (seed re-encrypted with different passphrase?)
+      await this.clearSessionKey()
+      return null
+    }
+  }
+
+  /**
+   * Check if a valid (non-expired) session key exists
+   */
+  async hasActiveSession(): Promise<boolean> {
+    if (!this.db) {
+      await this.init()
+    }
+
+    const session = await this.getSessionEntry()
+    if (!session) {
+      return false
+    }
+
+    if (Date.now() > session.expiresAt) {
+      await this.clearSessionKey()
+      return false
+    }
+
+    return true
   }
 
   /**
@@ -136,12 +220,14 @@ export class SeedStorage {
   }
 
   /**
-   * Delete stored seed
+   * Delete stored seed and session key
    */
   async deleteSeed(): Promise<void> {
     if (!this.db) {
       await this.init()
     }
+
+    await this.clearSessionKey()
 
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction([SeedStorage.STORE_NAME], 'readwrite')
@@ -153,7 +239,55 @@ export class SeedStorage {
     })
   }
 
+  /**
+   * Clear the cached session key
+   */
+  async clearSessionKey(): Promise<void> {
+    if (!this.db) {
+      await this.init()
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SeedStorage.SESSION_STORE_NAME], 'readwrite')
+      const store = transaction.objectStore(SeedStorage.SESSION_STORE_NAME)
+      const request = store.delete('session-key')
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
   // Private methods
+
+  private async storeSessionKey(
+    key: CryptoKey,
+    ttlMs: number = SeedStorage.DEFAULT_SESSION_TTL
+  ): Promise<void> {
+    const entry: SessionEntry = {
+      key,
+      expiresAt: Date.now() + ttlMs
+    }
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SeedStorage.SESSION_STORE_NAME], 'readwrite')
+      const store = transaction.objectStore(SeedStorage.SESSION_STORE_NAME)
+      const request = store.put(entry, 'session-key')
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve()
+    })
+  }
+
+  private async getSessionEntry(): Promise<SessionEntry | null> {
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([SeedStorage.SESSION_STORE_NAME], 'readonly')
+      const store = transaction.objectStore(SeedStorage.SESSION_STORE_NAME)
+      const request = store.get('session-key')
+
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => resolve(request.result || null)
+    })
+  }
 
   private async getEncryptedSeed(): Promise<EncryptedSeed | null> {
     return new Promise((resolve, reject) => {

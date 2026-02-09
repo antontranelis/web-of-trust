@@ -16,12 +16,30 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   const [did, setDid] = useState<string | null>(null)
   const [hasStoredIdentity, setHasStoredIdentity] = useState<boolean | null>(null)
 
-  // Check on mount if there's a stored identity in IndexedDB
+  // Check on mount: try session-key auto-unlock, then fall back to checking stored identity
   useEffect(() => {
-    const checkStoredIdentity = async () => {
+    const initIdentity = async () => {
       try {
         const tempIdentity = new WotIdentity()
         const hasStored = await tempIdentity.hasStoredIdentity()
+
+        if (hasStored) {
+          // Try auto-unlock with cached session key
+          const hasSession = await tempIdentity.hasActiveSession()
+          if (hasSession) {
+            try {
+              await tempIdentity.unlockFromStorage()
+              const newDid = tempIdentity.getDid()
+              setIdentityState(tempIdentity)
+              setDid(newDid)
+              setHasStoredIdentity(true)
+              return
+            } catch {
+              // Session expired or invalid — fall through to passphrase prompt
+            }
+          }
+        }
+
         setHasStoredIdentity(hasStored)
       } catch (error) {
         console.error('Error checking stored identity:', error)
@@ -29,7 +47,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    checkStoredIdentity()
+    initIdentity()
   }, [])
 
   const setIdentity = (newIdentity: WotIdentity, newDid: string) => {

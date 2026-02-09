@@ -101,16 +101,27 @@ export class WotIdentity {
   }
 
   /**
-   * Unlock identity from stored encrypted seed
+   * Unlock identity from stored encrypted seed.
+   * If no passphrase is provided, attempts to use a cached session key.
    *
-   * @param passphrase - User's passphrase
-   * @throws Error if no seed stored or wrong passphrase
+   * @param passphrase - User's passphrase (optional if session key is cached)
+   * @throws Error if no seed stored, wrong passphrase, or no active session
    */
-  async unlockFromStorage(passphrase: string): Promise<void> {
-    // Load and decrypt seed from storage
-    const seed = await this.storage.loadSeed(passphrase)
-    if (!seed) {
-      throw new Error('No identity found in storage')
+  async unlockFromStorage(passphrase?: string): Promise<void> {
+    let seed: Uint8Array | null = null
+
+    if (!passphrase) {
+      // Try session key (no passphrase needed)
+      seed = await this.storage.loadSeedWithSessionKey()
+      if (!seed) {
+        throw new Error('Session expired')
+      }
+    } else {
+      // Normal flow: decrypt with passphrase (also caches session key)
+      seed = await this.storage.loadSeed(passphrase)
+      if (!seed) {
+        throw new Error('No identity found in storage')
+      }
     }
 
     // Import Master Key (non-extractable)
@@ -130,6 +141,13 @@ export class WotIdentity {
   }
 
   /**
+   * Check if a valid session key exists (allows unlock without passphrase)
+   */
+  async hasActiveSession(): Promise<boolean> {
+    return this.storage.hasActiveSession()
+  }
+
+  /**
    * Check if identity exists in storage
    */
   async hasStoredIdentity(): Promise<boolean> {
@@ -141,16 +159,17 @@ export class WotIdentity {
    */
   async deleteStoredIdentity(): Promise<void> {
     await this.storage.deleteSeed()
-    this.lock()
+    await this.lock()
   }
 
   /**
-   * Lock identity (clear all keys from memory)
+   * Lock identity (clear all keys from memory and session cache)
    */
-  lock(): void {
+  async lock(): Promise<void> {
     this.masterKey = null
     this.identityKeyPair = null
     this.did = null
+    await this.storage.clearSessionKey()
   }
 
   /**

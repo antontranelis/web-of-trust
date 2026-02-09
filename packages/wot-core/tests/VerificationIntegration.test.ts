@@ -21,8 +21,8 @@ describe('Verification with WotIdentity', () => {
 
   afterEach(async () => {
     // Cleanup if needed
-    anna.lock()
-    ben.lock()
+    await anna.lock()
+    await ben.lock()
   })
 
   describe('Challenge Creation', () => {
