@@ -1,19 +1,14 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Calendar, User } from 'lucide-react'
+import { Calendar, User } from 'lucide-react'
 import { posts } from '../content/blog'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
 
 export default function BlogList() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8"
-        >
-          <ArrowLeft size={16} />
-          Zurück zur Startseite
-        </Link>
-
+      <Header />
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 pt-32">
         <h1 className="text-3xl font-bold text-foreground mb-2">Blog</h1>
         <p className="text-muted-foreground mb-12">
           Neuigkeiten und Hintergründe zum Web-of-Trust Projekt.
@@ -51,7 +46,8 @@ export default function BlogList() {
             </Link>
           ))}
         </div>
-      </div>
+      </main>
+      <Footer />
     </div>
   )
 }

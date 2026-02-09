@@ -1,5 +1,6 @@
 import { Menu, X, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@real-life-stack/toolkit'
 import GitHubIcon from './icons/GitHubIcon'
 import { useLanguage, SUPPORTED_LANGUAGES } from '../i18n/LanguageContext'
@@ -16,12 +17,15 @@ export default function Header() {
 
   const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language)
 
+  const location = useLocation()
+  const isLandingPage = location.pathname === '/'
+
   const navItems = [
-    { label: t.nav.concept, href: '#konzept' },
-    { label: t.nav.howItWorks, href: '#how-it-works' },
-    { label: t.nav.apps, href: '#apps' },
-    { label: t.nav.faq, href: '#faq' },
-    { label: t.nav.blog, href: '/blog' },
+    { label: t.nav.concept, href: isLandingPage ? '#konzept' : '/#konzept' },
+    { label: t.nav.howItWorks, href: isLandingPage ? '#how-it-works' : '/#how-it-works' },
+    { label: t.nav.apps, href: isLandingPage ? '#apps' : '/#apps' },
+    { label: t.nav.faq, href: isLandingPage ? '#faq' : '/#faq' },
+    { label: t.nav.blog, href: '/blog', isRoute: true },
   ]
 
   // Close dropdowns when clicking outside
@@ -53,7 +57,7 @@ export default function Header() {
       <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="w-10 h-10 text-primary-foreground rotate-12" fill="currentColor" stroke="currentColor" strokeWidth="1">
                 <circle cx="7" cy="8" r="2" />
@@ -63,18 +67,28 @@ export default function Header() {
               </svg>
             </div>
             <span className="font-bold text-lg text-foreground">Web of Trust</span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-              >
-                {item.label}
-              </a>
+              item.isRoute ? (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {item.label}
+                </a>
+              )
             ))}
 
             {/* Audience Dropdown - only shown when ?personas or ?audience param is present */}
@@ -169,14 +183,25 @@ export default function Header() {
           <div className="md:hidden py-4 border-t border-border">
             <div className="flex flex-col gap-4">
               {navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {item.label}
-                </a>
+                item.isRoute ? (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="text-base font-medium text-muted-foreground hover:text-primary transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                )
               ))}
 
               {/* Mobile Audience Select - only shown when ?personas or ?audience param is present */}

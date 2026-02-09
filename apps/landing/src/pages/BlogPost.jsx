@@ -2,6 +2,8 @@ import { useParams, Link } from 'react-router-dom'
 import Markdown from 'markdown-to-jsx'
 import { ArrowLeft, Calendar, User } from 'lucide-react'
 import { getPost } from '../content/blog'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
 
 export default function BlogPost() {
   const { slug } = useParams()
@@ -9,20 +11,25 @@ export default function BlogPost() {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-4">Artikel nicht gefunden</h1>
-          <Link to="/blog" className="text-primary hover:underline">
-            Zurück zum Blog
-          </Link>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center pt-32">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-foreground mb-4">Artikel nicht gefunden</h1>
+            <Link to="/blog" className="text-primary hover:underline">
+              Zurück zum Blog
+            </Link>
+          </div>
         </div>
+        <Footer />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <Header />
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 pt-32">
         <Link
           to="/blog"
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8"
@@ -68,7 +75,8 @@ export default function BlogPost() {
         ">
           <Markdown>{post.content}</Markdown>
         </article>
-      </div>
+      </main>
+      <Footer />
     </div>
   )
 }
