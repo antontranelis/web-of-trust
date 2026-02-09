@@ -126,15 +126,6 @@ export function Home() {
           </Link>
         )}
       </div>
-
-      <div className="bg-slate-100 rounded-xl p-4">
-        <h3 className="font-medium text-slate-900 mb-2">Dev-Mode Hinweis</h3>
-        <p className="text-sm text-slate-600">
-          Dies ist ein Testbed für verschiedene CRDT-Frameworks. Die Verifizierung funktioniert
-          via Copy/Paste zwischen Browser-Tabs. Öffne die App in zwei Tabs, um Multi-User
-          Szenarien zu testen.
-        </p>
-      </div>
     </div>
   )
 }
