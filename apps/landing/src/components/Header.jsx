@@ -142,7 +142,7 @@ export default function Header() {
               )}
             </div>
 
-            <Button asChild size="default">
+            <Button asChild variant="outline" size="default">
               <a
                 href="https://github.com/antontranelis/web-of-trust-concept"
                 target="_blank"
@@ -231,7 +231,7 @@ export default function Header() {
                 </div>
               </div>
 
-              <Button asChild className="w-full mt-2">
+              <Button asChild variant="outline" className="w-full">
                 <a
                   href="https://github.com/antontranelis/web-of-trust-concept"
                   target="_blank"

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { KeyRound, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import { WotIdentity } from '@real-life/wot-core'
-import { ProgressIndicator, InfoTooltip } from '../shared'
+import { ProgressIndicator, InfoTooltip, AvatarUpload } from '../shared'
 
-type RecoveryStep = 'import' | 'validate' | 'protect' | 'complete'
+type RecoveryStep = 'import' | 'validate' | 'profile' | 'protect' | 'complete'
 
 interface RecoveryFlowProps {
   onComplete: (identity: WotIdentity, did: string) => void
@@ -13,6 +13,7 @@ interface RecoveryFlowProps {
 const STEPS = [
   { label: 'Importieren', description: 'Magische Wörter eingeben' },
   { label: 'Validieren', description: 'Wörter prüfen' },
+  { label: 'Profil', description: 'Dein Name' },
   { label: 'Schützen', description: 'Neues Passwort' },
 ]
 
@@ -20,6 +21,9 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
   const [step, setStep] = useState<RecoveryStep>('import')
   const [mnemonic, setMnemonic] = useState('')
   const [did, setDid] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [bio, setBio] = useState('')
+  const [avatar, setAvatar] = useState<string | undefined>(undefined)
   const [passphrase, setPassphrase] = useState('')
   const [passphraseConfirm, setPassphraseConfirm] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -30,8 +34,9 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
     const stepMap: Record<RecoveryStep, number> = {
       import: 1,
       validate: 2,
-      protect: 3,
-      complete: 3,
+      profile: 3,
+      protect: 4,
+      complete: 4,
     }
     return stepMap[step]
   }
@@ -66,7 +71,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
 
       setDid(testDid)
       setMnemonic(cleanMnemonic)
-      setStep('protect')
+      setStep('profile')
     } catch (e) {
       if (e instanceof Error && e.message.includes('Invalid mnemonic')) {
         setError(
@@ -102,6 +107,16 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
       await identity.unlock(mnemonic, passphrase, true)
 
       const recoveredDid = identity.getDid()
+
+      // Save profile with name to localStorage
+      const now = new Date().toISOString()
+      localStorage.setItem('wot-identity', JSON.stringify({
+        did: recoveredDid,
+        profile: { name: displayName.trim(), ...(bio.trim() ? { bio: bio.trim() } : {}), ...(avatar ? { avatar } : {}) },
+        createdAt: now,
+        updatedAt: now,
+      }))
+
       setDid(recoveredDid)
       setStep('complete')
 
@@ -122,7 +137,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
   return (
     <div className="max-w-2xl mx-auto p-6">
       {step !== 'import' && step !== 'complete' && (
-        <ProgressIndicator currentStep={getCurrentStepNumber()} totalSteps={3} steps={STEPS} />
+        <ProgressIndicator currentStep={getCurrentStepNumber()} totalSteps={4} steps={STEPS} />
       )}
 
       {/* Step 1: Import */}
@@ -212,7 +227,74 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
         </div>
       )}
 
-      {/* Step 2: Protect with Passphrase */}
+      {/* Step 2: Profile */}
+      {step === 'profile' && (
+        <div
+          className="space-y-6"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              setStep('protect')
+            }
+          }}
+        >
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Dein Profil</h1>
+            <p className="text-slate-600">
+              Wie möchtest du dich anderen gegenüber zeigen?
+            </p>
+          </div>
+
+          <AvatarUpload name={displayName} avatar={avatar} onAvatarChange={setAvatar} />
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm text-green-800">
+              Magische Wörter wurden erfolgreich validiert!
+            </p>
+            <p className="text-xs text-green-700 mt-1 font-mono break-all">DID: {did}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Dein Name"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Über mich</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                rows={3}
+                placeholder="Ein kurzer Satz über dich (optional)"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => setStep('protect')}
+            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Weiter
+          </button>
+
+          <button
+            onClick={() => setStep('protect')}
+            className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm transition-colors"
+          >
+            Überspringen
+          </button>
+        </div>
+      )}
+
+      {/* Step 3: Protect with Passphrase */}
       {step === 'protect' && (
         <div className="space-y-6">
           <div className="text-center">
@@ -226,13 +308,6 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
             <p className="text-slate-600">
               Wähle ein sicheres Passwort für dieses Gerät
             </p>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-sm text-green-800">
-              ✓ Magische Wörter wurden erfolgreich validiert!
-            </p>
-            <p className="text-xs text-green-700 mt-1 font-mono break-all">DID: {did}</p>
           </div>
 
           <div className="space-y-4">

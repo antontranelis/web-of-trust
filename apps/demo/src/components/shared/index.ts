@@ -1,3 +1,5 @@
 export { ProgressIndicator } from './ProgressIndicator'
 export { SecurityChecklist } from './SecurityChecklist'
 export { InfoTooltip } from './InfoTooltip'
+export { Avatar } from './Avatar'
+export { AvatarUpload } from './AvatarUpload'

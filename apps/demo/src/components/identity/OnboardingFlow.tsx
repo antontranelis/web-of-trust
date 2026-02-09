@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Key, Copy, Check, AlertTriangle, Shield, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { WotIdentity } from '@real-life/wot-core'
-import { ProgressIndicator, SecurityChecklist, InfoTooltip } from '../shared'
+import { ProgressIndicator, SecurityChecklist, InfoTooltip, AvatarUpload } from '../shared'
 
-type OnboardingStep = 'generate' | 'display' | 'verify' | 'protect' | 'complete'
+type OnboardingStep = 'generate' | 'display' | 'verify' | 'profile' | 'protect' | 'complete'
 
 interface OnboardingFlowProps {
   onComplete: (identity: WotIdentity, did: string) => void
@@ -13,6 +13,7 @@ const STEPS = [
   { label: 'Generieren', description: 'Seed erstellen' },
   { label: 'Sichern', description: 'Magische Wörter speichern' },
   { label: 'Prüfen', description: 'Wörter verifizieren' },
+  { label: 'Profil', description: 'Dein Name' },
   { label: 'Schützen', description: 'Passwort festlegen' },
 ]
 
@@ -23,6 +24,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [copied, setCopied] = useState(false)
   const [verifyWords, setVerifyWords] = useState<{ index: number; word: string }[]>([])
   const [verifyInput, setVerifyInput] = useState<Record<number, string>>({})
+  const [displayName, setDisplayName] = useState('')
+  const [bio, setBio] = useState('')
+  const [avatar, setAvatar] = useState<string | undefined>(undefined)
   const [passphrase, setPassphrase] = useState('')
   const [passphraseConfirm, setPassphraseConfirm] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -39,8 +43,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       generate: 1,
       display: 2,
       verify: 3,
-      protect: 4,
-      complete: 4,
+      profile: 4,
+      protect: 5,
+      complete: 5,
     }
     return stepMap[step]
   }
@@ -101,7 +106,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     setError(null)
-    setStep('protect')
+    setStep('profile')
   }
 
   const handleProtect = async () => {
@@ -122,6 +127,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       // WICHTIG: storeSeed=true - jetzt die Identity in IndexedDB speichern
       await identity.unlock(mnemonic, passphrase, true)
 
+      // Save profile with name to localStorage (AdapterContext will pick it up)
+      const now = new Date().toISOString()
+      localStorage.setItem('wot-identity', JSON.stringify({
+        did,
+        profile: { name: displayName.trim(), ...(bio.trim() ? { bio: bio.trim() } : {}), ...(avatar ? { avatar } : {}) },
+        createdAt: now,
+        updatedAt: now,
+      }))
+
       setStep('complete')
 
       // Complete onboarding
@@ -138,7 +152,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   return (
     <div className="max-w-2xl mx-auto p-6">
       {step !== 'generate' && step !== 'complete' && (
-        <ProgressIndicator currentStep={getCurrentStepNumber()} totalSteps={4} steps={STEPS} />
+        <ProgressIndicator currentStep={getCurrentStepNumber()} totalSteps={5} steps={STEPS} />
       )}
 
       {/* Step 1: Generate */}
@@ -350,7 +364,67 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </div>
       )}
 
-      {/* Step 4: Protect with Passphrase */}
+      {/* Step 4: Profile */}
+      {step === 'profile' && (
+        <div
+          className="space-y-6"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              setStep('protect')
+            }
+          }}
+        >
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Dein Profil</h1>
+            <p className="text-slate-600">
+              Wie möchtest du dich anderen gegenüber zeigen?
+            </p>
+          </div>
+
+          <AvatarUpload name={displayName} avatar={avatar} onAvatarChange={setAvatar} />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Dein Name"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Über mich</label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                rows={3}
+                placeholder="Ein kurzer Satz über dich (optional)"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => setStep('protect')}
+            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Weiter
+          </button>
+
+          <button
+            onClick={() => setStep('protect')}
+            className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm transition-colors"
+          >
+            Überspringen
+          </button>
+        </div>
+      )}
+
+      {/* Step 5: Protect with Passphrase */}
       {step === 'protect' && (
         <div
           className="space-y-6"

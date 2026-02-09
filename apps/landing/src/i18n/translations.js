@@ -16,6 +16,7 @@ export const translations = {
       titleHighlight: 'echte Begegnungen',
       subtitle: 'Ein dezentrales Vertrauensnetzwerk für lokale Gemeinschaften mit Werkzeugen zur selbstorganisierten Zusammenarbeit in dem Daten nur verschlüsselt mit Freunden und Gruppen geteilt werden.',
       cta: 'Mehr erfahren',
+      demo: 'Demo ausprobieren',
       github: 'Auf GitHub ansehen',
       features: {
         verification: 'Persönliche Verifizierung',
@@ -347,6 +348,7 @@ export const translations = {
       titleHighlight: 'real encounters',
       subtitle: 'A decentralized trust network for local communities with tools for self-organized collaboration where data is only shared encrypted with friends and groups.',
       cta: 'Learn more',
+      demo: 'Try the Demo',
       github: 'View on GitHub',
       features: {
         verification: 'Personal verification',
@@ -678,6 +680,7 @@ export const translations = {
       titleHighlight: 'encuentros reales',
       subtitle: 'Una red de confianza descentralizada para comunidades locales con herramientas para la colaboración autoorganizada donde los datos solo se comparten cifrados con amigos y grupos.',
       cta: 'Saber más',
+      demo: 'Probar la Demo',
       github: 'Ver en GitHub',
       features: {
         verification: 'Verificación personal',
@@ -1009,6 +1012,7 @@ export const translations = {
       titleHighlight: 'encontros reais',
       subtitle: 'Uma rede de confiança descentralizada para comunidades locais com ferramentas para colaboração auto-organizada onde dados são compartilhados apenas criptografados com amigos e grupos.',
       cta: 'Saiba mais',
+      demo: 'Experimentar a Demo',
       github: 'Ver no GitHub',
       features: {
         verification: 'Verificação pessoal',
@@ -1340,6 +1344,7 @@ export const translations = {
       titleHighlight: 'اللقاءات الحقيقية',
       subtitle: 'شبكة ثقة لامركزية للمجتمعات المحلية مع أدوات للتعاون الذاتي حيث تتم مشاركة البيانات مشفرة فقط مع الأصدقاء والمجموعات.',
       cta: 'اعرف المزيد',
+      demo: 'جرّب العرض التجريبي',
       github: 'عرض على GitHub',
       features: {
         verification: 'التحقق الشخصي',
@@ -1671,6 +1676,7 @@ export const translations = {
       titleHighlight: '真实相遇建立信任',
       subtitle: '一个面向本地社区的去中心化信任网络，提供自组织协作工具，数据仅与朋友和群组加密共享。',
       cta: '了解更多',
+      demo: '试用演示',
       github: '在GitHub上查看',
       features: {
         verification: '亲自验证',
@@ -2002,6 +2008,7 @@ export const translations = {
       titleHighlight: 'реальные встречи',
       subtitle: 'Децентрализованная сеть доверия для местных сообществ с инструментами для самоорганизации, где данные передаются только в зашифрованном виде друзьям и группам.',
       cta: 'Узнать больше',
+      demo: 'Попробовать демо',
       github: 'Смотреть на GitHub',
       features: {
         verification: 'Личная верификация',
@@ -2333,6 +2340,7 @@ export const translations = {
       titleHighlight: 'реальні зустрічі',
       subtitle: 'Децентралізована мережа довіри для місцевих спільнот з інструментами для самоорганізації, де дані передаються лише в зашифрованому вигляді друзям і групам.',
       cta: 'Дізнатися більше',
+      demo: 'Спробувати демо',
       github: 'Дивитися на GitHub',
       features: {
         verification: 'Особиста верифікація',
@@ -2664,6 +2672,7 @@ export const translations = {
       titleHighlight: 'מפגשים אמיתיים',
       subtitle: 'רשת אמון מבוזרת לקהילות מקומיות עם כלים לשיתוף פעולה עצמי שבה מידע משותף רק מוצפן עם חברים וקבוצות.',
       cta: 'למד עוד',
+      demo: 'נסה את הדמו',
       github: 'צפה ב-GitHub',
       features: {
         verification: 'אימות אישי',
@@ -2995,6 +3004,7 @@ export const translations = {
       titleHighlight: 'incontri reali',
       subtitle: 'Una rete di fiducia decentralizzata per comunità locali con strumenti per la collaborazione auto-organizzata dove i dati vengono condivisi solo crittografati con amici e gruppi.',
       cta: 'Scopri di più',
+      demo: 'Prova la Demo',
       github: 'Vedi su GitHub',
       features: {
         verification: 'Verifica personale',
@@ -3326,6 +3336,7 @@ export const translations = {
       titleHighlight: 'gerçek karşılaşmalarla',
       subtitle: 'Yerel topluluklar için merkezi olmayan bir güven ağı; verilerin yalnızca arkadaşlar ve gruplarla şifreli olarak paylaşıldığı, kendi kendine organize işbirliği araçlarıyla.',
       cta: 'Daha fazla bilgi',
+      demo: 'Demoyu Dene',
       github: 'GitHub\'da görüntüle',
       features: {
         verification: 'Kişisel doğrulama',

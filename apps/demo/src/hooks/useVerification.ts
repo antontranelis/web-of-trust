@@ -11,9 +11,14 @@ type VerificationStep = 'idle' | 'initiating' | 'responding' | 'completing' | 'd
  * Hook for in-person verification flow using WotIdentity
  */
 export function useVerification() {
-  const { verificationService } = useAdapters()
+  const { verificationService, storage } = useAdapters()
   const { identity, did } = useIdentity()
   const { addContact } = useContacts()
+
+  const getProfileName = useCallback(async () => {
+    const id = await storage.getIdentity()
+    return id?.profile.name || ''
+  }, [storage])
 
   const [step, setStep] = useState<VerificationStep>('idle')
   const [challenge, setChallenge] = useState<VerificationChallenge | null>(null)
@@ -29,8 +34,8 @@ export function useVerification() {
       setStep('initiating')
       setError(null)
 
-      // Use VerificationHelper from wot-core
-      const challengeCode = await VerificationHelper.createChallenge(identity, 'User')
+      const name = await getProfileName()
+      const challengeCode = await VerificationHelper.createChallenge(identity, name)
       const decodedChallenge = JSON.parse(atob(challengeCode))
       setChallenge(decodedChallenge)
 
@@ -41,7 +46,7 @@ export function useVerification() {
       setStep('error')
       throw err
     }
-  }, [identity])
+  }, [identity, getProfileName])
 
   const respondToChallenge = useCallback(
     async (challengeCode: string) => {
@@ -56,11 +61,11 @@ export function useVerification() {
         const decodedChallenge = JSON.parse(atob(challengeCode))
         setChallenge(decodedChallenge)
 
-        // Create response with VerificationHelper
+        const name = await getProfileName()
         const responseCode = await VerificationHelper.respondToChallenge(
           challengeCode,
           identity,
-          'User'
+          name
         )
 
         const decodedResponse = JSON.parse(atob(responseCode))
@@ -83,7 +88,7 @@ export function useVerification() {
         throw err
       }
     },
-    [identity, addContact]
+    [identity, addContact, getProfileName]
   )
 
   const completeVerification = useCallback(
