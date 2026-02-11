@@ -26,11 +26,15 @@ export function ContactCard({ contact, onRemove, attestationCount = 0 }: Contact
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-4">
       <div className="flex items-start gap-3">
-        <Avatar name={contact.name} size="sm" />
+        <Link to={`/profile/${encodeURIComponent(contact.did)}`}>
+          <Avatar name={contact.name} avatar={contact.avatar} size="sm" />
+        </Link>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium text-slate-900 truncate">{displayName}</h3>
+            <Link to={`/profile/${encodeURIComponent(contact.did)}`} className="font-medium text-slate-900 truncate hover:text-primary-600 transition-colors">
+              {displayName}
+            </Link>
             <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[contact.status]}`}>
               {statusLabels[contact.status]}
             </span>

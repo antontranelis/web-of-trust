@@ -51,6 +51,8 @@ const Schema = {
     did: NonEmptyString1000,
     publicKey: NonEmptyString1000,
     name: nullOr(NonEmptyString1000),
+    avatar: nullOr(NonEmptyString), // Data URLs can be large
+    bio: nullOr(NonEmptyString1000),
     status: NonEmptyString1000, // 'pending' | 'active'
     verifiedAt: nullOr(NonEmptyString1000),
   },

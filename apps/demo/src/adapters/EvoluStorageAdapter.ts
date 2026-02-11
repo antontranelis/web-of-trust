@@ -128,6 +128,8 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
       did: str(contact.did),
       publicKey: str(contact.publicKey),
       name: contact.name ? str(contact.name) : null,
+      avatar: contact.avatar ? longStr(contact.avatar) : null,
+      bio: contact.bio ? str(contact.bio) : null,
       status: str(contact.status),
       verifiedAt: contact.verifiedAt ? str(contact.verifiedAt) : null,
     })
@@ -163,6 +165,8 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
       did: str(contact.did),
       publicKey: str(contact.publicKey),
       name: contact.name ? str(contact.name) : null,
+      avatar: contact.avatar ? longStr(contact.avatar) : null,
+      bio: contact.bio ? str(contact.bio) : null,
       status: str(contact.status),
       verifiedAt: contact.verifiedAt ? str(contact.verifiedAt) : null,
     })

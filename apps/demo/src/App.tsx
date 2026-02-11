@@ -1,7 +1,17 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdapterProvider, IdentityProvider, useIdentity } from './context'
 import { AppShell, IdentityManagement } from './components'
-import { Home, Identity, Contacts, Verify, Attestations } from './pages'
+import { Home, Identity, Contacts, Verify, Attestations, PublicProfile } from './pages'
+import { useProfileSync } from './hooks'
+
+/**
+ * Mounts useProfileSync globally so profile-update listeners
+ * and initial contact sync run on every page, not just /identity.
+ */
+function ProfileSyncEffect() {
+  useProfileSync()
+  return null
+}
 
 /**
  * RequireIdentity gate - shows onboarding if no unlocked identity.
@@ -38,6 +48,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
   // Identity is unlocked -> initialize Evolu with identity-derived keys
   return (
     <AdapterProvider identity={identity}>
+      <ProfileSyncEffect />
       {children}
     </AdapterProvider>
   )
@@ -53,6 +64,7 @@ function AppRoutes() {
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/attestations/*" element={<Attestations />} />
+          <Route path="/profile/:did" element={<PublicProfile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

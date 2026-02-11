@@ -16,6 +16,8 @@ export interface Contact {
   did: string
   publicKey: string
   name?: string
+  avatar?: string
+  bio?: string
   status: ContactStatus
   verifiedAt?: string
   createdAt: string

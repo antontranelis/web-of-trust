@@ -6,6 +6,8 @@ export function rowToContact(row: any): Contact {
     did: row.did,
     publicKey: row.publicKey,
     ...(row.name != null ? { name: row.name } : {}),
+    ...(row.avatar != null ? { avatar: row.avatar } : {}),
+    ...(row.bio != null ? { bio: row.bio } : {}),
     status: row.status,
     ...(row.verifiedAt != null ? { verifiedAt: row.verifiedAt } : {}),
     createdAt: row.createdAt,

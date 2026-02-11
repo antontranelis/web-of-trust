@@ -106,11 +106,19 @@ export function useProfileSync() {
         fetchedRef.current.add(contact.did)
 
         const profile = await fetchContactProfile(contact.did)
-        if (profile && profile.name && profile.name !== contact.name) {
-          await storage.updateContact({
-            ...contact,
-            name: profile.name,
-          })
+        if (profile && profile.name) {
+          const needsUpdate =
+            profile.name !== contact.name ||
+            profile.avatar !== contact.avatar ||
+            profile.bio !== contact.bio
+          if (needsUpdate) {
+            await storage.updateContact({
+              ...contact,
+              name: profile.name,
+              ...(profile.avatar ? { avatar: profile.avatar } : {}),
+              ...(profile.bio ? { bio: profile.bio } : {}),
+            })
+          }
         }
       }
     }
@@ -128,11 +136,19 @@ export function useProfileSync() {
         if (profile && profile.name) {
           const contacts = await storage.getContacts()
           const contact = contacts.find((c) => c.did === envelope.fromDid)
-          if (contact && contact.name !== profile.name) {
-            await storage.updateContact({
-              ...contact,
-              name: profile.name,
-            })
+          if (contact) {
+            const needsUpdate =
+              contact.name !== profile.name ||
+              contact.avatar !== profile.avatar ||
+              contact.bio !== profile.bio
+            if (needsUpdate) {
+              await storage.updateContact({
+                ...contact,
+                name: profile.name,
+                ...(profile.avatar ? { avatar: profile.avatar } : {}),
+                ...(profile.bio ? { bio: profile.bio } : {}),
+              })
+            }
           }
         }
       }
