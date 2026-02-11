@@ -128,7 +128,59 @@ export class WebCryptoAdapter implements CryptoAdapter {
     return this.verify(encoder.encode(data), decodeBase64Url(signature), publicKey)
   }
 
-  // Encryption - TODO: Implement with X25519 + AES-GCM
+  // Symmetric Encryption (AES-256-GCM for Group Spaces)
+
+  async generateSymmetricKey(): Promise<Uint8Array> {
+    const key = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    )
+    const raw = await crypto.subtle.exportKey('raw', key)
+    return new Uint8Array(raw)
+  }
+
+  async encryptSymmetric(
+    plaintext: Uint8Array,
+    key: Uint8Array,
+  ): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }> {
+    const nonce = crypto.getRandomValues(new Uint8Array(12))
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      toBuffer(key),
+      { name: 'AES-GCM' },
+      false,
+      ['encrypt']
+    )
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce },
+      cryptoKey,
+      toBuffer(plaintext)
+    )
+    return { ciphertext: new Uint8Array(encrypted), nonce }
+  }
+
+  async decryptSymmetric(
+    ciphertext: Uint8Array,
+    nonce: Uint8Array,
+    key: Uint8Array,
+  ): Promise<Uint8Array> {
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      toBuffer(key),
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    )
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: nonce },
+      cryptoKey,
+      toBuffer(ciphertext)
+    )
+    return new Uint8Array(decrypted)
+  }
+
+  // Asymmetric Encryption - TODO: Implement with X25519 + AES-GCM
   async encrypt(_plaintext: Uint8Array, _recipientPublicKey: Uint8Array): Promise<EncryptedPayload> {
     throw new Error('Not implemented: requires X25519 key exchange')
   }

@@ -2,6 +2,7 @@ import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/b
 import * as ed25519 from '@noble/ed25519'
 import { SeedStorage } from './SeedStorage'
 import { germanPositiveWordlist } from '../wordlists/german-positive'
+import { signJws as signJwsUtil } from '../crypto/jws'
 
 /**
  * WotIdentity - BIP39-based identity with native WebCrypto
@@ -180,6 +181,19 @@ export class WotIdentity {
       throw new Error('Identity not unlocked')
     }
     return this.did
+  }
+
+  /**
+   * Sign a payload as JWS (JSON Web Signature) compact serialization
+   *
+   * @param payload - Data to sign (will be JSON-serialized)
+   * @returns JWS compact serialization (header.payload.signature)
+   */
+  async signJws(payload: unknown): Promise<string> {
+    if (!this.identityKeyPair) {
+      throw new Error('Identity not unlocked')
+    }
+    return signJwsUtil(payload, this.identityKeyPair.privateKey)
   }
 
   /**

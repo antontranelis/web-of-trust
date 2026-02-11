@@ -10,6 +10,7 @@
  * keys derived from the user's BIP39 seed.
  */
 import {
+  NonEmptyString,
   NonEmptyString1000,
   booleanToSqliteBoolean,
   sqliteBooleanToBoolean,
@@ -33,19 +34,31 @@ import { rowToContact, rowToVerification, rowToAttestation } from './rowMappers'
 type AppEvolu = Evolu<AppSchema>
 
 const str = (s: string) => NonEmptyString1000.orThrow(s)
+const longStr = (s: string) => NonEmptyString.orThrow(s)
 
 export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapter {
   constructor(private evolu: AppEvolu) {}
 
   // --- Identity ---
-  // Identity is stored locally (not in Evolu) since it contains
-  // only the local user's DID and profile name.
+  // Profile (name, bio, avatar) is stored in Evolu for cross-device sync.
+  // DID + timestamps are cached in localStorage for quick access.
 
   private localIdentity: Identity | null = null
 
   async createIdentity(did: string, profile: Profile): Promise<Identity> {
     const now = new Date().toISOString()
     const identity: Identity = { did, profile, createdAt: now, updatedAt: now }
+
+    // Store profile in Evolu (synced across devices)
+    this.evolu.upsert('profile', {
+      id: createIdFromString<'Profile'>(`profile-${did}`),
+      did: str(did),
+      name: profile.name ? str(profile.name) : null,
+      bio: profile.bio ? str(profile.bio) : null,
+      avatar: profile.avatar ? longStr(profile.avatar) : null,
+    })
+
+    // Cache in localStorage for quick access
     this.localIdentity = identity
     localStorage.setItem('wot-identity', JSON.stringify(identity))
     return identity
@@ -53,18 +66,58 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
 
   async getIdentity(): Promise<Identity | null> {
     if (this.localIdentity) return this.localIdentity
+
+    // Try localStorage first (fast)
     const stored = localStorage.getItem('wot-identity')
     if (stored) {
-      this.localIdentity = JSON.parse(stored) as Identity
-      return this.localIdentity
+      const cached = JSON.parse(stored) as Identity
+
+      // Try to get profile from Evolu (may have synced updates from other device)
+      const evoluProfile = await this.getProfileFromEvolu(cached.did)
+      if (evoluProfile) {
+        cached.profile = evoluProfile
+        localStorage.setItem('wot-identity', JSON.stringify(cached))
+      }
+
+      this.localIdentity = cached
+      return cached
     }
     return null
   }
 
   async updateIdentity(identity: Identity): Promise<void> {
     identity.updatedAt = new Date().toISOString()
+
+    // Update profile in Evolu (synced)
+    this.evolu.upsert('profile', {
+      id: createIdFromString<'Profile'>(`profile-${identity.did}`),
+      did: str(identity.did),
+      name: identity.profile.name ? str(identity.profile.name) : null,
+      bio: identity.profile.bio ? str(identity.profile.bio) : null,
+      avatar: identity.profile.avatar ? longStr(identity.profile.avatar) : null,
+    })
+
+    // Update localStorage cache
     this.localIdentity = identity
     localStorage.setItem('wot-identity', JSON.stringify(identity))
+  }
+
+  /** Load profile from Evolu (for cross-device sync) */
+  private async getProfileFromEvolu(did: string): Promise<Profile | null> {
+    const query = this.evolu.createQuery((db) =>
+      db.selectFrom('profile')
+        .selectAll()
+        .where('did', '=', str(did))
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+    const rows = await this.evolu.loadQuery(query)
+    if (rows.length === 0) return null
+    const row = rows[0]
+    return {
+      name: (row.name as string) ?? '',
+      ...(row.bio != null ? { bio: row.bio as string } : {}),
+      ...(row.avatar != null ? { avatar: row.avatar as string } : {}),
+    }
   }
 
   // --- Contacts ---
@@ -253,6 +306,62 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
   // useSyncExternalStore requires getValue() to return the same reference
   // when data hasn't changed. We cache the mapped snapshot and only update
   // it in the subscribe callback when Evolu notifies us of a change.
+
+  /** Watch profile for sync updates (e.g. from another device) */
+  watchProfile(did: string): Subscribable<Profile> {
+    const evolu = this.evolu
+    const query = evolu.createQuery((db) =>
+      db.selectFrom('profile').selectAll()
+        .where('did', '=', str(did))
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+
+    const rowToProfile = (): Profile => {
+      const rows = [...evolu.getQueryRows(query)]
+      if (rows.length === 0) return { name: '' }
+      const row = rows[0]
+      return {
+        name: (row.name as string) ?? '',
+        ...(row.bio != null ? { bio: row.bio as string } : {}),
+        ...(row.avatar != null ? { avatar: row.avatar as string } : {}),
+      }
+    }
+
+    const profileChanged = (a: Profile, b: Profile) =>
+      a.name !== b.name || a.bio !== b.bio || a.avatar !== b.avatar
+
+    let snapshot: Profile = rowToProfile()
+
+    return {
+      subscribe: (callback) => {
+        const unsub = evolu.subscribeQuery(query)(() => {
+          const updated = rowToProfile()
+          if (profileChanged(updated, snapshot)) {
+            snapshot = updated
+            // Also update localStorage cache
+            const stored = localStorage.getItem('wot-identity')
+            if (stored) {
+              const cached = JSON.parse(stored) as Identity
+              cached.profile = updated
+              cached.updatedAt = new Date().toISOString()
+              localStorage.setItem('wot-identity', JSON.stringify(cached))
+              this.localIdentity = cached
+            }
+            callback(snapshot)
+          }
+        })
+        evolu.loadQuery(query).then(() => {
+          const loaded = rowToProfile()
+          if (profileChanged(loaded, snapshot)) {
+            snapshot = loaded
+            callback(snapshot)
+          }
+        })
+        return unsub
+      },
+      getValue: () => snapshot,
+    }
+  }
 
   watchContacts(): Subscribable<Contact[]> {
     const evolu = this.evolu

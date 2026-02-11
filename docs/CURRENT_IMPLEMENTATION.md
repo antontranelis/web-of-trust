@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-08
-**Phase:** Week 3+ - Architektur-Revision (Post-Evolu-Analyse)
+**Datum:** 2026-02-10
+**Phase:** Week 4 - Profile Sync + Symmetrische Encryption
 
 ---
 
@@ -550,10 +550,10 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 |---------|--------|----------------|
 | StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
-| CryptoAdapter | ✅ Implementiert | WebCryptoAdapter |
-| MessagingAdapter | ✅ **Implementiert** | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
-| ReplicationAdapter | **Interface definiert** | NoOp (Evolu Personal Space) |
-| AuthorizationAdapter | **Interface definiert** | NoOp (Creator = Admin) |
+| CryptoAdapter | ✅ Implementiert | WebCryptoAdapter (Ed25519 + AES-256-GCM symmetric) |
+| MessagingAdapter | ✅ Implementiert | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
+| ReplicationAdapter | ⏳ Spezifiziert | Automerge (Phase 3) |
+| AuthorizationAdapter | ⏳ Spezifiziert | UCAN-like (Phase 3+) |
 
 ### Empfohlener Stack
 
@@ -566,7 +566,7 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 ### Was sich NICHT geändert hat
 
 - **wot-core Package** — Alle Types, Interfaces und Implementierungen bleiben stabil
-- **77 Tests** — Alle passing, keine Regressionen
+- **Alle Tests** — Keine Regressionen bei Architektur-Änderungen
 - **WotIdentity** — BIP39, Ed25519, HKDF, did:key — alles unverändert
 - **Evolu als Storage** — Bleibt für lokale Persistenz + Multi-Device Sync
 - **Empfänger-Prinzip** — Bestätigt als fundamentales Designprinzip
@@ -691,7 +691,7 @@ Browser-nativer WebSocket Client:
 ✓ resetAll for test isolation
 ```
 
-**Gesamt: 102 Tests** (87 wot-core + 15 wot-relay) — alle passing ✅
+**Gesamt: 132 Tests** (106 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
 
 ### Packages (neu)
 
@@ -711,6 +711,163 @@ Browser-nativer WebSocket Client:
 16. **feat: Add MessagingAdapter interface with InMemory implementation** — Types, Interface, InMemory, 28 Tests
 17. **feat: Add WebSocket relay server and WebSocketMessagingAdapter** — wot-relay Package, Integration Tests
 18. **feat: Connect demo app to WebSocket relay for live attestation delivery** — Demo Integration, Profil-Verwaltung, RecoveryFlow Enter-Nav
+
+### Week 4 Commits
+
+19. **feat: Add symmetric encryption (AES-256-GCM) to CryptoAdapter** — Interface + WebCryptoAdapter, 10 Tests
+20. **feat: Add JWS signing to WotIdentity and ProfileService** — signJws, ProfileService, PublicProfile, 9 Tests
+21. **feat: Add wot-profiles HTTP service for public profile sync** — Standalone Package, SQLite, JWS Verify, REST API, 11 Tests
+22. **feat: Integrate profile sync in demo app** — useProfileSync Hook, Identity Page Upload
+
+---
+
+## Week 4: Profile Sync + Symmetrische Encryption (2026-02-10) ✅
+
+### Übersicht
+
+Zwei Phasen implementiert (Test-First, RED → GREEN):
+
+1. **Symmetrische Encryption** — AES-256-GCM im CryptoAdapter (Grundlage für E2EE Group Spaces)
+2. **Öffentliches Profil-System** — JWS-signierte Profile, eigener HTTP Service (`wot-profiles`), Demo-App Integration
+
+Außerdem: SyncAdapter entfernt (ersetzt durch zukünftigen ReplicationAdapter).
+
+### Phase 2: Symmetrische Encryption (AES-256-GCM) ✅
+
+3 neue Methoden im CryptoAdapter Interface und WebCryptoAdapter:
+
+- ✅ **generateSymmetricKey()** — `crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 })` → 32-byte Uint8Array
+- ✅ **encryptSymmetric(plaintext, key)** — 12-byte Random-Nonce, AES-GCM Encryption (Auth-Tag inkludiert)
+- ✅ **decryptSymmetric(ciphertext, nonce, key)** — AES-GCM Decryption mit Auth-Tag-Verifikation
+
+**Tests (10 Tests):**
+```
+✓ generateSymmetricKey() - returns 32 bytes
+✓ generateSymmetricKey() - generates different keys each time
+✓ encryptSymmetric/decryptSymmetric - round-trip
+✓ encryptSymmetric - different ciphertexts for same plaintext (random nonce)
+✓ decryptSymmetric - fails with wrong key
+✓ decryptSymmetric - fails with wrong nonce
+✓ decryptSymmetric - fails with tampered ciphertext (GCM auth tag)
+✓ encryptSymmetric/decryptSymmetric - handles empty plaintext
+✓ encryptSymmetric/decryptSymmetric - handles large plaintext (64KB)
+✓ encryptSymmetric - returns 12-byte nonce
+```
+
+### Phase 1: Öffentliches Profil-System ✅
+
+#### Architektur
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│  wot-relay       │     │  wot-profiles    │
+│  (WebSocket)     │     │  (HTTP/REST)     │
+│                  │     │                  │
+│  - Messaging     │     │  - GET /p/{did}  │
+│  - Offline Queue │     │  - PUT /p/{did}  │
+│  - Blind Relay   │     │  - JWS Verify    │
+│                  │     │  - SQLite Store  │
+└─────────────────┘     └─────────────────┘
+     Port 8787               Port 8788
+```
+
+Begründung für separaten Service: Relay = WebSocket-Transport (austauschbar), Profiles = öffentliches REST-API. Verschiedene Protokolle, verschiedene Concerns.
+
+#### WotIdentity.signJws() (`packages/wot-core`)
+
+- ✅ **signJws(payload)** — Signiert beliebige Payload als JWS Compact Serialization (EdDSA/Ed25519)
+- Nutzt internen non-extractable Private Key
+- Wirft `'Identity not unlocked'` wenn Identity gesperrt
+
+#### ProfileService (`packages/wot-core/src/services/ProfileService.ts`)
+
+Statische Methoden für self-certifying Profile:
+
+- ✅ **signProfile(profile, identity)** — Erzeugt JWS aus PublicProfile
+- ✅ **verifyProfile(jws)** — Extrahiert DID aus Payload → Public Key auflösen → JWS verifizieren
+- Erkennt DID-Mismatch (Payload-DID ≠ Signatur-Key-DID)
+
+#### PublicProfile Type (`packages/wot-core/src/types/identity.ts`)
+
+```typescript
+interface PublicProfile {
+  did: string
+  name: string
+  bio?: string
+  avatar?: string
+  updatedAt: string
+}
+```
+
+#### wot-profiles Package (`packages/wot-profiles`)
+
+Eigenständiger HTTP Service — **keine wot-core Dependency** in Produktion:
+
+- ✅ **ProfileStore** — SQLite (better-sqlite3, WAL Mode), Upsert via ON CONFLICT
+- ✅ **Standalone JWS Verify** — Eigene Base64URL/Base58/did:key Auflösung (kein wot-core Import)
+- ✅ **HTTP Server** — Node.js `http.createServer` mit CORS
+- ✅ **PUT /p/{did}** — JWS-Signatur verifizieren, DID-Match prüfen (URL ≠ Payload → 403), speichern
+- ✅ **GET /p/{did}** — Gespeichertes JWS zurückgeben (Content-Type: application/jws)
+
+#### Demo App Integration
+
+- ✅ **useProfileSync Hook** — `uploadProfile()`, `fetchContactProfile()`, Auto-Sync bei Mount, profile-update Listener
+- ✅ **Identity Page** — Ruft `uploadProfile()` nach Profil-Speichern auf
+- ✅ **MessageType 'profile-update'** — Neuer Nachrichtentyp für Profile-Änderungen
+
+### Tests Week 4
+
+**30 neue Tests:**
+
+#### Symmetric Crypto Tests (10 Tests)
+```
+packages/wot-core/tests/SymmetricCrypto.test.ts
+✓ Key generation (2), Round-trip (1), Random nonce (1),
+✓ Wrong key/nonce/tampered (3), Empty/large plaintext (2), Nonce length (1)
+```
+
+#### WotIdentity signJws Tests (3 Tests)
+```
+packages/wot-core/tests/WotIdentity.test.ts (erweitert)
+✓ JWS compact serialization format
+✓ Verifiable with public key
+✓ Throws when identity is locked
+```
+
+#### ProfileService Tests (6 Tests)
+```
+packages/wot-core/tests/ProfileService.test.ts
+✓ signProfile returns JWS string
+✓ verifyProfile with valid profile
+✓ Reject tampered JWS
+✓ Reject mismatched DID
+✓ Reject invalid JWS format
+✓ Round-trip preserves all fields
+```
+
+#### wot-profiles Tests (11 Tests)
+```
+packages/wot-profiles/tests/profile-store.test.ts (4 Tests)
+✓ Store and retrieve JWS by DID
+✓ Return null for unknown DID
+✓ Upsert existing DID
+✓ Persist updated_at timestamp
+
+packages/wot-profiles/tests/profile-rest.test.ts (7 Tests)
+✓ PUT valid JWS → 200
+✓ PUT mismatched DID → 403
+✓ PUT invalid JWS → 400
+✓ PUT empty body → 400
+✓ GET stored profile → 200
+✓ GET unknown DID → 404
+✓ CORS headers present
+```
+
+**Gesamt: 132 Tests** (106 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
+
+### Entfernungen
+
+- **SyncAdapter** — Interface und NoOpSyncAdapter entfernt. Wird durch zukünftigen ReplicationAdapter (Automerge) ersetzt.
 
 ---
 
@@ -770,30 +927,31 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte
 
-### Priorität 1: Profil-Sync + Messaging Polish ⬅️ NÄCHSTER SCHRITT
+### Priorität 1: Encrypted Group Spaces ⬅️ NÄCHSTER SCHRITT
 
+- **Asymmetrische Encryption** — X25519 ECDH (Ed25519 → Curve25519 Konvertierung) für Key-Exchange
+- **EncryptedSyncService** — Encrypt-then-sync Pattern (AES-GCM mit Group Key)
+- **GroupKeyService** — Key Generation, Rotation, Generation-Tracking
+- **AutomergeReplicationAdapter** — CRDT Spaces mit verschlüsseltem Transport
+
+### Priorität 2: Polish + Deployment
+
+- **Relay Deployment** — Docker + öffentliche URL für Remote-Testing
+- **wot-profiles Deployment** — Docker für Profile Service
 - **Profil-Name im Verification-Handshake** — `useVerification` sendet echten Namen statt hardcoded `'User'`
-- **`profile-update` MessageType** — Namensänderungen an alle Kontakte broadcasten via Relay
-- **Eingehende Profile-Updates** — Listener in useContacts verarbeitet Updates und ruft `contactService.updateContactName()` auf
-- **Cross-Device Profil-Sync** — Profil aus localStorage in Evolu verschieben (Schema-Erweiterung)
 
-### Priorität 2: Selektives Teilen
+### Priorität 3: RLS Integration & Module
 
-- **Item-Key-Modell** in CryptoAdapter (AES-256-GCM pro Item, encrypted per Recipient)
-- **Item-Key Delivery** über MessagingAdapter
-- **AuthorizationAdapter** Basis-Capabilities (read/write)
-
-### Priorität 3: Gruppen & Module
-
-- **ReplicationAdapter** mit Automerge für Shared Spaces
 - **RLS Module Integration** — Kanban, Kalender, Karte
-- **Group Key Management** — Rotation bei Member-Änderung
+- **AuthorizationAdapter** — UCAN-like Capabilities (read/write)
 
-### Erledigt (ehemals Priorität 1)
+### Erledigt
 
 - ~~MessagingAdapter Interface in wot-core definieren~~ ✅
 - ~~Custom WebSocket Relay implementieren~~ ✅
 - ~~Attestation Delivery E2E~~ ✅
+- ~~Profil-Sync (JWS-signierte Profile, wot-profiles Service)~~ ✅
+- ~~Symmetrische Encryption (AES-256-GCM)~~ ✅
 - **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
@@ -905,38 +1063,56 @@ packages/wot-core/src/
 │   ├── german-positive.ts          # 2048 deutsche BIP39-Wörter
 │   └── index.ts
 ├── crypto/
-│   ├── did.ts                      # DID utilities
+│   ├── did.ts                      # DID utilities (createDid, didToPublicKeyBytes)
 │   ├── encoding.ts                 # Base64/multibase
-│   ├── jws.ts                      # JWS signing
+│   ├── jws.ts                      # JWS signing/verification
 │   └── index.ts
 ├── adapters/
 │   ├── interfaces/
 │   │   ├── StorageAdapter.ts
-│   │   ├── CryptoAdapter.ts
-│   │   ├── SyncAdapter.ts
-│   │   ├── MessagingAdapter.ts       # NEU: Cross-User Messaging
+│   │   ├── CryptoAdapter.ts        # + Symmetric: generateSymmetricKey, encrypt/decrypt
+│   │   ├── MessagingAdapter.ts     # Cross-User Messaging
 │   │   └── index.ts
 │   ├── crypto/
-│   │   ├── WebCryptoAdapter.ts
+│   │   ├── WebCryptoAdapter.ts     # + AES-256-GCM symmetric encryption
 │   │   └── index.ts
 │   ├── messaging/
-│   │   ├── InMemoryMessagingAdapter.ts  # NEU: Shared-Bus für Tests
-│   │   ├── WebSocketMessagingAdapter.ts # NEU: Browser WebSocket Client
+│   │   ├── InMemoryMessagingAdapter.ts  # Shared-Bus für Tests
+│   │   ├── WebSocketMessagingAdapter.ts # Browser WebSocket Client
 │   │   └── index.ts
 │   ├── storage/
 │   │   ├── LocalStorageAdapter.ts
 │   │   └── index.ts
 │   └── index.ts
+├── services/
+│   ├── ProfileService.ts           # NEU: signProfile, verifyProfile (static)
+│   └── index.ts
 ├── types/
-│   ├── identity.ts
+│   ├── identity.ts                 # + PublicProfile
 │   ├── contact.ts
 │   ├── verification.ts
 │   ├── attestation.ts
 │   ├── proof.ts
-│   ├── messaging.ts                   # NEU: MessageEnvelope, DeliveryReceipt
-│   ├── resource-ref.ts               # NEU: ResourceRef branded type
+│   ├── messaging.ts                # MessageEnvelope, DeliveryReceipt, + 'profile-update'
+│   ├── resource-ref.ts             # ResourceRef branded type
 │   └── index.ts
 └── index.ts
+```
+
+### wot-profiles Package (NEU)
+
+```
+packages/wot-profiles/
+├── src/
+│   ├── profile-store.ts             # SQLite Store (better-sqlite3, WAL)
+│   ├── jws-verify.ts                # Standalone JWS Verify (keine wot-core Dep)
+│   ├── server.ts                    # HTTP Server (CORS, GET/PUT /p/{did})
+│   └── start.ts                     # Entry Point (PORT, DB_PATH env)
+├── tests/
+│   ├── profile-store.test.ts        # 4 Tests
+│   └── profile-rest.test.ts         # 7 Tests
+├── package.json
+└── tsconfig.json
 ```
 
 ### Demo App
@@ -982,7 +1158,8 @@ apps/demo/src/
 │   ├── useContacts.ts
 │   ├── useIdentity.ts
 │   ├── useAttestations.ts
-│   ├── useMessaging.ts                # NEU: Relay send/onMessage/state
+│   ├── useMessaging.ts                # Relay send/onMessage/state
+│   ├── useProfileSync.ts             # NEU: Upload/Fetch Profile, Auto-Sync
 │   └── index.ts
 ├── services/
 │   ├── VerificationService.ts
@@ -1006,18 +1183,24 @@ apps/demo/src/
 
 ```
 packages/wot-core/tests/
-├── WotIdentity.test.ts              # 17 Tests
+├── WotIdentity.test.ts              # 20 Tests  (+3 signJws)
 ├── SeedStorage.test.ts              # 12 Tests
 ├── ContactStorage.test.ts           # 15 Tests
 ├── VerificationIntegration.test.ts  # 20 Tests  (Anm: 18 nach Dedup)
 ├── OnboardingFlow.test.ts           # 13 Tests  (Anm: 12 nach Dedup)
-├── ResourceRef.test.ts              # 14 Tests  NEU
-├── MessagingAdapter.test.ts         # 14 Tests  NEU
+├── ResourceRef.test.ts              # 14 Tests
+├── MessagingAdapter.test.ts         # 14 Tests
+├── ProfileService.test.ts           # 6 Tests   NEU
+├── SymmetricCrypto.test.ts          # 10 Tests  NEU
 └── setup.ts                         # fake-indexeddb setup
 
+packages/wot-profiles/tests/
+├── profile-store.test.ts            # 4 Tests   NEU
+└── profile-rest.test.ts             # 7 Tests   NEU
+
 packages/wot-relay/tests/
-├── relay.test.ts                    # 9 Tests   NEU
-└── integration.test.ts              # 6 Tests   NEU
+├── relay.test.ts                    # 9 Tests
+└── integration.test.ts              # 6 Tests
 ```
 
 ---
@@ -1046,7 +1229,9 @@ packages/wot-relay/tests/
 
 - ~~MessagingAdapter implementieren~~ ✅ (Week 3++)
 - ~~Attestation Delivery E2E~~ ✅ (Week 3++)
-- **Profil-Sync** — Name bei Verification mitschicken + profile-update Broadcast
+- ~~Profil-Sync~~ ✅ (Week 4) — JWS-signierte Profile, wot-profiles Service, useProfileSync Hook
+- ~~Symmetrische Encryption~~ ✅ (Week 4) — AES-256-GCM im CryptoAdapter
+- **Encrypted Group Spaces** — Automerge + Encrypt-then-sync (Phase 3)
 - **Relay Deployment** — Docker + öffentliche URL für Remote-Testing
 - **Evolu Sync** - Transports konfigurieren für Multi-Tab/Device Sync
 - **Social Recovery (Shamir)** - Seed-Backup über verifizierte Kontakte

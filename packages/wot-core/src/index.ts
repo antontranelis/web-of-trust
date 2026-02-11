@@ -3,6 +3,7 @@ export type {
   Profile,
   Identity,
   KeyPair,
+  PublicProfile,
 } from './types/identity'
 
 export type {
@@ -47,12 +48,6 @@ export type {
   CryptoAdapter,
   EncryptedPayload,
 } from './adapters/interfaces/CryptoAdapter'
-export type {
-  SyncAdapter,
-  SyncState,
-  SyncChange,
-} from './adapters/interfaces/SyncAdapter'
-export { NoOpSyncAdapter } from './adapters/interfaces/SyncAdapter'
 export type { Subscribable } from './adapters/interfaces/Subscribable'
 export type { ReactiveStorageAdapter } from './adapters/interfaces/ReactiveStorageAdapter'
 export type { MessagingAdapter } from './adapters/interfaces/MessagingAdapter'
@@ -83,6 +78,9 @@ export { WotIdentity } from './identity'
 
 // Verification
 export { VerificationHelper } from './verification'
+
+// Services
+export { ProfileService } from './services/ProfileService'
 
 // Adapter Implementations
 export { WebCryptoAdapter } from './adapters/crypto/WebCryptoAdapter'

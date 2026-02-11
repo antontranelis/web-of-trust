@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { WotIdentity } from '../src/identity/WotIdentity'
+import { verifyJws } from '../src/crypto/jws'
 
 describe('WotIdentity', () => {
   let identity: WotIdentity
@@ -186,6 +187,30 @@ describe('WotIdentity', () => {
 
       // Should throw because identity is locked
       expect(() => identity.getDid()).toThrow('Identity not unlocked')
+    })
+  })
+
+  describe('signJws()', () => {
+    it('should produce a valid JWS compact serialization', async () => {
+      await identity.create('test-passphrase', false)
+      const jws = await identity.signJws({ hello: 'world' })
+      expect(typeof jws).toBe('string')
+      const parts = jws.split('.')
+      expect(parts).toHaveLength(3)
+    })
+
+    it('should be verifiable with the public key', async () => {
+      await identity.create('test-passphrase', false)
+      const payload = { did: identity.getDid(), name: 'Alice' }
+      const jws = await identity.signJws(payload)
+      const publicKey = await identity.getPublicKey()
+      const result = await verifyJws(jws, publicKey)
+      expect(result.valid).toBe(true)
+      expect(result.payload).toEqual(payload)
+    })
+
+    it('should throw when identity is locked', async () => {
+      await expect(identity.signJws({ test: true })).rejects.toThrow('Identity not unlocked')
     })
   })
 

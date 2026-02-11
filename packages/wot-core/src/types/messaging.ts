@@ -7,6 +7,7 @@ export type MessageType =
   | 'item-key'
   | 'space-invite'
   | 'group-key-rotation'
+  | 'profile-update'
   | 'ack'
   | 'content'
 

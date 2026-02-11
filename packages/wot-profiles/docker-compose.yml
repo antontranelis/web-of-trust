@@ -1,0 +1,22 @@
+services:
+  wot-profiles:
+    build: .
+    container_name: wot-profiles
+    hostname: 'wot-profiles'
+    restart: unless-stopped
+    ports:
+      - "8788:8788"
+    volumes:
+      - profiles-data:/data
+    environment:
+      - PORT=8788
+      - DB_PATH=/data/profiles.db
+    networks:
+      - "net"
+
+networks:
+  net:
+    external: true
+
+volumes:
+  profiles-data:

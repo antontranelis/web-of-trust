@@ -1,12 +1,10 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
 import {
   WebCryptoAdapter,
-  NoOpSyncAdapter,
   WebSocketMessagingAdapter,
   type StorageAdapter,
   type ReactiveStorageAdapter,
   type CryptoAdapter,
-  type SyncAdapter,
   type MessagingAdapter,
   type MessagingState,
   type WotIdentity,
@@ -25,7 +23,6 @@ interface AdapterContextValue {
   storage: StorageAdapter
   reactiveStorage: ReactiveStorageAdapter
   crypto: CryptoAdapter
-  sync: SyncAdapter
   messaging: MessagingAdapter
   messagingState: MessagingState
   contactService: ContactService
@@ -62,17 +59,19 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
         const storage = new EvoluStorageAdapter(evolu)
         const crypto = new WebCryptoAdapter()
-        const sync = new NoOpSyncAdapter()
         messagingAdapter = new WebSocketMessagingAdapter(RELAY_URL)
 
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(messagingAdapter)
 
-        // Ensure profile exists in localStorage
+        // Ensure identity exists — migrate localStorage profile to Evolu if needed
         const did = identity.getDid()
         const existing = await storage.getIdentity()
         if (!existing && did) {
           await storage.createIdentity(did, { name: '' })
+        } else if (existing) {
+          // Ensure profile is in Evolu (migration from localStorage-only era)
+          await storage.updateIdentity(existing)
         }
 
         if (!cancelled) {
@@ -80,7 +79,6 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             storage,
             reactiveStorage: storage,
             crypto,
-            sync,
             messaging: messagingAdapter,
             contactService: new ContactService(storage),
             verificationService: new VerificationService(storage),

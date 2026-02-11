@@ -8,6 +8,7 @@ import {
   id,
   createEvolu,
   createAppOwner,
+  NonEmptyString,
   NonEmptyString1000,
   nullOr,
   SqliteBoolean,
@@ -32,9 +33,19 @@ type AttestationId = typeof AttestationId.Type
 const AttestationMetadataId = id('AttestationMetadata')
 type AttestationMetadataId = typeof AttestationMetadataId.Type
 
+const ProfileId = id('Profile')
+type ProfileId = typeof ProfileId.Type
+
 // --- Schema ---
 
 const Schema = {
+  profile: {
+    id: ProfileId,
+    did: NonEmptyString1000,
+    name: nullOr(NonEmptyString1000),
+    bio: nullOr(NonEmptyString1000),
+    avatar: nullOr(NonEmptyString), // Data URLs can be large, use unbounded string
+  },
   contact: {
     id: ContactId,
     did: NonEmptyString1000,
@@ -139,4 +150,4 @@ export async function resetEvolu(): Promise<void> {
   localStorage.removeItem('wot-evolu-owner-id')
 }
 
-export { Schema, type AppSchema, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId }
+export { Schema, type AppSchema, type ProfileId, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId }

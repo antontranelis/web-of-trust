@@ -1,6 +1,5 @@
 export * from './StorageAdapter'
 export * from './CryptoAdapter'
-export * from './SyncAdapter'
 export * from './Subscribable'
 export * from './ReactiveStorageAdapter'
 export * from './MessagingAdapter'

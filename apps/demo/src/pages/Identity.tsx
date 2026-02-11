@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react'
 import { Copy, Check, Fingerprint, Shield, Trash2, Database, Pencil, ChevronDown, ChevronRight } from 'lucide-react'
 import { Avatar, AvatarUpload } from '../components/shared'
 import { resetEvolu } from '../db'
+import { useProfile, useProfileSync } from '../hooks'
 
 export function Identity() {
   const { identity, did, clearIdentity } = useIdentity()
   const { storage } = useAdapters()
+  const { uploadProfile } = useProfileSync()
+  const syncedProfile = useProfile()
   const [copiedDid, setCopiedDid] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -19,16 +22,17 @@ export function Identity() {
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [profileSaved, setProfileSaved] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
 
+  // Sync profile from Evolu (reactive — updates when synced from other device)
+  // Skip when justSaved is true to avoid overwriting with stale Evolu snapshot
   useEffect(() => {
-    storage.getIdentity().then((id) => {
-      if (id) {
-        setProfileName(id.profile.name)
-        setProfileBio(id.profile.bio || '')
-        setProfileAvatar(id.profile.avatar)
-      }
-    })
-  }, [storage])
+    if (!isEditingProfile && !justSaved) {
+      setProfileName(syncedProfile.name)
+      setProfileBio(syncedProfile.bio || '')
+      setProfileAvatar(syncedProfile.avatar)
+    }
+  }, [syncedProfile, isEditingProfile, justSaved])
 
   const handleSaveProfile = async () => {
     const existing = await storage.getIdentity()
@@ -44,7 +48,14 @@ export function Identity() {
     }
     setIsEditingProfile(false)
     setProfileSaved(true)
+    setJustSaved(true)
     setTimeout(() => setProfileSaved(false), 2000)
+    // Allow Evolu reactive sync to take over again after a short delay
+    setTimeout(() => setJustSaved(false), 500)
+
+    // Upload to profile service (non-blocking)
+    uploadProfile().catch(() => {})
+
   }
 
   if (!identity || !did) {

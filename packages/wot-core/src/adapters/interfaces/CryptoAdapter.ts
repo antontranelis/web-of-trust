@@ -42,6 +42,11 @@ export interface CryptoAdapter {
   encrypt(plaintext: Uint8Array, recipientPublicKey: Uint8Array): Promise<EncryptedPayload>
   decrypt(payload: EncryptedPayload, privateKey: Uint8Array): Promise<Uint8Array>
 
+  // Symmetric Encryption (AES-256-GCM for Group Spaces)
+  generateSymmetricKey(): Promise<Uint8Array>
+  encryptSymmetric(plaintext: Uint8Array, key: Uint8Array): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }>
+  decryptSymmetric(ciphertext: Uint8Array, nonce: Uint8Array, key: Uint8Array): Promise<Uint8Array>
+
   // Utilities
   generateNonce(): string
   hashData(data: Uint8Array): Promise<Uint8Array>
