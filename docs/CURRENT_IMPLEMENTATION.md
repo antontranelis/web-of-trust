@@ -8,7 +8,7 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 ## Letzte Aktualisierung
 
 **Datum:** 2026-02-11
-**Phase:** Week 5 - Encrypted Group Spaces (Phase 3 Foundations)
+**Phase:** Week 5+ - AutomergeReplicationAdapter (Phase 3 Complete)
 
 ---
 
@@ -552,7 +552,7 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | CryptoAdapter | ✅ Implementiert | WebCryptoAdapter (Ed25519 + AES-256-GCM symmetric) |
 | MessagingAdapter | ✅ Implementiert | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
-| ReplicationAdapter | ⏳ Spezifiziert | Automerge (Phase 3) |
+| ReplicationAdapter | ✅ Implementiert | AutomergeReplicationAdapter (Encrypted CRDT Spaces) |
 | AuthorizationAdapter | ⏳ Spezifiziert | UCAN-like (Phase 3+) |
 
 ### Empfohlener Stack
@@ -691,7 +691,7 @@ Browser-nativer WebSocket Client:
 ✓ resetAll for test isolation
 ```
 
-**Gesamt: 132 Tests** (106 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
+**Gesamt Week 4: 132 Tests** (106 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
 
 ### Packages (neu)
 
@@ -1018,6 +1018,135 @@ packages/wot-core/tests/GroupKeyService.test.ts
 
 ---
 
+## Week 5+: AutomergeReplicationAdapter (2026-02-11) ✅
+
+### Übersicht
+
+Phase 3 abgeschlossen: **AutomergeReplicationAdapter** — der CRDT-Motor für verschlüsselte Group Spaces. Kombiniert Automerge (CRDT), EncryptedSyncService (AES-256-GCM), GroupKeyService (Key-Generationen) und MessagingAdapter (Transport).
+
+### Architektur-Entscheidung: Automerge als External
+
+Automerge wird als `external` in `rollupOptions` markiert (nicht gebundelt). Da wot-core ein Library-Package ist, installieren Consumer (z.B. die Demo-App) Automerge selbst. Das vermeidet WASM-Bundling-Probleme.
+
+### Implementiert
+
+#### ReplicationAdapter Interface (`packages/wot-core/src/adapters/interfaces/ReplicationAdapter.ts`)
+
+Zwei Interfaces für CRDT-Spaces:
+
+- ✅ **SpaceHandle\<T\>** — Typed access auf ein CRDT-Dokument
+  - `getDoc()` — Aktueller Read-Only Snapshot
+  - `transact(fn)` — Änderung → Encrypt → Broadcast an alle Members
+  - `onRemoteUpdate(cb)` — Callback bei Remote-Changes
+  - `close()` — Handle schließen, Subscription aufräumen
+
+- ✅ **ReplicationAdapter** — Space-Management mit verschlüsseltem Transport
+  - `start()` / `stop()` — Lifecycle
+  - `createSpace(type, initialDoc)` — Neuen Automerge-Space erstellen
+  - `openSpace(spaceId)` — SpaceHandle öffnen
+  - `addMember(spaceId, did, encPubKey)` — Member einladen (verschlüsselte Group-Key-Übergabe)
+  - `removeMember(spaceId, did)` — Member entfernen + Key-Rotation
+  - `onMemberChange(cb)` — Membership-Änderungen
+
+#### AutomergeReplicationAdapter (`packages/wot-core/src/adapters/replication/AutomergeReplicationAdapter.ts`)
+
+Vollständige Implementierung (~470 Zeilen):
+
+- ✅ **Space Creation** — `Automerge.from(initialDoc)` + `GroupKeyService.createKey()`
+- ✅ **Transact** — `Automerge.change()` → `getChanges()` → `EncryptedSyncService.encryptChange()` → `messaging.send()` an alle Members
+- ✅ **Space Invite Flow** — Group Key mit ECIES für Empfänger verschlüsselt + verschlüsselter Doc-Snapshot
+- ✅ **Content Receive** — Decrypt → Split Changes (via `changeLengths`) → `Automerge.applyChanges()` → Notify Handles
+- ✅ **Key Rotation** — Bei `removeMember()`: Neuer Key, alte Keys bleiben für historische Nachrichten
+- ✅ **Forward Secrecy** — Entfernte Members können neue Changes nicht entschlüsseln
+- ✅ **3 Message-Typen** — `space-invite`, `content`, `group-key-rotation`
+
+**Data Flow:**
+
+```
+Alice.transact(fn)
+  → Automerge.change(doc, fn)
+  → Automerge.getChanges(before, after)
+  → EncryptedSyncService.encryptChange(changes, groupKey)
+  → messaging.send({ type: 'content', payload: encrypted })
+  → Bob.handleContentMessage()
+    → EncryptedSyncService.decryptChange(encrypted, groupKey)
+    → Automerge.applyChanges(doc, changes)
+    → handle._notifyRemoteUpdate()
+```
+
+#### Space Types (`packages/wot-core/src/types/space.ts`)
+
+```typescript
+type ReplicationState = 'idle' | 'syncing' | 'error'
+
+interface SpaceInfo {
+  id: string
+  type: 'personal' | 'shared'
+  members: string[] // DIDs
+  createdAt: string
+}
+
+interface SpaceMemberChange {
+  spaceId: string
+  did: string
+  action: 'added' | 'removed'
+}
+```
+
+### Tests Week 5+
+
+**16 neue Tests:**
+
+#### AutomergeReplication Tests (16 Tests)
+```
+packages/wot-core/tests/AutomergeReplication.test.ts
+
+Space Lifecycle:
+✓ Create space with Automerge doc
+✓ List spaces
+✓ Get space by ID
+✓ Return null for unknown space
+
+SpaceHandle:
+✓ Open space and get handle
+✓ Transact: change doc locally
+✓ Transact sends encrypted changes via messaging
+
+Space Invite + Sync:
+✓ AddMember sends space-invite message
+✓ Invited user can join space after invite
+✓ Sync changes Alice → Bob
+✓ Bidirectional sync (Alice ↔ Bob)
+
+Key Rotation:
+✓ RemoveMember rotates key (generation increments)
+✓ Forward secrecy: removed member cannot decrypt new changes
+
+Callbacks:
+✓ onRemoteUpdate callback fires on received changes
+
+Adapter State:
+✓ Adapter state management (start/stop)
+✓ onMemberChange callback fires
+```
+
+**Gesamt: 182 Tests** (156 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
+
+### Dependencies
+
+```json
+// packages/wot-core/package.json
+{
+  "@automerge/automerge": "^3.2.3"  // NEU — als external in rollupOptions
+}
+```
+
+### Commits
+
+24. **feat: Add AutomergeReplicationAdapter with encrypted CRDT spaces** — 16 Tests, ReplicationAdapter Interface, SpaceHandle, Space Invite, Key Rotation
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -1074,20 +1203,17 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte
 
-### Priorität 1: AutomergeReplicationAdapter ⬅️ NÄCHSTER SCHRITT
+### Priorität 1: Demo App — Spaces UI ⬅️ NÄCHSTER SCHRITT
 
-- **AutomergeReplicationAdapter** — CRDT Spaces mit verschlüsseltem Transport
-  - Space erstellen (Automerge Doc)
-  - Transact: Change → Encrypt → Send to Members
-  - Receive: Decrypt → Apply Changes → Callback
-  - Space Invite (verschlüsselte Group-Key-Übergabe)
-  - Key Rotation bei Member-Entfernung
-- **Dependencies:** `@automerge/automerge`
+- **Spaces-Seite in Demo App** — AutomergeReplicationAdapter in AdapterContext einbinden
+  - Space erstellen, Members einladen, geteilte Daten bearbeiten
+  - Verschlüsselte Sync-Funktionalität live testen
+  - useSpaces Hook für React-Integration
 
-### Priorität 2: Polish + Deployment
+### Priorität 2: Polish + UX
 
-- **Relay Deployment** — Docker + öffentliche URL für Remote-Testing
 - **Profil-Name im Verification-Handshake** — `useVerification` sendet echten Namen statt hardcoded `'User'`
+- **Spaces-Persistenz** — Automerge Docs in IndexedDB persistieren (aktuell nur in-memory)
 
 ### Priorität 3: RLS Integration & Module
 
@@ -1226,6 +1352,7 @@ packages/wot-core/src/
 │   │   ├── StorageAdapter.ts
 │   │   ├── CryptoAdapter.ts        # + Symmetric + EncryptedPayload Type
 │   │   ├── MessagingAdapter.ts     # Cross-User Messaging
+│   │   ├── ReplicationAdapter.ts   # CRDT Spaces + SpaceHandle<T>
 │   │   └── index.ts
 │   ├── crypto/
 │   │   ├── WebCryptoAdapter.ts     # + AES-256-GCM symmetric encryption
@@ -1233,6 +1360,9 @@ packages/wot-core/src/
 │   ├── messaging/
 │   │   ├── InMemoryMessagingAdapter.ts  # Shared-Bus für Tests
 │   │   ├── WebSocketMessagingAdapter.ts # Browser WebSocket Client
+│   │   └── index.ts
+│   ├── replication/
+│   │   ├── AutomergeReplicationAdapter.ts  # Automerge + E2EE + GroupKeys
 │   │   └── index.ts
 │   ├── storage/
 │   │   ├── LocalStorageAdapter.ts
@@ -1251,6 +1381,7 @@ packages/wot-core/src/
 │   ├── proof.ts
 │   ├── messaging.ts                # MessageEnvelope, DeliveryReceipt, + 'profile-update'
 │   ├── resource-ref.ts             # ResourceRef branded type
+│   ├── space.ts                    # SpaceInfo, SpaceMemberChange, ReplicationState
 │   └── index.ts
 └── index.ts
 ```
@@ -1354,6 +1485,7 @@ packages/wot-core/tests/
 ├── AsymmetricCrypto.test.ts         # 16 Tests  NEU (Week 5)
 ├── EncryptedSyncService.test.ts     # 8 Tests   NEU (Week 5)
 ├── GroupKeyService.test.ts          # 10 Tests  NEU (Week 5)
+├── AutomergeReplication.test.ts     # 16 Tests  NEU (Week 5+)
 └── setup.ts                         # fake-indexeddb setup
 
 packages/wot-profiles/tests/
@@ -1396,8 +1528,9 @@ packages/wot-relay/tests/
 - ~~Asymmetrische Encryption~~ ✅ (Week 5) — X25519 ECIES, separater HKDF-Pfad
 - ~~EncryptedSyncService + GroupKeyService~~ ✅ (Week 5) — Encrypt-then-sync Foundations
 - ~~wot-profiles Deployment~~ ✅ (Week 5) — Docker, profiles.utopia-lab.org
-- **AutomergeReplicationAdapter** — CRDT Spaces mit verschlüsseltem Transport (nächster Schritt)
-- **Relay Deployment** — Docker + öffentliche URL für Remote-Testing
+- ~~AutomergeReplicationAdapter~~ ✅ (Week 5+) — CRDT Spaces mit verschlüsseltem Transport, 16 Tests
+- ~~Relay Deployment~~ ✅ — Live unter `wss://relay.utopia-lab.org`
+- **Spaces UI in Demo App** — AutomergeReplicationAdapter testbar machen (nächster Schritt)
 - **Evolu Sync** - Transports konfigurieren für Multi-Tab/Device Sync
 - **Social Recovery (Shamir)** - Seed-Backup über verifizierte Kontakte
 
