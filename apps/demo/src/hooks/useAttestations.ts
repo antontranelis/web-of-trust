@@ -1,13 +1,18 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import { useAdapters, useIdentity } from '../context'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useAdapters, useIdentity, usePendingVerification } from '../context'
 import { useSubscribable } from './useSubscribable'
 import { useMessaging } from './useMessaging'
+import { useContacts } from './useContacts'
 import type { Attestation } from '@real-life/wot-core'
 
 export function useAttestations() {
   const { attestationService, reactiveStorage } = useAdapters()
   const { identity: wotIdentity, did } = useIdentity()
   const { onMessage } = useMessaging()
+  const { triggerConfetti } = usePendingVerification()
+  const { activeContacts } = useContacts()
+  const activeContactsRef = useRef(activeContacts)
+  activeContactsRef.current = activeContacts
 
   const attestationsSubscribable = useMemo(() => reactiveStorage.watchReceivedAttestations(), [reactiveStorage])
   const attestations = useSubscribable(attestationsSubscribable)
@@ -21,14 +26,17 @@ export function useAttestations() {
         // Verify and save (importAttestation handles dedup + signature check)
         const encoded = btoa(JSON.stringify(attestation))
         await attestationService.importAttestation(encoded)
-        console.log('Attestation received via relay:', attestation.id)
+
+        const contact = activeContactsRef.current.find(c => c.did === attestation.from)
+        const name = contact?.name || 'Kontakt'
+        triggerConfetti(`Neue Attestation von ${name}: "${attestation.claim}"`)
       } catch (error) {
         // Duplicate or invalid — silently ignore
         console.debug('Incoming attestation skipped:', error)
       }
     })
     return unsubscribe
-  }, [onMessage, attestationService])
+  }, [onMessage, attestationService, triggerConfetti])
 
   const createAttestation = useCallback(
     async (toDid: string, claim: string, tags?: string[]) => {

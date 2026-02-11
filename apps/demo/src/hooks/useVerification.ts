@@ -6,6 +6,7 @@ import { useIdentity } from '../context'
 import { usePendingVerification } from '../context'
 import { useContacts } from './useContacts'
 import { useMessaging } from './useMessaging'
+import { useProfileSync } from './useProfileSync'
 import type { VerificationPayload } from '../types/verification-messages'
 
 type VerificationStep =
@@ -34,6 +35,7 @@ export function useVerification() {
   const { addContact, activeContacts } = useContacts()
   const { send, onMessage, isConnected } = useMessaging()
   const { pending, setPending, setChallengeNonce, triggerConfetti } = usePendingVerification()
+  const { syncContactProfile } = useProfileSync()
 
   const getProfileName = useCallback(async () => {
     const id = await storage.getIdentity()
@@ -53,6 +55,8 @@ export function useVerification() {
   const challengeNonceRef = useRef<string | null>(null)
   const activeContactsRef = useRef(activeContacts)
   activeContactsRef.current = activeContacts
+  const peerNameRef = useRef(peerName)
+  peerNameRef.current = peerName
 
   // Pending data for confirmation steps
   const pendingChallengeCodeRef = useRef<string | null>(null)
@@ -121,7 +125,8 @@ export function useVerification() {
           if (!isValid) return
 
           await verificationService.saveVerification(verification)
-          triggerConfetti()
+          const name = peerNameRef.current || 'Kontakt'
+          triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
           setStep('done')
         } catch {
           // Ignore invalid complete messages
@@ -215,6 +220,7 @@ export function useVerification() {
           decodedChallenge.fromName,
           'active'
         )
+        syncContactProfile(decodedChallenge.fromDid)
 
         // Send response via relay if connected
         if (isConnected) {
@@ -249,7 +255,7 @@ export function useVerification() {
         throw err
       }
     },
-    [identity, addContact, getProfileName, isConnected, send, did]
+    [identity, addContact, getProfileName, isConnected, send, did, syncContactProfile]
   )
 
   // Alice confirms Bob's profile and completes verification (relay flow)
@@ -277,6 +283,7 @@ export function useVerification() {
 
         await verificationService.saveVerification(verification)
         await addContact(decoded.toDid, decoded.toPublicKey, decoded.toName, 'active')
+        syncContactProfile(decoded.toDid)
 
         // Send verification-complete back to Bob
         const completePayload: VerificationPayload = {
@@ -300,14 +307,15 @@ export function useVerification() {
 
         pendingResponseCodeRef.current = null
         pendingDecodedRef.current = null
-        triggerConfetti()
+        const name = decoded.toName || 'Kontakt'
+        triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
         setStep('done')
       } catch (e) {
         setError(e instanceof Error ? e : new Error('Failed to complete verification'))
         setStep('error')
       }
     },
-    [identity, did, verificationService, addContact, send, triggerConfetti]
+    [identity, did, verificationService, addContact, send, triggerConfetti, syncContactProfile]
   )
 
   // Manual complete (fallback when relay is offline)
@@ -340,6 +348,7 @@ export function useVerification() {
           decodedResponse.toName,
           'active'
         )
+        syncContactProfile(decodedResponse.toDid)
 
         setStep('done')
         return verification
@@ -350,7 +359,7 @@ export function useVerification() {
         throw err
       }
     },
-    [identity, verificationService, addContact, challenge]
+    [identity, verificationService, addContact, challenge, syncContactProfile]
   )
 
   const reset = useCallback(() => {

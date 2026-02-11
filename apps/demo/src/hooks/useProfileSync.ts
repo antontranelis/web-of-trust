@@ -168,5 +168,30 @@ export function useProfileSync() {
     return unsubscribe
   }, [messaging, storage, fetchContactProfile])
 
-  return { uploadProfile, fetchContactProfile }
+  /**
+   * Fetch and store a contact's profile (avatar, bio, name) right after adding them.
+   */
+  const syncContactProfile = useCallback(async (contactDid: string) => {
+    fetchedRef.current.add(contactDid)
+    const profile = await fetchContactProfile(contactDid)
+    if (!profile?.name) return
+
+    const contact = (await storage.getContacts()).find(c => c.did === contactDid)
+    if (!contact) return
+
+    const needsUpdate =
+      profile.name !== contact.name ||
+      profile.avatar !== contact.avatar ||
+      profile.bio !== contact.bio
+    if (needsUpdate) {
+      await storage.updateContact({
+        ...contact,
+        name: profile.name,
+        ...(profile.avatar ? { avatar: profile.avatar } : {}),
+        ...(profile.bio ? { bio: profile.bio } : {}),
+      })
+    }
+  }, [fetchContactProfile, storage])
+
+  return { uploadProfile, fetchContactProfile, syncContactProfile }
 }
