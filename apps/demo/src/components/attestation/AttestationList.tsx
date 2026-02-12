@@ -1,13 +1,37 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Award } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAttestations, useContacts } from '../../hooks'
-import { useIdentity } from '../../context'
+import { useAttestations, useContacts, useProfileSync } from '../../hooks'
+import { useIdentity, useAdapters } from '../../context'
 import { AttestationCard } from './AttestationCard'
 
 export function AttestationList() {
-  const { myAttestations, receivedAttestations, isLoading } = useAttestations()
+  const { myAttestations, receivedAttestations, isLoading, setAttestationAccepted } = useAttestations()
   const { contacts } = useContacts()
   const { did: myDid } = useIdentity()
+  const { storage } = useAdapters()
+  const { uploadVerificationsAndAttestations } = useProfileSync()
+  const [publicMap, setPublicMap] = useState<Record<string, boolean>>({})
+
+  // Load metadata for all received attestations
+  useEffect(() => {
+    async function loadMetadata() {
+      const map: Record<string, boolean> = {}
+      for (const att of receivedAttestations) {
+        const meta = await storage.getAttestationMetadata(att.id)
+        map[att.id] = meta?.accepted ?? false
+      }
+      setPublicMap(map)
+    }
+    loadMetadata()
+  }, [receivedAttestations, storage])
+
+  const handleTogglePublic = useCallback(async (attestationId: string, publish: boolean) => {
+    await setAttestationAccepted(attestationId, publish)
+    setPublicMap(prev => ({ ...prev, [attestationId]: publish }))
+    // Re-upload to profile service so public profile reflects the change
+    uploadVerificationsAndAttestations()
+  }, [setAttestationAccepted, uploadVerificationsAndAttestations])
 
   const getContactName = (did: string) => {
     if (myDid === did) return 'Ich'
@@ -70,6 +94,9 @@ export function AttestationList() {
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
             Über mich ({receivedAttestations.length})
           </h2>
+          <p className="text-xs text-slate-400 mb-3">
+            Veröffentlichte Attestationen erscheinen auf deinem öffentlichen Profil.
+          </p>
           <div className="space-y-2">
             {receivedAttestations.map((attestation) => (
               <AttestationCard
@@ -77,6 +104,8 @@ export function AttestationList() {
                 attestation={attestation}
                 fromName={getContactName(attestation.from)}
                 toName={getContactName(attestation.to)}
+                isPublic={publicMap[attestation.id] ?? false}
+                onTogglePublic={handleTogglePublic}
               />
             ))}
           </div>

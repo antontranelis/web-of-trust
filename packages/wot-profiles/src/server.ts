@@ -45,7 +45,7 @@ export class ProfileServer {
     }
 
     const url = new URL(req.url ?? '/', `http://localhost:${this.options.port}`)
-    const match = url.pathname.match(/^\/p\/(.+)$/)
+    const match = url.pathname.match(/^\/p\/([^/]+)(\/[va])?$/)
 
     if (!match) {
       res.writeHead(404)
@@ -54,19 +54,28 @@ export class ProfileServer {
     }
 
     const did = decodeURIComponent(match[1])
+    const subResource = match[2] as '/v' | '/a' | undefined
 
     if (req.method === 'GET') {
-      await this.handleGet(did, res)
+      await this.handleGet(did, subResource, res)
     } else if (req.method === 'PUT') {
-      await this.handlePut(did, req, res)
+      await this.handlePut(did, subResource, req, res)
     } else {
       res.writeHead(405)
       res.end('Method Not Allowed')
     }
   }
 
-  private async handleGet(did: string, res: ServerResponse): Promise<void> {
-    const stored = this.store.get(did)
+  private async handleGet(did: string, subResource: '/v' | '/a' | undefined, res: ServerResponse): Promise<void> {
+    let stored
+    if (subResource === '/v') {
+      stored = this.store.getVerifications(did)
+    } else if (subResource === '/a') {
+      stored = this.store.getAttestations(did)
+    } else {
+      stored = this.store.get(did)
+    }
+
     if (!stored) {
       res.writeHead(404)
       res.end('Not Found')
@@ -79,6 +88,7 @@ export class ProfileServer {
 
   private async handlePut(
     did: string,
+    subResource: '/v' | '/a' | undefined,
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
@@ -113,8 +123,15 @@ export class ProfileServer {
       return
     }
 
-    // Store
-    this.store.put(did, body)
+    // Store in the appropriate table
+    if (subResource === '/v') {
+      this.store.putVerifications(did, body)
+    } else if (subResource === '/a') {
+      this.store.putAttestations(did, body)
+    } else {
+      this.store.put(did, body)
+    }
+
     res.writeHead(200)
     res.end('OK')
   }

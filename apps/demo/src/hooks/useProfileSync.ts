@@ -1,23 +1,22 @@
 import { useEffect, useCallback, useRef } from 'react'
-import { ProfileService, type PublicProfile, type MessageEnvelope } from '@real-life/wot-core'
+import { type PublicProfile, type MessageEnvelope } from '@real-life/wot-core'
 import { useAdapters } from '../context'
 import { useIdentity } from '../context'
 
-const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
-
 /**
- * Hook for syncing profiles with the profile service.
+ * Hook for syncing profiles via the DiscoveryAdapter.
  *
- * - Uploads the local profile when it changes
+ * - Publishes the local profile, verifications, and attestations
  * - Fetches contact profiles and updates display names
  */
 export function useProfileSync() {
-  const { storage, messaging } = useAdapters()
+  const { storage, messaging, reactiveStorage, discovery } = useAdapters()
   const { identity } = useIdentity()
   const fetchedRef = useRef(new Set<string>())
+  const vaUploadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   /**
-   * Upload the current user's profile to the profile service.
+   * Upload the current user's profile via DiscoveryAdapter.
    * Called after profile changes in Identity page.
    */
   const uploadProfile = useCallback(async () => {
@@ -36,21 +35,7 @@ export function useProfileSync() {
         updatedAt: new Date().toISOString(),
       }
 
-      const jws = await ProfileService.signProfile(profile, identity)
-
-      const res = await fetch(
-        `${PROFILE_SERVICE_URL}/p/${encodeURIComponent(did)}`,
-        {
-          method: 'PUT',
-          body: jws,
-          headers: { 'Content-Type': 'text/plain' },
-        },
-      )
-
-      if (!res.ok) {
-        console.warn('Profile upload failed:', res.status, await res.text())
-        return
-      }
+      await discovery.publishProfile(profile, identity)
 
       // Notify all contacts about the profile update via relay
       const contacts = await storage.getContacts()
@@ -73,27 +58,14 @@ export function useProfileSync() {
     } catch (error) {
       console.warn('Profile upload failed:', error)
     }
-  }, [identity, storage, messaging])
+  }, [identity, storage, messaging, discovery])
 
   /**
-   * Fetch a contact's profile from the profile service.
+   * Fetch a contact's profile via DiscoveryAdapter.
    */
   const fetchContactProfile = useCallback(async (contactDid: string) => {
-    try {
-      const res = await fetch(
-        `${PROFILE_SERVICE_URL}/p/${encodeURIComponent(contactDid)}`,
-      )
-      if (!res.ok) return null
-
-      const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      if (!result.valid || !result.profile) return null
-
-      return result.profile
-    } catch {
-      return null
-    }
-  }, [])
+    return discovery.resolveProfile(contactDid)
+  }, [discovery])
 
   /**
    * Upload profile once after onboarding (first mount after identity creation).
@@ -169,6 +141,85 @@ export function useProfileSync() {
   }, [messaging, storage, fetchContactProfile])
 
   /**
+   * Upload verifications and accepted attestations via DiscoveryAdapter.
+   */
+  const uploadVerificationsAndAttestations = useCallback(async () => {
+    if (!identity) return
+
+    const did = identity.getDid()
+
+    try {
+      // Upload verifications
+      const verifications = await storage.getReceivedVerifications()
+      if (verifications.length > 0) {
+        await discovery.publishVerifications(
+          { did, verifications, updatedAt: new Date().toISOString() },
+          identity,
+        )
+      }
+
+      // Upload accepted attestations only
+      const allAttestations = await storage.getReceivedAttestations()
+      const accepted = []
+      for (const att of allAttestations) {
+        const meta = await storage.getAttestationMetadata(att.id)
+        if (meta?.accepted) accepted.push(att)
+      }
+      if (accepted.length > 0) {
+        await discovery.publishAttestations(
+          { did, attestations: accepted, updatedAt: new Date().toISOString() },
+          identity,
+        )
+      }
+    } catch (error) {
+      console.warn('Verifications/attestations upload failed:', error)
+    }
+  }, [identity, storage, discovery])
+
+  /**
+   * Upload verifications + attestations on mount.
+   * Unlike profile (which only uploads once), this runs every mount
+   * because accepted attestations may have changed.
+   */
+  useEffect(() => {
+    if (!identity) return
+    uploadVerificationsAndAttestations()
+  }, [identity, uploadVerificationsAndAttestations])
+
+  /**
+   * Re-upload when verifications or attestations change (debounced).
+   */
+  useEffect(() => {
+    const debouncedUpload = () => {
+      if (vaUploadTimerRef.current) clearTimeout(vaUploadTimerRef.current)
+      vaUploadTimerRef.current = setTimeout(() => {
+        uploadVerificationsAndAttestations()
+      }, 2000)
+    }
+
+    const vSub = reactiveStorage.watchReceivedVerifications()
+    const aSub = reactiveStorage.watchReceivedAttestations()
+
+    let vSkipFirst = true
+    let aSkipFirst = true
+
+    const unsubV = vSub.subscribe(() => {
+      if (vSkipFirst) { vSkipFirst = false; return }
+      debouncedUpload()
+    })
+    const unsubA = aSub.subscribe(() => {
+      if (aSkipFirst) { aSkipFirst = false; return }
+      debouncedUpload()
+    })
+
+    return () => {
+      unsubV()
+      unsubA()
+      if (vaUploadTimerRef.current) clearTimeout(vaUploadTimerRef.current)
+    }
+  }, [reactiveStorage, uploadVerificationsAndAttestations])
+
+  /**
    * Fetch and store a contact's profile (avatar, bio, name) right after adding them.
    */
   const syncContactProfile = useCallback(async (contactDid: string) => {
@@ -193,5 +244,5 @@ export function useProfileSync() {
     }
   }, [fetchContactProfile, storage])
 
-  return { uploadProfile, fetchContactProfile, syncContactProfile }
+  return { uploadProfile, fetchContactProfile, syncContactProfile, uploadVerificationsAndAttestations }
 }

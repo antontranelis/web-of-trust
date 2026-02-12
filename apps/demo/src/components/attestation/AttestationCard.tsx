@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Award, User, Calendar, Copy, Check } from 'lucide-react'
+import { Award, User, Calendar, Copy, Check, Globe, GlobeLock } from 'lucide-react'
 import type { Attestation } from '@real-life/wot-core'
 
 interface AttestationCardProps {
@@ -8,6 +8,8 @@ interface AttestationCardProps {
   toName?: string | undefined
   showFrom?: boolean | undefined
   showExport?: boolean | undefined
+  isPublic?: boolean | undefined
+  onTogglePublic?: (attestationId: string, publish: boolean) => void
 }
 
 export function AttestationCard({
@@ -16,6 +18,8 @@ export function AttestationCard({
   toName,
   showFrom = true,
   showExport = false,
+  isPublic,
+  onTogglePublic,
 }: AttestationCardProps) {
   const [copied, setCopied] = useState(false)
   const shortFromDid = attestation.from.slice(0, 20) + '...'
@@ -69,15 +73,31 @@ export function AttestationCard({
           </div>
         </div>
 
-        {showExport && (
-          <button
-            onClick={handleExport}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            title="Attestation exportieren"
-          >
-            {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
-          </button>
-        )}
+        <div className="flex gap-1">
+          {onTogglePublic && (
+            <button
+              onClick={() => onTogglePublic(attestation.id, !isPublic)}
+              className={`p-2 rounded-lg transition-colors ${
+                isPublic
+                  ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+              }`}
+              title={isPublic ? 'Öffentlich — klicken zum Verbergen' : 'Privat — klicken zum Veröffentlichen'}
+            >
+              {isPublic ? <Globe size={18} /> : <GlobeLock size={18} />}
+            </button>
+          )}
+
+          {showExport && (
+            <button
+              onClick={handleExport}
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              title="Attestation exportieren"
+            >
+              {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

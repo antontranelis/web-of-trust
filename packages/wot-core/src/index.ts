@@ -57,6 +57,11 @@ export type {
 export type { Subscribable } from './adapters/interfaces/Subscribable'
 export type { ReactiveStorageAdapter } from './adapters/interfaces/ReactiveStorageAdapter'
 export type { MessagingAdapter } from './adapters/interfaces/MessagingAdapter'
+export type {
+  DiscoveryAdapter,
+  PublicVerificationsData,
+  PublicAttestationsData,
+} from './adapters/interfaces/DiscoveryAdapter'
 export type { ReplicationAdapter, SpaceHandle } from './adapters/interfaces/ReplicationAdapter'
 
 // Crypto Utilities
@@ -97,3 +102,4 @@ export { LocalStorageAdapter } from './adapters/storage/LocalStorageAdapter'
 export { InMemoryMessagingAdapter } from './adapters/messaging/InMemoryMessagingAdapter'
 export { WebSocketMessagingAdapter } from './adapters/messaging/WebSocketMessagingAdapter'
 export { AutomergeReplicationAdapter } from './adapters/replication/AutomergeReplicationAdapter'
+export { HttpDiscoveryAdapter } from './adapters/discovery/HttpDiscoveryAdapter'

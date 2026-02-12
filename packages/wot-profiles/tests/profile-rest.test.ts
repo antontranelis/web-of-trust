@@ -103,6 +103,126 @@ describe('Profile REST API', () => {
     })
   })
 
+  describe('PUT /p/{did}/v (verifications)', () => {
+    it('should accept valid JWS and return 200', async () => {
+      const payload = {
+        did,
+        verifications: [
+          { id: 'v1', from: 'did:key:z6MkAlice', to: did, timestamp: new Date().toISOString() }
+        ],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/v`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+      expect(res.status).toBe(200)
+    })
+
+    it('should reject mismatched DID with 403', async () => {
+      const payload = {
+        did,
+        verifications: [],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent('did:key:z6MkOther')}/v`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+      expect(res.status).toBe(403)
+    })
+  })
+
+  describe('GET /p/{did}/v (verifications)', () => {
+    it('should return stored JWS', async () => {
+      const payload = {
+        did,
+        verifications: [{ id: 'v2', from: 'did:key:z6MkBob', to: did }],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/v`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/v`)
+      expect(res.status).toBe(200)
+      const body = await res.text()
+      expect(body).toBe(jws)
+    })
+
+    it('should return 404 for unknown DID', async () => {
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent('did:key:z6MkNobody')}/v`)
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('PUT /p/{did}/a (attestations)', () => {
+    it('should accept valid JWS and return 200', async () => {
+      const payload = {
+        did,
+        attestations: [
+          { id: 'a1', from: 'did:key:z6MkAlice', to: did, claim: 'Kann gut kochen' }
+        ],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/a`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+      expect(res.status).toBe(200)
+    })
+
+    it('should reject mismatched DID with 403', async () => {
+      const payload = {
+        did,
+        attestations: [],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent('did:key:z6MkOther')}/a`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+      expect(res.status).toBe(403)
+    })
+  })
+
+  describe('GET /p/{did}/a (attestations)', () => {
+    it('should return stored JWS', async () => {
+      const payload = {
+        did,
+        attestations: [{ id: 'a2', from: 'did:key:z6MkBob', to: did, claim: 'Hilfsbereit' }],
+        updatedAt: new Date().toISOString(),
+      }
+      const jws = await identity.signJws(payload)
+      await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/a`, {
+        method: 'PUT',
+        body: jws,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}/a`)
+      expect(res.status).toBe(200)
+      const body = await res.text()
+      expect(body).toBe(jws)
+    })
+
+    it('should return 404 for unknown DID', async () => {
+      const res = await fetch(`${BASE_URL}/p/${encodeURIComponent('did:key:z6MkNobody')}/a`)
+      expect(res.status).toBe(404)
+    })
+  })
+
   describe('CORS', () => {
     it('should include Access-Control-Allow-Origin header', async () => {
       const res = await fetch(`${BASE_URL}/p/${encodeURIComponent(did)}`)

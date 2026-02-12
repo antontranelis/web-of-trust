@@ -148,7 +148,46 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
   )
 }
 
+/**
+ * Standalone wrapper for /p/:did when not logged in.
+ */
+function PublicProfileStandalone() {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <PublicProfile />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Top-level router: /p/:did is public (no login required).
+ * All other routes go through RequireIdentity.
+ * When logged in, /p/:did renders inside AppShell with navigation.
+ */
 function AppRoutes() {
+  const { identity } = useIdentity()
+
+  // Not logged in: only /p/:did is accessible
+  if (!identity) {
+    return (
+      <Routes>
+        <Route path="/p/:did" element={<PublicProfileStandalone />} />
+        <Route path="*" element={
+          <RequireIdentity>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </RequireIdentity>
+        } />
+      </Routes>
+    )
+  }
+
+  // Logged in: all routes including /p/:did inside AppShell
   return (
     <RequireIdentity>
       <Routes>
@@ -158,7 +197,7 @@ function AppRoutes() {
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/attestations/*" element={<Attestations />} />
-          <Route path="/profile/:did" element={<PublicProfile />} />
+          <Route path="/p/:did" element={<PublicProfile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

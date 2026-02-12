@@ -1,26 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2 } from 'lucide-react'
-import { ProfileService, type PublicProfile as PublicProfileType } from '@real-life/wot-core'
+import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users } from 'lucide-react'
+import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
-import { useContacts } from '../hooks'
+import { useIdentity, useOptionalAdapters } from '../context'
 
 const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
+const fallbackDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
 
 type LoadState = 'loading' | 'loaded' | 'not-found' | 'error'
 
+function shortDidLabel(did: string): string {
+  return did.length > 24
+    ? `${did.slice(0, 12)}...${did.slice(-6)}`
+    : did
+}
+
 export function PublicProfile() {
   const { did } = useParams<{ did: string }>()
-  const { activeContacts, pendingContacts } = useContacts()
+  const { identity, did: myDid } = useIdentity()
+  const isLoggedIn = identity !== null
+  const adapters = useOptionalAdapters()
+  const discovery = useMemo(() => adapters?.discovery ?? fallbackDiscovery, [adapters])
   const [profile, setProfile] = useState<PublicProfileType | null>(null)
+  const [verifications, setVerifications] = useState<Verification[]>([])
+  const [attestations, setAttestations] = useState<Attestation[]>([])
   const [state, setState] = useState<LoadState>('loading')
   const [copiedDid, setCopiedDid] = useState(false)
+  const [isContact, setIsContact] = useState(false)
 
   const decodedDid = did ? decodeURIComponent(did) : ''
+  const isMyProfile = myDid === decodedDid
 
-  // Check if this DID is already a contact
-  const allContacts = [...activeContacts, ...pendingContacts]
-  const existingContact = allContacts.find((c) => c.did === decodedDid)
+  // Check local contacts (only when logged in / AdapterProvider available)
+  useEffect(() => {
+    if (!adapters || !decodedDid) return
+    adapters.storage.getContacts().then(contacts => {
+      setIsContact(contacts.some(c => c.did === decodedDid))
+    })
+  }, [adapters, decodedDid])
 
   useEffect(() => {
     if (!decodedDid) {
@@ -28,36 +46,32 @@ export function PublicProfile() {
       return
     }
 
-    async function fetchProfile() {
+    async function fetchAll() {
       setState('loading')
       try {
-        const res = await fetch(
-          `${PROFILE_SERVICE_URL}/p/${encodeURIComponent(decodedDid)}`,
-        )
-        if (res.status === 404) {
+        // Fetch profile, verifications, and attestations in parallel via DiscoveryAdapter
+        const [profileData, vData, aData] = await Promise.all([
+          discovery.resolveProfile(decodedDid),
+          discovery.resolveVerifications(decodedDid),
+          discovery.resolveAttestations(decodedDid),
+        ])
+
+        if (!profileData) {
           setState('not-found')
           return
         }
-        if (!res.ok) {
-          setState('error')
-          return
-        }
 
-        const jws = await res.text()
-        const result = await ProfileService.verifyProfile(jws)
-        if (result.valid && result.profile) {
-          setProfile(result.profile)
-          setState('loaded')
-        } else {
-          setState('error')
-        }
+        setProfile(profileData)
+        setVerifications(vData)
+        setAttestations(aData)
+        setState('loaded')
       } catch {
         setState('error')
       }
     }
 
-    fetchProfile()
-  }, [decodedDid])
+    fetchAll()
+  }, [decodedDid, discovery])
 
   const handleCopyDid = async () => {
     await navigator.clipboard.writeText(decodedDid)
@@ -155,33 +169,78 @@ export function PublicProfile() {
         </div>
       </div>
 
-      {/* Contact status */}
-      {existingContact ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      {/* Verifications */}
+      {verifications.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={16} className="text-blue-600" />
+            <h3 className="text-sm font-medium text-slate-900">
+              Verifiziert von {verifications.length} Person{verifications.length !== 1 ? 'en' : ''}
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {verifications.map((v) => (
+              <div key={v.id} className="flex items-center justify-between text-sm">
+                <span className="text-slate-600 font-mono text-xs">
+                  {shortDidLabel(v.from)}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {new Date(v.timestamp).toLocaleDateString('de-DE')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Attestations */}
+      {attestations.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Award size={16} className="text-amber-600" />
+            <h3 className="text-sm font-medium text-slate-900">
+              {attestations.length} Attestation{attestations.length !== 1 ? 'en' : ''}
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {attestations.map((a) => (
+              <div key={a.id} className="border-l-2 border-amber-200 pl-3">
+                <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  von {shortDidLabel(a.from)} &middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      {!isLoggedIn && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <User size={16} className="text-blue-600" />
-              <span className="text-sm text-blue-800">
-                {existingContact.status === 'active'
-                  ? 'Verifizierter Kontakt'
-                  : 'Ausstehender Kontakt'}
+              <LogIn size={16} className="text-primary-600" />
+              <span className="text-sm text-primary-800">
+                Dem Web of Trust beitreten
               </span>
             </div>
             <Link
-              to="/contacts"
-              className="text-sm text-blue-600 hover:text-blue-800 transition-colors"
+              to="/"
+              className="text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors"
             >
-              Kontakte ansehen
+              Jetzt starten
             </Link>
           </div>
         </div>
-      ) : (
+      )}
+      {isLoggedIn && !isMyProfile && !isContact && (
         <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <UserPlus size={16} className="text-slate-500" />
               <span className="text-sm text-slate-600">
-                Noch kein Kontakt
+                Person verifizieren
               </span>
             </div>
             <Link

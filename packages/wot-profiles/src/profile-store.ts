@@ -19,6 +19,20 @@ export class ProfileStore {
         updated_at TEXT NOT NULL
       )
     `)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS verifications (
+        did TEXT PRIMARY KEY,
+        jws TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS attestations (
+        did TEXT PRIMARY KEY,
+        jws TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `)
   }
 
   put(did: string, jws: string): void {
@@ -35,6 +49,46 @@ export class ProfileStore {
   get(did: string): StoredProfile | null {
     const row = this.db.prepare(
       'SELECT did, jws, updated_at FROM profiles WHERE did = ?'
+    ).get(did) as { did: string; jws: string; updated_at: string } | undefined
+
+    if (!row) return null
+    return { did: row.did, jws: row.jws, updatedAt: row.updated_at }
+  }
+
+  putVerifications(did: string, jws: string): void {
+    const now = new Date().toISOString()
+    this.db.prepare(`
+      INSERT INTO verifications (did, jws, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(did) DO UPDATE SET
+        jws = excluded.jws,
+        updated_at = excluded.updated_at
+    `).run(did, jws, now)
+  }
+
+  getVerifications(did: string): StoredProfile | null {
+    const row = this.db.prepare(
+      'SELECT did, jws, updated_at FROM verifications WHERE did = ?'
+    ).get(did) as { did: string; jws: string; updated_at: string } | undefined
+
+    if (!row) return null
+    return { did: row.did, jws: row.jws, updatedAt: row.updated_at }
+  }
+
+  putAttestations(did: string, jws: string): void {
+    const now = new Date().toISOString()
+    this.db.prepare(`
+      INSERT INTO attestations (did, jws, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(did) DO UPDATE SET
+        jws = excluded.jws,
+        updated_at = excluded.updated_at
+    `).run(did, jws, now)
+  }
+
+  getAttestations(did: string): StoredProfile | null {
+    const row = this.db.prepare(
+      'SELECT did, jws, updated_at FROM attestations WHERE did = ?'
     ).get(did) as { did: string; jws: string; updated_at: string } | undefined
 
     if (!row) return null

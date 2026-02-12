@@ -2,7 +2,7 @@
 
 > Framework-agnostische Architektur des Web of Trust
 >
-> Aktualisiert: 2026-02-08 (v2: 6-Adapter-Architektur)
+> Aktualisiert: 2026-02-11 (v2: 7-Adapter-Architektur)
 
 ## Überblick
 
@@ -11,56 +11,60 @@ Das Web of Trust ist **framework-agnostisch** aufgebaut. Die Kernlogik ist unabh
 ### Schichtenmodell (v2)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     WoT Application                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              WoT Domain Layer                        │   │
-│  │  • Identity, Contact, Verification, Attestation     │   │
-│  │  • Item, Group, AutoGroup                           │   │
-│  │  • Business Logic (Empfänger-Prinzip)               │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                           │                                 │
-│                           ▼                                 │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │           6 Adapter Interfaces                       │   │
-│  │                                                      │   │
-│  │  Bestehend (v1, implementiert):                      │   │
-│  │  • StorageAdapter        (lokale Persistenz)         │   │
-│  │  • ReactiveStorageAdapter (Live Queries)             │   │
-│  │  • CryptoAdapter         (Signing/Encryption/DID)    │   │
-│  │                                                      │   │
-│  │  Neu (v2):                                           │   │
-│  │  • MessagingAdapter      (Cross-User Delivery)       │   │
-│  │  • ReplicationAdapter    (CRDT Sync + Spaces)        │   │
-│  │  • AuthorizationAdapter  (UCAN-like Capabilities)    │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                           │                                 │
-│     ┌─────────┬───────────┼───────────┬─────────┐          │
-│     ▼         ▼           ▼           ▼         ▼          │
-│  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐       │
-│  │Evolu  │ │WebSock│ │Auto-  │ │Matrix │ │Custom │       │
-│  │Storage│ │Relay  │ │merge  │ │Client │ │UCAN   │       │
-│  └───────┘ └───────┘ └───────┘ └───────┘ └───────┘       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      WoT Application                              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │               WoT Domain Layer                            │   │
+│  │  • Identity, Contact, Verification, Attestation          │   │
+│  │  • Item, Group, AutoGroup                                │   │
+│  │  • Business Logic (Empfänger-Prinzip)                    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                            │                                     │
+│                            ▼                                     │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │            7 Adapter Interfaces                           │   │
+│  │                                                           │   │
+│  │  Lokal (v1, implementiert):                               │   │
+│  │  • StorageAdapter        (lokale Persistenz)              │   │
+│  │  • ReactiveStorageAdapter (Live Queries)                  │   │
+│  │  • CryptoAdapter         (Signing/Encryption/DID)         │   │
+│  │                                                           │   │
+│  │  Netzwerk (v2):                                           │   │
+│  │  • DiscoveryAdapter      (Öffentliche Profile/Discovery)  │   │
+│  │  • MessagingAdapter      (Cross-User Delivery)            │   │
+│  │  • ReplicationAdapter    (CRDT Sync + Spaces)             │   │
+│  │                                                           │   │
+│  │  Querschnitt (v2):                                        │   │
+│  │  • AuthorizationAdapter  (UCAN-like Capabilities)         │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                            │                                     │
+│     ┌────────┬─────────┬───┼────┬─────────┬─────────┐           │
+│     ▼        ▼         ▼   ▼    ▼         ▼         ▼           │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐        │
+│  │Evolu │ │wot-  │ │wot-  │ │Auto- │ │Matrix│ │Custom│        │
+│  │Store │ │profi.│ │relay │ │merge │ │Client│ │UCAN  │        │
+│  └──────┘ └──────┘ └──────┘ └──────┘ └──────┘ └──────┘        │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Zwei orthogonale Achsen
+### Drei orthogonale Achsen
 
 ```
-CRDT/Sync-Achse                    Messaging-Achse
-(Zustandskonvergenz)               (Zustellung zwischen DIDs)
+Discovery-Achse                  Messaging-Achse               CRDT/Sync-Achse
+(Öffentliche Sichtbarkeit)       (Zustellung zwischen DIDs)    (Zustandskonvergenz)
 
-"Wie konvergiert der Zustand        "Wie erreicht eine Nachricht
- über Geräte und Nutzer?"            den Empfänger?"
+"Wie finde ich Infos              "Wie erreicht eine Nachricht  "Wie konvergiert der Zustand
+ über eine DID?"                   den Empfänger?"               über Geräte und Nutzer?"
 
-→ ReplicationAdapter                → MessagingAdapter
-→ Evolu (POC) / Automerge (Ziel)   → Custom WS (POC) / Matrix (Ziel)
+→ DiscoveryAdapter               → MessagingAdapter            → ReplicationAdapter
+→ wot-profiles (POC)             → Custom WS (POC)             → Evolu (POC)
+→ Automerge/DHT (Ziel)           → Matrix (Ziel)               → Automerge (Ziel)
 
-Eine Nachricht enthält NICHT den Zustand, sondern nur den Trigger/Pointer.
-Der Zustand lebt im CRDT und konvergiert unabhängig.
+  VOR dem Kontakt                  ZWISCHEN bekannten DIDs        INNERHALB einer Gruppe
+  (öffentlich, anonym)             (privat, E2EE)                 (Group Key, CRDT)
 ```
 
 ## Adapter-Pattern
@@ -211,7 +215,21 @@ Verantwortlich für:
 **Implementierungen:**
 - `WebCryptoAdapter` (noble/ed25519 + Web Crypto API)
 
-### Neu (v2, Interface-Phase)
+### Neu (v2)
+
+#### DiscoveryAdapter
+
+Verantwortlich für:
+
+- Öffentliche Profile publizieren und abrufen
+- Verifikationen und Attestationen öffentlich sichtbar machen
+- DID-basierte Suche (wer ist diese DID?)
+
+**Designprinzip:** Alles signiert (JWS), nichts verschlüsselt. Anonym lesbar, Inhaber kontrolliert Sichtbarkeit.
+
+**Implementierungen:**
+
+- `HttpDiscoveryAdapter` (wot-profiles) — HTTP REST + SQLite, aktiv genutzt
 
 #### MessagingAdapter
 

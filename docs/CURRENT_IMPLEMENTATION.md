@@ -8,7 +8,7 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 ## Letzte Aktualisierung
 
 **Datum:** 2026-02-11
-**Phase:** Week 5+ - AutomergeReplicationAdapter (Phase 3 Complete)
+**Phase:** Week 5++ - DiscoveryAdapter (7-Adapter-Architektur Complete)
 
 ---
 
@@ -539,8 +539,8 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 1. **Evolu-Limitation erkannt** — SharedOwner nicht funktional, kein Cross-User Messaging
 2. **8 Frameworks evaluiert** — Nostr, Matrix, DIDComm, ActivityPub, Iroh, Willow/Earthstar + Updates für DXOS, p2panda
 3. **6 eliminiert** — ActivityPub (kein E2EE), Nostr (secp256k1 ≠ Ed25519), DXOS (P-256 ≠ Ed25519), DIDComm (stale JS-Libs), Iroh (nur Networking-Layer), p2panda (kein JS SDK)
-4. **2-Achsen-Architektur definiert** — CRDT/Sync-Achse + Messaging-Achse
-5. **6-Adapter-Architektur v2** — 3 neue Interfaces (MessagingAdapter, ReplicationAdapter, AuthorizationAdapter)
+4. **3-Achsen-Architektur definiert** — Discovery (öffentlich, pre-contact) → Messaging (1:1, post-contact) → Replication (group, CRDT)
+5. **7-Adapter-Architektur v2** — 4 neue Interfaces (MessagingAdapter, ReplicationAdapter, DiscoveryAdapter, AuthorizationAdapter)
 6. **3 Sharing-Patterns identifiziert** — Group Spaces, Selective Sharing, 1:1 Delivery
 7. **UCAN-ähnliche Capabilities** als cross-cutting Concern erkannt
 
@@ -551,6 +551,7 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 | StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | CryptoAdapter | ✅ Implementiert | WebCryptoAdapter (Ed25519 + AES-256-GCM symmetric) |
+| DiscoveryAdapter | ✅ Implementiert | HttpDiscoveryAdapter (wot-profiles HTTP Service) |
 | MessagingAdapter | ✅ Implementiert | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
 | ReplicationAdapter | ✅ Implementiert | AutomergeReplicationAdapter (Encrypted CRDT Spaces) |
 | AuthorizationAdapter | ⏳ Spezifiziert | UCAN-like (Phase 3+) |
@@ -1130,7 +1131,7 @@ Adapter State:
 ✓ onMemberChange callback fires
 ```
 
-**Gesamt: 182 Tests** (156 wot-core + 11 wot-profiles + 15 wot-relay) — alle passing ✅
+**Gesamt: 190 Tests** (156 wot-core + 19 wot-profiles + 15 wot-relay) — alle passing ✅
 
 ### Dependencies
 
@@ -1144,6 +1145,87 @@ Adapter State:
 ### Commits
 
 24. **feat: Add AutomergeReplicationAdapter with encrypted CRDT spaces** — 16 Tests, ReplicationAdapter Interface, SpaceHandle, Space Invite, Key Rotation
+
+---
+
+## Week 5++: DiscoveryAdapter — 7. Adapter (2026-02-11) ✅
+
+### Übersicht
+
+DiscoveryAdapter als 7. Adapter-Interface formalisiert und implementiert. Beantwortet die Frage "Wer ist diese DID?" — öffentlich, signiert (JWS), nicht verschlüsselt. Bestehende direkte `fetch()`-Aufrufe in der Demo-App wurden durch den Adapter ersetzt.
+
+### Drei Achsen
+
+```
+Discovery (öffentlich, pre-contact)
+  → "Wer ist DID xyz?"
+  → Profile, Verifikationen, Attestationen abrufen
+
+Messaging (1:1, post-contact)
+  → "Sende Nachricht an DID xyz"
+  → Attestationen, Profile-Updates, Space-Invites
+
+Replication (group, CRDT)
+  → "Synchronisiere Daten in Space xyz"
+  → Automerge Changes, verschlüsselt
+```
+
+### Implementiert
+
+#### DiscoveryAdapter Interface (`packages/wot-core/src/adapters/interfaces/DiscoveryAdapter.ts`)
+
+Formales Interface mit 6 Methoden — 3 zum Publizieren (JWS-signiert), 3 zum Abrufen (JWS-verifiziert):
+
+- ✅ **publishProfile(data, identity)** — Eigenes Profil als JWS publizieren
+- ✅ **publishVerifications(data, identity)** — Eigene Verifikationen als JWS publizieren
+- ✅ **publishAttestations(data, identity)** — Akzeptierte Attestationen als JWS publizieren
+- ✅ **resolveProfile(did)** — Profil einer DID abrufen und JWS verifizieren
+- ✅ **resolveVerifications(did)** — Verifikationen einer DID abrufen
+- ✅ **resolveAttestations(did)** — Attestationen einer DID abrufen
+
+Neue Typen:
+
+```typescript
+interface PublicVerificationsData {
+  did: string
+  verifications: Verification[]
+  updatedAt: string
+}
+
+interface PublicAttestationsData {
+  did: string
+  attestations: Attestation[]
+  updatedAt: string
+}
+```
+
+#### HttpDiscoveryAdapter (`packages/wot-core/src/adapters/discovery/HttpDiscoveryAdapter.ts`)
+
+POC-Implementierung gegen wot-profiles HTTP Service:
+
+- ✅ **Publish** — `identity.signJws(data)` → `PUT /p/{did}` (bzw. `/v`, `/a`)
+- ✅ **Resolve** — `GET /p/{did}` → `ProfileService.verifyProfile(jws)` → verifiziertes Profil
+- ✅ **Error Handling** — `null`/`[]` bei 404, throw bei Server-Fehlern
+
+#### Demo-App Refactoring
+
+**AdapterContext** — `HttpDiscoveryAdapter` instanziiert mit `PROFILE_SERVICE_URL`, im Provider bereitgestellt.
+
+**useProfileSync** — Alle direkten `fetch()`-Aufrufe ersetzt:
+- `fetch(PUT /p/{did})` → `discovery.publishProfile(profile, identity)`
+- `fetch(GET /p/{did})` → `discovery.resolveProfile(contactDid)`
+- 2× `fetch(PUT /p/{did}/v|a)` → `discovery.publishVerifications()` + `discovery.publishAttestations()`
+
+**PublicProfile.tsx** — Refactored mit Fallback-Pattern:
+- Eingeloggt: `discovery` aus `useAdapters()`
+- Nicht eingeloggt: Module-level `fallbackDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)`
+- `fetchAll()` vereinfacht zu `Promise.all([discovery.resolveProfile(), resolveVerifications(), resolveAttestations()])`
+
+### Tests Week 5++
+
+Keine neuen Tests nötig — die bestehenden wot-profiles Tests (19) decken die HTTP-Endpunkte ab, und die Demo-App funktioniert wie vorher.
+
+**Gesamt: 190 Tests** (156 wot-core + 19 wot-profiles + 15 wot-relay) — alle passing ✅
 
 ---
 
@@ -1231,6 +1313,7 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - ~~EncryptedSyncService (Encrypt-then-sync)~~ ✅
 - ~~GroupKeyService (Key Generation, Rotation, Generations)~~ ✅
 - ~~wot-profiles Deployment (Docker, profiles.utopia-lab.org)~~ ✅
+- ~~DiscoveryAdapter (7. Adapter, HttpDiscoveryAdapter)~~ ✅
 - **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
@@ -1352,6 +1435,7 @@ packages/wot-core/src/
 │   │   ├── StorageAdapter.ts
 │   │   ├── CryptoAdapter.ts        # + Symmetric + EncryptedPayload Type
 │   │   ├── MessagingAdapter.ts     # Cross-User Messaging
+│   │   ├── DiscoveryAdapter.ts     # Public Profile Discovery (7. Adapter)
 │   │   ├── ReplicationAdapter.ts   # CRDT Spaces + SpaceHandle<T>
 │   │   └── index.ts
 │   ├── crypto/
@@ -1360,6 +1444,9 @@ packages/wot-core/src/
 │   ├── messaging/
 │   │   ├── InMemoryMessagingAdapter.ts  # Shared-Bus für Tests
 │   │   ├── WebSocketMessagingAdapter.ts # Browser WebSocket Client
+│   │   └── index.ts
+│   ├── discovery/
+│   │   ├── HttpDiscoveryAdapter.ts    # HTTP-based Discovery (wot-profiles)
 │   │   └── index.ts
 │   ├── replication/
 │   │   ├── AutomergeReplicationAdapter.ts  # Automerge + E2EE + GroupKeys
@@ -1463,6 +1550,7 @@ apps/demo/src/
 │   ├── Verify.tsx
 │   ├── Contacts.tsx
 │   ├── Attestations.tsx
+│   ├── PublicProfile.tsx           # Öffentliches Profil (auch ohne Login)
 │   └── index.ts
 ├── db.ts                            # Evolu Schema + createWotEvolu()
 ├── App.tsx                          # RequireIdentity + Loading/Unlock
@@ -1490,7 +1578,7 @@ packages/wot-core/tests/
 
 packages/wot-profiles/tests/
 ├── profile-store.test.ts            # 4 Tests
-└── profile-rest.test.ts             # 7 Tests
+└── profile-rest.test.ts             # 15 Tests
 
 packages/wot-relay/tests/
 ├── relay.test.ts                    # 9 Tests
@@ -1530,6 +1618,7 @@ packages/wot-relay/tests/
 - ~~wot-profiles Deployment~~ ✅ (Week 5) — Docker, profiles.utopia-lab.org
 - ~~AutomergeReplicationAdapter~~ ✅ (Week 5+) — CRDT Spaces mit verschlüsseltem Transport, 16 Tests
 - ~~Relay Deployment~~ ✅ — Live unter `wss://relay.utopia-lab.org`
+- ~~DiscoveryAdapter~~ ✅ (Week 5++) — 7. Adapter, HttpDiscoveryAdapter, Demo-App Refactoring
 - **Spaces UI in Demo App** — AutomergeReplicationAdapter testbar machen (nächster Schritt)
 - **Evolu Sync** - Transports konfigurieren für Multi-Tab/Device Sync
 - **Social Recovery (Shamir)** - Seed-Backup über verifizierte Kontakte

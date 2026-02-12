@@ -2,10 +2,12 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import {
   WebCryptoAdapter,
   WebSocketMessagingAdapter,
+  HttpDiscoveryAdapter,
   type StorageAdapter,
   type ReactiveStorageAdapter,
   type CryptoAdapter,
   type MessagingAdapter,
+  type DiscoveryAdapter,
   type MessagingState,
   type WotIdentity,
 } from '@real-life/wot-core'
@@ -18,12 +20,14 @@ import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'wss://relay.utopia-lab.org'
+const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
 
 interface AdapterContextValue {
   storage: StorageAdapter
   reactiveStorage: ReactiveStorageAdapter
   crypto: CryptoAdapter
   messaging: MessagingAdapter
+  discovery: DiscoveryAdapter
   messagingState: MessagingState
   contactService: ContactService
   verificationService: VerificationService
@@ -60,6 +64,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const storage = new EvoluStorageAdapter(evolu)
         const crypto = new WebCryptoAdapter()
         messagingAdapter = new WebSocketMessagingAdapter(RELAY_URL)
+        const discovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
 
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(messagingAdapter)
@@ -80,6 +85,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             reactiveStorage: storage,
             crypto,
             messaging: messagingAdapter,
+            discovery,
             contactService: new ContactService(storage),
             verificationService: new VerificationService(storage),
             attestationService,
@@ -133,4 +139,8 @@ export function useAdapters(): AdapterContextValue {
     throw new Error('useAdapters must be used within an AdapterProvider')
   }
   return context
+}
+
+export function useOptionalAdapters(): AdapterContextValue | null {
+  return useContext(AdapterContext)
 }

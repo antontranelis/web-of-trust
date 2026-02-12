@@ -1,8 +1,9 @@
 # Adapter-Architektur v2
 
-> 6 Adapter-Interfaces für das Web of Trust Ecosystem
+> 7 Adapter-Interfaces für das Web of Trust Ecosystem
 >
-> Erstellt: 2026-02-08 | Basiert auf [Framework-Evaluation v2](framework-evaluation.md)
+> Erstellt: 2026-02-08 | Aktualisiert: 2026-02-11
+> Basiert auf [Framework-Evaluation v2](framework-evaluation.md)
 
 ## Motivation
 
@@ -12,63 +13,95 @@ Diese decken lokale Persistenz und Kryptografie ab, aber nicht:
 - **Cross-User Messaging** — Attestations, Verifications und Items zwischen DIDs zustellen
 - **CRDT Replication** — Gemeinsame Spaces (Kanban, Kalender) mit mehreren Nutzern
 - **Capability-basierte Autorisierung** — Wer darf was lesen/schreiben/delegieren?
+- **Öffentliche Discovery** — Wie finde ich Informationen über eine DID, bevor ich sie kenne?
 
-### Zentrale Erkenntnis: Zwei orthogonale Achsen
+### Zentrale Erkenntnis: Drei orthogonale Achsen
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │         CRDT / Sync                  │
-                    │   (Zustandskonvergenz)               │
-                    │                                      │
-                    │   "Wie konvergiert der Zustand       │
-                    │    über Geräte und Nutzer?"           │
-                    │                                      │
-                    │   → ReplicationAdapter               │
-                    └─────────────────────────────────────┘
-                                    │
-                                    │  orthogonal
-                                    │
-                    ┌─────────────────────────────────────┐
-                    │         Messaging                    │
-                    │   (Zustellung zwischen DIDs)         │
-                    │                                      │
-                    │   "Wie erreicht eine Nachricht       │
-                    │    den Empfänger?"                    │
-                    │                                      │
-                    │   → MessagingAdapter                 │
-                    └─────────────────────────────────────┘
+  ┌─────────────────────────────────────┐
+  │         Discovery                    │
+  │   (Öffentliche Sichtbarkeit)         │
+  │                                      │
+  │   "Wie finde ich Informationen       │
+  │    über eine DID?"                   │
+  │                                      │
+  │   → DiscoveryAdapter                 │
+  └─────────────────────────────────────┘
+                    │
+                    │  orthogonal
+                    │
+  ┌─────────────────────────────────────┐
+  │         Messaging                    │
+  │   (Zustellung zwischen DIDs)         │
+  │                                      │
+  │   "Wie erreicht eine Nachricht       │
+  │    den Empfänger?"                    │
+  │                                      │
+  │   → MessagingAdapter                 │
+  └─────────────────────────────────────┘
+                    │
+                    │  orthogonal
+                    │
+  ┌─────────────────────────────────────┐
+  │         CRDT / Sync                  │
+  │   (Zustandskonvergenz)               │
+  │                                      │
+  │   "Wie konvergiert der Zustand       │
+  │    über Geräte und Nutzer?"           │
+  │                                      │
+  │   → ReplicationAdapter               │
+  └─────────────────────────────────────┘
 
-Eine Nachricht enthält NICHT den Zustand, sondern nur den Trigger/Pointer.
-Der Zustand lebt im CRDT und konvergiert unabhängig.
+Discovery = VOR dem Kontakt (öffentlich, anonym lesbar)
+Messaging = Zustellung ZWISCHEN bekannten DIDs (1:1, privat)
+Replication = Geteilter Zustand INNERHALB einer Gruppe (CRDT)
+
+Jede Achse hat eigene Sicherheitseigenschaften:
+- Discovery: Daten sind öffentlich, aber signiert (Integrität ohne Vertraulichkeit)
+- Messaging: E2EE zwischen Sender und Empfänger
+- Replication: Group-Key-verschlüsselt (alle Members sehen alles)
 ```
 
 ---
 
-## Übersicht: 6 Adapter
+## Übersicht: 7 Adapter
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        WoT Domain Layer                             │
-│  Identity, Contact, Verification, Attestation, Item, Group          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐  │
-│  │  StorageAdapter    │  │  CryptoAdapter    │  │  Reactive-     │  │
-│  │  (lokale           │  │  (Signing,        │  │  Storage-      │  │
-│  │   Persistenz)      │  │   Encryption,     │  │  Adapter       │  │
-│  │                    │  │   DID, Mnemonic)  │  │  (Live Queries)│  │
-│  │  v1, implementiert │  │  v1, implementiert│  │  v1, impl.     │  │
-│  └───────────────────┘  └───────────────────┘  └────────────────┘  │
-│                                                                     │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐  │
-│  │  MessagingAdapter  │  │  Replication-     │  │  Authorization-│  │
-│  │  (Cross-User       │  │  Adapter          │  │  Adapter       │  │
-│  │   Delivery)        │  │  (CRDT Sync +     │  │  (UCAN-like    │  │
-│  │                    │  │   Spaces)         │  │   Capabilities)│  │
-│  │  v2, NEU           │  │  v2, NEU          │  │  v2, NEU       │  │
-│  └───────────────────┘  └───────────────────┘  └────────────────┘  │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         WoT Domain Layer                                  │
+│  Identity, Contact, Verification, Attestation, Item, Group                │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Lokal (v1, implementiert):                                              │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐       │
+│  │  StorageAdapter    │  │  CryptoAdapter    │  │  Reactive-     │       │
+│  │  (lokale           │  │  (Signing,        │  │  Storage-      │       │
+│  │   Persistenz)      │  │   Encryption,     │  │  Adapter       │       │
+│  │                    │  │   DID, Mnemonic)  │  │  (Live Queries)│       │
+│  └───────────────────┘  └───────────────────┘  └────────────────┘       │
+│                                                                          │
+│  Netzwerk (v2):                                                          │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐       │
+│  │  DiscoveryAdapter  │  │  MessagingAdapter  │  │  Replication-  │       │
+│  │  (Öffentliches     │  │  (Cross-User       │  │  Adapter       │       │
+│  │   Profil +         │  │   Delivery)        │  │  (CRDT Sync +  │       │
+│  │   Discovery)       │  │                    │  │   Spaces)      │       │
+│  │  v2, implementiert │  │  v2, implementiert │  │  v2, NEU       │       │
+│  └───────────────────┘  └───────────────────┘  └────────────────┘       │
+│                                                                          │
+│  Querschnitt:                                                            │
+│  ┌────────────────────────────────────────────────────────────────┐      │
+│  │  AuthorizationAdapter (UCAN-like Capabilities)   v2, NEU       │      │
+│  └────────────────────────────────────────────────────────────────┘      │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Lebenszyklus einer Beziehung im Web of Trust:
+
+  Discovery          →       Messaging         →       Replication
+  "Wer bist du?"             "Lass uns                 "Lass uns zusammen-
+  (öffentlich,                verifizieren"              arbeiten"
+   vor Kontakt)              (1:1, nach Kontakt)        (Gruppe, CRDT)
 ```
 
 ---
@@ -613,7 +646,193 @@ Capabilities werden erst relevant wenn:
 
 ---
 
+### DiscoveryAdapter
+
+Öffentliche Discovery — wie finde ich Informationen über eine DID?
+
+Dieser Adapter löst ein Problem, das die anderen 6 Adapter nicht adressieren:
+**Alle anderen Adapter setzen voraus, dass man die Gegenstelle bereits kennt.**
+Der DiscoveryAdapter ist der Einstiegspunkt — er beantwortet die Frage
+"Wer ist diese DID?" **bevor** man mit der Person in Kontakt ist.
+
+**Warum ein eigener Adapter?**
+
+Discovery ist eine fundamentale, eigenständige Aufgabe:
+- Es ist kein Messaging (kein Empfänger, keine Zustellung)
+- Es ist kein CRDT/Sync (kein Merge, keine Konflikte)
+- Es ist kein lokaler Storage (die Daten sind öffentlich)
+- Es hat eigene Sicherheitseigenschaften (signiert, aber nicht verschlüsselt)
+
+**Designprinzipien:**
+- Adressierung über DIDs
+- Alle Daten sind Ed25519-signiert (JWS) — Integrität ohne Vertraulichkeit
+- Der Inhaber kontrolliert, was öffentlich ist (Empfänger-Prinzip)
+- Anonym lesbar — kein Login nötig zum Abrufen
+- Keine Authentifizierung — die kryptographische Signatur IST die Autorisierung
+- Server ist ein dummer Cache — Wahrheit lebt lokal
+
+**Abgrenzung zu den anderen Adaptern:**
+
+```
+                        Sichtbarkeit    Voraussetzung       Sicherheit
+                        ──────────────  ──────────────────  ───────────────
+DiscoveryAdapter        Öffentlich      Keine (anonym)      Signiert (JWS)
+MessagingAdapter        Privat (1:1)    DID des Empfängers  E2EE
+ReplicationAdapter      Gruppe          Space-Membership    Group Key E2EE
+```
+
+**Was wird veröffentlicht?**
+
+Drei Kategorien öffentlicher Daten, jeweils als JWS signiert:
+
+1. **Profil** — Name, Bio, Avatar (vom Inhaber selbst)
+2. **Verifikationen** — "Diese DIDs haben mich verifiziert" (Empfänger publiziert)
+3. **Attestationen** — "Diese Aussagen wurden über mich gemacht" (nur akzeptierte)
+
+Jede Kategorie ist ein eigenes JWS-Dokument. Der Inhaber entscheidet,
+welche Attestationen veröffentlicht werden (`accepted`-Flag, lokale Metadaten).
+
+```typescript
+interface PublicProfileData {
+  did: string
+  name: string
+  bio?: string
+  avatar?: string
+  updatedAt: string
+}
+
+interface PublicVerificationsData {
+  did: string
+  verifications: Verification[]    // Jede mit eigener proof (Ed25519)
+  updatedAt: string
+}
+
+interface PublicAttestationsData {
+  did: string
+  attestations: Attestation[]      // Nur accepted, jede mit eigener proof
+  updatedAt: string
+}
+
+interface DiscoveryAdapter {
+  // Eigene öffentliche Daten publizieren (als JWS signiert)
+  publishProfile(data: PublicProfileData, identity: WotIdentity): Promise<void>
+  publishVerifications(data: PublicVerificationsData, identity: WotIdentity): Promise<void>
+  publishAttestations(data: PublicAttestationsData, identity: WotIdentity): Promise<void>
+
+  // Öffentliche Daten einer DID abrufen und JWS verifizieren
+  resolveProfile(did: string): Promise<PublicProfileData | null>
+  resolveVerifications(did: string): Promise<Verification[]>
+  resolveAttestations(did: string): Promise<Attestation[]>
+}
+```
+
+**Doppelte Verifikation:**
+
+Jedes Dokument hat zwei Signatur-Ebenen:
+
+1. **JWS-Hülle:** "Bob hat diese Liste veröffentlicht"
+   → Signiert vom Inhaber der DID
+2. **Einzelne Proofs:** "Alice hat diese Attestation/Verification signiert"
+   → Signiert vom jeweiligen Ersteller
+
+Der Client kann beides unabhängig verifizieren.
+
+**POC-Implementierung:** `HttpDiscoveryAdapter` (wot-profiles)
+
+```
+Client ───fetch()──→ wot-profiles (HTTP + SQLite)
+
+PUT /p/{did}      Profil-JWS speichern
+GET /p/{did}      Profil-JWS abrufen
+PUT /p/{did}/v    Verifikationen-JWS speichern
+GET /p/{did}/v    Verifikationen-JWS abrufen
+PUT /p/{did}/a    Attestationen-JWS speichern
+GET /p/{did}/a    Attestationen-JWS abrufen
+
+Server prüft:
+1. JWS-Signatur gültig
+2. DID im Payload = DID in URL
+→ Kein Account-System, keine Auth-Tokens
+```
+
+**Mögliche alternative Implementierungen:**
+
+```
+HttpDiscoveryAdapter      HTTP REST + SQLite (aktuell, wot-profiles)
+AutomergeDiscoveryAdapter Öffentlicher CRDT-Space pro DID (Automerge Auto-Groups)
+IpfsDiscoveryAdapter      IPNS-Records, Content-adressiert
+DhtDiscoveryAdapter       Kademlia DHT (wie BitTorrent/IPFS)
+NostrDiscoveryAdapter     NIP-01 Events (kind 0 = Profile)
+ActivityPubDiscoveryAdapter  Actor-Objekte (Fediverse)
+```
+
+Jede Implementierung hat unterschiedliche Trade-offs:
+
+| Implementierung | Zentral | Dezentral | Offline | Einfach |
+|-----------------|---------|-----------|---------|---------|
+| HTTP (aktuell)  | Ja      | Nein      | Nein    | Ja      |
+| Automerge       | Nein    | Ja        | Ja      | Mittel  |
+| IPFS/IPNS       | Nein    | Ja        | Teilw.  | Komplex |
+| Nostr           | Relays  | Teilweise | Nein    | Mittel  |
+
+---
+
 ## Interaktion der Adapter
+
+### Flow: Öffentliches Profil abrufen (Discovery)
+
+```text
+Carl hat Bobs DID (z.B. aus einem Link, QR-Code oder einer Attestation).
+Carl kennt Bob noch nicht und ist nicht als Kontakt verbunden.
+
+1. DiscoveryAdapter.resolveProfile(bobDid)
+   → PublicProfileData { did, name: "Bob", bio: "...", avatar: "..." }
+   → JWS-Signatur wird verifiziert (DID → PublicKey → Ed25519)
+
+2. DiscoveryAdapter.resolveVerifications(bobDid)
+   → [Verification { from: aliceDid, to: bobDid, proof: ... }, ...]
+   → JWS-Hülle verifiziert (Bob hat diese Liste publiziert)
+   → Einzelne Proofs verifizierbar (Alice hat diese Verification signiert)
+
+3. DiscoveryAdapter.resolveAttestations(bobDid)
+   → [Attestation { from: aliceDid, to: bobDid, claim: "Zuverlässig", proof: ... }]
+   → Nur Attestationen die Bob als "accepted" markiert hat
+
+4. Carl sieht Bobs öffentliches Profil:
+   → Name, Bio, Avatar
+   → "Verifiziert von 3 Personen"
+   → "2 Attestationen: 'Zuverlässig', 'Kann gut kochen'"
+
+5. Carl entscheidet sich, Bob zu verifizieren:
+   → Wechsel von Discovery-Achse zu Messaging-Achse
+   → In-Person Verification (QR-Code) über MessagingAdapter
+```
+
+### Flow: Eigenes Profil publizieren
+
+```text
+Bob aktualisiert sein Profil und publiziert es.
+
+1. StorageAdapter.getIdentity() → lokales Profil
+2. StorageAdapter.getReceivedVerifications() → Verifications über Bob
+3. StorageAdapter.getReceivedAttestations() → alle Attestations
+   + StorageAdapter.getAttestationMetadata(id) → nur accepted filtern
+
+4. DiscoveryAdapter.publishProfile(profileData, identity)
+   → identity.signJws(profileData) → JWS
+   → Upload zum Discovery-Backend
+
+5. DiscoveryAdapter.publishVerifications(vData, identity)
+   → Verifikationen als JWS signiert publiziert
+
+6. DiscoveryAdapter.publishAttestations(aData, identity)
+   → Nur akzeptierte Attestationen als JWS signiert publiziert
+
+Trigger für Re-Publish:
+- Profil geändert (Name, Bio, Avatar)
+- Neue Verification empfangen (ReactiveStorageAdapter)
+- Attestation accepted/rejected (manuell)
+```
 
 ### Flow: Attestation erstellen und zustellen
 
@@ -732,11 +951,12 @@ Alice erstellt eine WG-Gruppe mit Bob und Carl.
 | StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | CryptoAdapter | ✅ Implementiert | WebCryptoAdapter |
-| MessagingAdapter | **Interface definieren** | Custom WebSocket Relay |
+| MessagingAdapter | ✅ Implementiert | WebSocketMessagingAdapter + wot-relay |
+| DiscoveryAdapter | ✅ Implementiert | HttpDiscoveryAdapter (wot-profiles) |
 | ReplicationAdapter | Interface definieren | NoOp (nur Evolu Personal) |
 | AuthorizationAdapter | Interface definieren | NoOp (Creator = Admin) |
 
-**Ziel Phase 1:** Attestations und Verifications zwischen zwei DIDs zustellen.
+**Ziel Phase 1:** Attestations und Verifications zwischen zwei DIDs zustellen. Öffentliche Profile abrufbar.
 
 **Done-Kriterien Phase 1:**
 
@@ -790,8 +1010,9 @@ Testbar als Integration Test:
 | MessagingAdapter | Custom WS → Matrix |
 | ReplicationAdapter | Evolu → Automerge (Cross-User) |
 | AuthorizationAdapter | Volle UCAN-Kompatibilität |
+| DiscoveryAdapter | HTTP → Automerge Auto-Groups oder DHT |
 
-**Ziel Phase 4:** Federation, Bridges, größere Gruppen.
+**Ziel Phase 4:** Federation, Bridges, größere Gruppen. Dezentrale Discovery.
 
 ---
 

@@ -1,21 +1,29 @@
 import { useIdentity } from '../context'
 import { useAdapters } from '../context'
-import { useState, useEffect } from 'react'
-import { Copy, Check, Fingerprint, Shield, Trash2, Database, Pencil, ChevronDown, ChevronRight } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Copy, Check, Fingerprint, Shield, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock } from 'lucide-react'
 import { Avatar, AvatarUpload } from '../components/shared'
 import { resetEvolu } from '../db'
-import { useProfile, useProfileSync } from '../hooks'
+import { useProfile, useProfileSync, useAttestations, useContacts } from '../hooks'
+import { useSubscribable } from '../hooks/useSubscribable'
 
 export function Identity() {
   const { identity, did, clearIdentity } = useIdentity()
-  const { storage } = useAdapters()
-  const { uploadProfile } = useProfileSync()
+  const { storage, reactiveStorage } = useAdapters()
+  const { uploadProfile, uploadVerificationsAndAttestations } = useProfileSync()
   const syncedProfile = useProfile()
+  const { receivedAttestations, setAttestationAccepted } = useAttestations()
+  const { contacts } = useContacts()
+
+  // Reactive verifications
+  const verificationsSubscribable = useMemo(() => reactiveStorage.watchReceivedVerifications(), [reactiveStorage])
+  const verifications = useSubscribable(verificationsSubscribable)
+
+  // Attestation accepted state
+  const [acceptedMap, setAcceptedMap] = useState<Record<string, boolean>>({})
   const [copiedDid, setCopiedDid] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isResettingDb, setIsResettingDb] = useState(false)
-  const [dbResetDone, setDbResetDone] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileBio, setProfileBio] = useState('')
   const [profileAvatar, setProfileAvatar] = useState<string | undefined>(undefined)
@@ -33,6 +41,30 @@ export function Identity() {
       setProfileAvatar(syncedProfile.avatar)
     }
   }, [syncedProfile, isEditingProfile, justSaved])
+
+  // Load accepted state for received attestations
+  useEffect(() => {
+    async function loadAccepted() {
+      const map: Record<string, boolean> = {}
+      for (const att of receivedAttestations) {
+        const meta = await storage.getAttestationMetadata(att.id)
+        map[att.id] = meta?.accepted ?? false
+      }
+      setAcceptedMap(map)
+    }
+    loadAccepted()
+  }, [receivedAttestations, storage])
+
+  const handleToggleAttestation = async (attestationId: string, publish: boolean) => {
+    await setAttestationAccepted(attestationId, publish)
+    setAcceptedMap(prev => ({ ...prev, [attestationId]: publish }))
+    uploadVerificationsAndAttestations()
+  }
+
+  const getContactName = (contactDid: string) => {
+    if (contactDid === did) return 'Ich'
+    return contacts.find(c => c.did === contactDid)?.name
+  }
 
   const handleSaveProfile = async () => {
     const existing = await storage.getIdentity()
@@ -187,6 +219,81 @@ export function Identity() {
           </div>
         </div>
 
+        {/* Verifications */}
+        {verifications.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={16} className="text-blue-600" />
+              <h3 className="text-sm font-medium text-slate-900">
+                Verifiziert von {verifications.length} Person{verifications.length !== 1 ? 'en' : ''}
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {verifications.map((v) => {
+                const name = getContactName(v.from)
+                const shortDid = v.from.length > 24
+                  ? `${v.from.slice(0, 12)}...${v.from.slice(-6)}`
+                  : v.from
+                return (
+                  <div key={v.id} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-700">
+                      {name || <span className="font-mono text-xs text-slate-500">{shortDid}</span>}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {new Date(v.timestamp).toLocaleDateString('de-DE')}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Received Attestations */}
+        {receivedAttestations.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Award size={16} className="text-amber-600" />
+              <h3 className="text-sm font-medium text-slate-900">
+                {receivedAttestations.length} Attestation{receivedAttestations.length !== 1 ? 'en' : ''} über mich
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mb-3 ml-6">
+              Veröffentlichte Attestationen erscheinen auf deinem öffentlichen Profil.
+            </p>
+            <div className="space-y-2">
+              {receivedAttestations.map((a) => {
+                const fromName = getContactName(a.from)
+                const shortFrom = a.from.length > 24
+                  ? `${a.from.slice(0, 12)}...${a.from.slice(-6)}`
+                  : a.from
+                const isPublic = acceptedMap[a.id] ?? false
+                return (
+                  <div key={a.id} className="flex items-center gap-3 border-l-2 border-amber-200 pl-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        von {fromName || shortFrom} &middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleAttestation(a.id, !isPublic)}
+                      className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+                        isPublic
+                          ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                      }`}
+                      title={isPublic ? 'Öffentlich — klicken zum Verbergen' : 'Privat — klicken zum Veröffentlichen'}
+                    >
+                      {isPublic ? <Globe size={16} /> : <GlobeLock size={16} />}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Details (collapsible) — DID + Maintenance + Danger Zone */}
         <div className="bg-white border border-slate-200 rounded-lg">
           <button
@@ -210,38 +317,6 @@ export function Identity() {
                   className="inline-flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700"
                 >
                   {copiedDid ? <><Check size={14} /><span>Kopiert!</span></> : <><Copy size={14} /><span>Kopieren</span></>}
-                </button>
-              </div>
-
-              <div className="border-t border-slate-200" />
-
-              {/* Database Reset */}
-              <div className="space-y-2">
-                <p className="text-sm text-slate-600">
-                  Kontakte, Verifikationen und Attestierungen zurücksetzen. Deine Identität bleibt erhalten.
-                </p>
-                <button
-                  onClick={async () => {
-                    try {
-                      setIsResettingDb(true)
-                      await resetEvolu()
-                      setDbResetDone(true)
-                      setTimeout(() => { window.location.reload() }, 1500)
-                    } catch (error) {
-                      console.error('Failed to reset database:', error)
-                      setIsResettingDb(false)
-                    }
-                  }}
-                  disabled={isResettingDb}
-                  className="flex items-center space-x-2 px-4 py-2 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {dbResetDone ? (
-                    <><Check size={16} /><span>Zurückgesetzt! Lade neu...</span></>
-                  ) : isResettingDb ? (
-                    <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /><span>Setze zurück...</span></>
-                  ) : (
-                    <><Database size={16} /><span>Datenbank zurücksetzen</span></>
-                  )}
                 </button>
               </div>
 
