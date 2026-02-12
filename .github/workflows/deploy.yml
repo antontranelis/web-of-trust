@@ -56,6 +56,9 @@ jobs:
           mkdir -p combined/demo
           cp -r apps/demo/dist/* combined/demo/
 
+      - name: SPA fallback (GitHub Pages serves 404.html on unknown routes)
+        run: cp combined/demo/index.html combined/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

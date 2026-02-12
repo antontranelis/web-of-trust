@@ -48,6 +48,7 @@ interface AdapterProviderProps {
  */
 export function AdapterProvider({ children, identity }: AdapterProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false)
+  const [initError, setInitError] = useState<string | null>(null)
   const [adapters, setAdapters] = useState<Omit<AdapterContextValue, 'isInitialized' | 'messagingState'> | null>(null)
   const [messagingState, setMessagingState] = useState<MessagingState>('disconnected')
 
@@ -108,6 +109,14 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         }
       } catch (error) {
         console.error('Failed to initialize Evolu:', error)
+        if (!cancelled) {
+          const msg = error instanceof Error ? error.message : String(error)
+          if (msg.includes('opfs') || msg.includes('storage') || msg.includes('access') || msg.includes('SecurityError')) {
+            setInitError('storage-blocked')
+          } else {
+            setInitError(msg)
+          }
+        }
       }
     }
 
@@ -117,6 +126,32 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       messagingAdapter?.disconnect()
     }
   }, [identity])
+
+  if (initError) {
+    const isStorageBlocked = initError === 'storage-blocked'
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-4xl">&#9888;&#65039;</div>
+          <h2 className="text-xl font-semibold text-slate-800">
+            {isStorageBlocked ? 'Speicherzugriff blockiert' : 'Initialisierung fehlgeschlagen'}
+          </h2>
+          <p className="text-slate-600">
+            {isStorageBlocked
+              ? 'Die App benötigt Zugriff auf den lokalen Speicher, um deine Identität und Daten sicher auf deinem Gerät zu speichern. Bitte erlaube den Zugriff in den Browser-Einstellungen und lade die Seite neu.'
+              : `Fehler: ${initError}`
+            }
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+          >
+            Seite neu laden
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   if (!isInitialized || !adapters) {
     return (
