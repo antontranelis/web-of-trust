@@ -78,52 +78,17 @@
        ry="20"
        fill="#2563eb"
        id="rect13" />
-    <!-- Triangle network icon -->
+    <!-- WoT network icon -->
     <g
-       transform="rotate(12,-500.3402,343.15123)"
+       transform="translate(12, 62) scale(4.2)"
+       fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
        id="g27">
-      <circle
-         cx="-25"
-         cy="-20"
-         r="12"
-         fill="#ffffff"
-         id="circle15" />
-      <circle
-         cx="25"
-         cy="-20"
-         r="12"
-         fill="#ffffff"
-         id="circle17" />
-      <circle
-         cx="0"
-         cy="30"
-         r="12"
-         fill="#ffffff"
-         id="circle19" />
-      <line
-         x1="-25"
-         y1="-20"
-         x2="25"
-         y2="-20"
-         stroke="#ffffff"
-         stroke-width="5"
-         id="line21" />
-      <line
-         x1="-25"
-         y1="-20"
-         x2="0"
-         y2="30"
-         stroke="#ffffff"
-         stroke-width="5"
-         id="line23" />
-      <line
-         x1="25"
-         y1="-20"
-         x2="0"
-         y2="30"
-         stroke="#ffffff"
-         stroke-width="5"
-         id="line25" />
+      <circle cx="18.72" cy="8.82" r="2.5" />
+      <circle cx="5.28" cy="5.28" r="2.5" />
+      <circle cx="8.82" cy="18.72" r="2.5" />
+      <line x1="6.04" x2="8.06" y1="8.18" y2="15.82" />
+      <line x1="15.81" x2="8.18" y1="8.05" y2="6.04" />
+      <line x1="16.59" x2="10.94" y1="10.94" y2="16.59" />
     </g>
     <!-- Title next to logo -->
     <text

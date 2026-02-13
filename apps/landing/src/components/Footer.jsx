@@ -63,11 +63,13 @@ export default function Footer() {
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" className="w-10 h-10 text-primary-foreground rotate-12" fill="currentColor" stroke="currentColor" strokeWidth="1">
-                    <circle cx="7" cy="8" r="2" />
-                    <circle cx="17" cy="8" r="2" />
-                    <circle cx="12" cy="17" r="2" />
-                    <path d="M7 8L17 8M7 8L12 17M17 8L12 17" strokeWidth="1.5" fill="none" />
+                  <svg viewBox="0 1 23 22" className="w-6 h-6 text-primary-foreground" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18.72" cy="8.82" r="2.5" />
+                    <circle cx="5.28" cy="5.28" r="2.5" />
+                    <circle cx="8.82" cy="18.72" r="2.5" />
+                    <line x1="6.04" x2="8.06" y1="8.18" y2="15.82" />
+                    <line x1="15.81" x2="8.18" y1="8.05" y2="6.04" />
+                    <line x1="16.59" x2="10.94" y1="10.94" y2="16.59" />
                   </svg>
                 </div>
                 <span className="font-bold text-lg">Web of Trust</span>
