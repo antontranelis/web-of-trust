@@ -17,12 +17,9 @@ export function VerificationFlow() {
     peerName,
     peerDid,
     isConnected,
-    pendingIncoming,
     createChallenge,
     prepareResponse,
     confirmAndRespond,
-    confirmIncoming,
-    rejectIncoming,
     reset,
   } = useVerification()
   const { discovery } = useAdapters()
@@ -30,8 +27,6 @@ export function VerificationFlow() {
   const [mode, setMode] = useState<Mode>('select')
   const [challengeCode, setChallengeCode] = useState('')
   const [peerProfile, setPeerProfile] = useState<PublicProfile | null>(null)
-  const [incomingProfile, setIncomingProfile] = useState<PublicProfile | null>(null)
-
   // Fetch peer profile from DiscoveryAdapter when entering confirm mode
   useEffect(() => {
     if (mode !== 'confirm' || !peerDid) return
@@ -41,16 +36,6 @@ export function VerificationFlow() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [mode, peerDid, discovery])
-
-  // Fetch incoming peer's profile when pendingIncoming arrives
-  useEffect(() => {
-    if (!pendingIncoming) { setIncomingProfile(null); return }
-    let cancelled = false
-    discovery.resolveProfile(pendingIncoming.fromDid)
-      .then((profile) => { if (!cancelled && profile) setIncomingProfile(profile) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [pendingIncoming, discovery])
 
   // Auto-transition: step 'done' → success
   useEffect(() => {
@@ -129,86 +114,9 @@ export function VerificationFlow() {
     )
   }
 
-  const handleConfirmIncoming = async () => {
-    try {
-      await confirmIncoming()
-      setMode('success')
-    } catch {
-      setMode('error')
-    }
-  }
-
-  const handleRejectIncoming = () => {
-    rejectIncoming()
-  }
+  // Incoming verification dialog is now rendered globally in App.tsx (IncomingVerificationDialog)
 
   if (mode === 'initiate') {
-    // Someone scanned our QR — show confirmation
-    if (pendingIncoming) {
-      const incomingDid = pendingIncoming.fromDid
-      const incomingName = incomingProfile?.name || incomingDid.slice(-12)
-
-      return (
-        <div className="space-y-6">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            <ArrowLeft size={18} />
-            Abbrechen
-          </button>
-
-          <div className="text-center space-y-4">
-            <h3 className="text-lg font-bold text-slate-900">
-              Stehst du vor dieser Person?
-            </h3>
-
-            <div className="flex flex-col items-center gap-3 py-4">
-              <Avatar
-                name={incomingProfile?.name}
-                avatar={incomingProfile?.avatar}
-                size="lg"
-              />
-              <div>
-                <p className="text-xl font-semibold text-slate-900">
-                  {incomingName}
-                </p>
-                {incomingProfile?.bio && (
-                  <p className="text-sm text-slate-500 mt-1">
-                    {incomingProfile.bio}
-                  </p>
-                )}
-                <p className="text-xs text-slate-400 font-mono mt-1 max-w-[280px] truncate">
-                  {incomingDid}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm text-slate-600">
-              Bestätige nur, wenn du diese Person persönlich kennst und sie dir gegenüber steht.
-            </p>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleRejectIncoming}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
-              >
-                <ShieldX size={18} />
-                Ablehnen
-              </button>
-              <button
-                onClick={handleConfirmIncoming}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
-              >
-                <ShieldCheck size={18} />
-                Bestätigen
-              </button>
-            </div>
-          </div>
-        </div>
-      )
-    }
-
     return (
       <div className="space-y-6">
         <button

@@ -156,6 +156,11 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
           // Connect to relay after adapters are set
           if (did && !cancelled) {
+            // Track adapter state changes (disconnect, reconnect)
+            messagingAdapter.onStateChange((state) => {
+              if (!cancelled) setMessagingState(state)
+            })
+
             try {
               setMessagingState('connecting')
               await messagingAdapter.connect(did)

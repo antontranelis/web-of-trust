@@ -223,6 +223,7 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
         ? str(JSON.stringify(attestation.tags))
         : null,
       context: attestation.context ? str(attestation.context) : null,
+      // createdAt is an Evolu system column (auto-set on insert)
       proofJson: str(JSON.stringify(attestation.proof)),
     })
     if (!result.ok) {
@@ -483,6 +484,40 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
 
     const updateIfChanged = (callback: (value: Verification[]) => void) => {
       const next = [...evolu.getQueryRows(query)].map(rowToVerification)
+      const nextKey = JSON.stringify(next)
+      if (nextKey !== snapshotKey) {
+        snapshot = next
+        snapshotKey = nextKey
+        callback(snapshot)
+      }
+    }
+
+    return {
+      subscribe: (callback) => {
+        const unsub = evolu.subscribeQuery(query)(() => updateIfChanged(callback))
+        evolu.loadQuery(query).then(() => updateIfChanged(callback))
+        return unsub
+      },
+      getValue: () => snapshot,
+    }
+  }
+
+  watchAllAttestations(): Subscribable<Attestation[]> {
+    const evolu = this.evolu
+    const myDid = this.did
+    const query = evolu.createQuery((db) =>
+      db.selectFrom('attestation').selectAll()
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+    const filterMine = (rows: any) =>
+      [...rows]
+        .filter((r: any) => r.fromDid === myDid || r.toDid === myDid)
+        .map(rowToAttestation)
+    let snapshot: Attestation[] = filterMine(evolu.getQueryRows(query))
+    let snapshotKey = JSON.stringify(snapshot)
+
+    const updateIfChanged = (callback: (value: Attestation[]) => void) => {
+      const next = filterMine(evolu.getQueryRows(query))
       const nextKey = JSON.stringify(next)
       if (nextKey !== snapshotKey) {
         snapshot = next

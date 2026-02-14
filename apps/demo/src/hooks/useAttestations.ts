@@ -14,7 +14,7 @@ export function useAttestations() {
   const activeContactsRef = useRef(activeContacts)
   activeContactsRef.current = activeContacts
 
-  const attestationsSubscribable = useMemo(() => reactiveStorage.watchReceivedAttestations(), [reactiveStorage])
+  const attestationsSubscribable = useMemo(() => reactiveStorage.watchAllAttestations(), [reactiveStorage])
   const attestations = useSubscribable(attestationsSubscribable)
 
   // Listen for incoming attestations via relay

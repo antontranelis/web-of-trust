@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 
 WORKDIR /app
 
-RUN npm init -y && npm install @evolu/common @evolu/nodejs
+RUN npm init -y && npm install @evolu/common@7.4.1 @evolu/nodejs@2.4.0
 
 COPY relay.mjs .
 

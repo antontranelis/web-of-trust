@@ -21,17 +21,30 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
   private state: MessagingState = 'disconnected'
   private messageCallbacks = new Set<(envelope: MessageEnvelope) => void>()
   private receiptCallbacks = new Set<(receipt: DeliveryReceipt) => void>()
+  private stateCallbacks = new Set<(state: MessagingState) => void>()
   private transportMap = new Map<string, string>()
   private pendingReceipts = new Map<string, (receipt: DeliveryReceipt) => void>()
 
   constructor(private relayUrl: string) {}
+
+  private setState(newState: MessagingState) {
+    this.state = newState
+    for (const cb of this.stateCallbacks) {
+      cb(newState)
+    }
+  }
+
+  onStateChange(callback: (state: MessagingState) => void): () => void {
+    this.stateCallbacks.add(callback)
+    return () => { this.stateCallbacks.delete(callback) }
+  }
 
   async connect(myDid: string): Promise<void> {
     if (this.state === 'connected') {
       await this.disconnect()
     }
 
-    this.state = 'connecting'
+    this.setState('connecting')
 
     return new Promise<void>((resolve, reject) => {
       this.ws = new WebSocket(this.relayUrl)
@@ -45,7 +58,7 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
 
         switch (msg.type) {
           case 'registered':
-            this.state = 'connected'
+            this.setState('connected')
             resolve()
             break
 
@@ -72,7 +85,7 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
 
           case 'error':
             if (this.state === 'connecting') {
-              this.state = 'error'
+              this.setState('error')
               reject(new Error(`Relay error: ${msg.message}`))
             }
             break
@@ -81,13 +94,13 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
 
       this.ws.onerror = () => {
         if (this.state === 'connecting') {
-          this.state = 'error'
+          this.setState('error')
           reject(new Error(`WebSocket connection failed to ${this.relayUrl}`))
         }
       }
 
       this.ws.onclose = () => {
-        this.state = 'disconnected'
+        this.setState('disconnected')
       }
     })
   }
@@ -97,7 +110,7 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
       this.ws.close()
       this.ws = null
     }
-    this.state = 'disconnected'
+    this.setState('disconnected')
   }
 
   getState(): MessagingState {

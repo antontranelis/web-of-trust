@@ -3,11 +3,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdapterProvider, IdentityProvider, useIdentity, useAdapters, PendingVerificationProvider, usePendingVerification } from './context'
 import { useConfetti } from './context/PendingVerificationContext'
 import { AppShell, IdentityManagement, Confetti } from './components'
+import { Avatar } from './components/shared/Avatar'
 import { Home, Identity, Contacts, Verify, Attestations, PublicProfile } from './pages'
-import { useProfileSync, useMessaging, useContacts } from './hooks'
+import { useProfileSync, useMessaging, useContacts, useVerification } from './hooks'
 import { useVerificationStatus, getVerificationStatus } from './hooks/useVerificationStatus'
 import { VerificationHelper } from '@real-life/wot-core'
-import type { Verification, MessageEnvelope } from '@real-life/wot-core'
+import type { Verification, PublicProfile as PublicProfileType, MessageEnvelope } from '@real-life/wot-core'
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
@@ -33,6 +34,13 @@ function VerificationListenerEffect() {
   const { did } = useIdentity()
   const { allVerifications } = useVerificationStatus()
   const { challengeNonce, setChallengeNonce, setPendingIncoming } = useConfetti()
+
+  // Use refs so the onMessage callback always sees current values
+  // without needing to re-subscribe (which can lose messages).
+  const challengeNonceRef = useRef(challengeNonce)
+  challengeNonceRef.current = challengeNonce
+  const allVerificationsRef = useRef(allVerifications)
+  allVerificationsRef.current = allVerifications
 
   useEffect(() => {
     const unsubscribe = onMessage(async (envelope) => {
@@ -60,18 +68,20 @@ function VerificationListenerEffect() {
       // the sender yet, and the verification contains my active challenge
       // nonce (proves physical QR scan) → show confirmation UI.
       if (did && verification.to === did) {
-        const alreadyVerified = allVerifications.some(
+        const nonce = challengeNonceRef.current
+        const verifications = allVerificationsRef.current
+        const alreadyVerified = verifications.some(
           v => v.from === did && v.to === verification.from
         )
 
-        if (!alreadyVerified && challengeNonce && verification.id.includes(challengeNonce)) {
+        if (!alreadyVerified && nonce && verification.id.includes(nonce)) {
           setChallengeNonce(null) // Nonce consumed
           setPendingIncoming({ verification, fromDid: verification.from })
         }
       }
     })
     return unsubscribe
-  }, [onMessage, verificationService, did, allVerifications, challengeNonce, setChallengeNonce, setPendingIncoming])
+  }, [onMessage, verificationService, did, setChallengeNonce, setPendingIncoming])
 
   return null
 }
@@ -88,6 +98,7 @@ function MutualVerificationEffect() {
   const { activeContacts } = useContacts()
   const { allVerifications } = useVerificationStatus()
   const previousStatusRef = useRef(new Map<string, string>())
+  const initializedRef = useRef(false)
 
   useEffect(() => {
     if (!did) return
@@ -95,15 +106,18 @@ function MutualVerificationEffect() {
     const prev = previousStatusRef.current
     for (const contact of activeContacts) {
       const status = getVerificationStatus(did, contact.did, allVerifications)
-      const prevStatus = prev.get(contact.did) || 'none'
+      const prevStatus = prev.get(contact.did)
 
-      if (status === 'mutual' && prevStatus !== 'mutual') {
+      // Only trigger confetti for transitions to 'mutual' after initial load.
+      // On first render, just record current state without triggering.
+      if (initializedRef.current && prevStatus !== undefined && status === 'mutual' && prevStatus !== 'mutual') {
         const name = contact.name || 'Kontakt'
         triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
       }
 
       prev.set(contact.did, status)
     }
+    initializedRef.current = true
   }, [did, activeContacts, allVerifications, triggerConfetti])
 
   return null
@@ -136,6 +150,85 @@ function GlobalConfetti() {
         </div>
       )}
     </>
+  )
+}
+
+/**
+ * Global overlay dialog for incoming verification requests.
+ * Shows "Stehst du vor dieser Person?" regardless of current page.
+ */
+function IncomingVerificationDialog() {
+  const { pendingIncoming } = useConfetti()
+  const { confirmIncoming, rejectIncoming } = useVerification()
+  const { discovery } = useAdapters()
+  const [profile, setProfile] = useState<PublicProfileType | null>(null)
+  const [confirming, setConfirming] = useState(false)
+
+  useEffect(() => {
+    if (!pendingIncoming) { setProfile(null); return }
+    let cancelled = false
+    discovery.resolveProfile(pendingIncoming.fromDid)
+      .then((p) => { if (!cancelled && p) setProfile(p) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [pendingIncoming, discovery])
+
+  if (!pendingIncoming) return null
+
+  const incomingDid = pendingIncoming.fromDid
+  const name = profile?.name || incomingDid.slice(-12)
+
+  const handleConfirm = async () => {
+    setConfirming(true)
+    try {
+      await confirmIncoming()
+    } catch (e) {
+      console.error('Counter-verification failed:', e)
+    }
+    setConfirming(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+        <h3 className="text-lg font-bold text-slate-900 text-center">
+          Stehst du vor dieser Person?
+        </h3>
+
+        <div className="flex flex-col items-center gap-3 py-2">
+          <Avatar name={profile?.name} avatar={profile?.avatar} size="lg" />
+          <div className="text-center">
+            <p className="text-xl font-semibold text-slate-900">{name}</p>
+            {profile?.bio && (
+              <p className="text-sm text-slate-500 mt-1">{profile.bio}</p>
+            )}
+            <p className="text-xs text-slate-400 font-mono mt-1 max-w-[280px] truncate">
+              {incomingDid}
+            </p>
+          </div>
+        </div>
+
+        <p className="text-sm text-slate-600 text-center">
+          Bestätige nur, wenn du diese Person persönlich kennst und sie dir gegenüber steht.
+        </p>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={rejectIncoming}
+            className="flex-1 px-4 py-3 border-2 border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
+          >
+            Ablehnen
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={confirming}
+            className="flex-1 px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            {confirming ? 'Sende...' : 'Bestätigen'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -179,6 +272,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
         <VerificationListenerEffect />
         <MutualVerificationEffect />
         <GlobalConfetti />
+        <IncomingVerificationDialog />
         {children}
       </PendingVerificationProvider>
     </AdapterProvider>

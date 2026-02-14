@@ -131,21 +131,19 @@ export function useVerification() {
         )
         await verificationService.saveVerification(verification)
 
-        // Send via relay
-        if (isConnected) {
-          const envelope: MessageEnvelope = {
-            v: 1,
-            id: verification.id,
-            type: 'verification',
-            fromDid: did!,
-            toDid: decodedChallenge.fromDid,
-            createdAt: new Date().toISOString(),
-            encoding: 'json',
-            payload: JSON.stringify(verification),
-            signature: verification.proof.proofValue,
-          }
-          await send(envelope)
+        // Send via relay (critical — recipient needs this for Empfänger-Prinzip)
+        const envelope: MessageEnvelope = {
+          v: 1,
+          id: verification.id,
+          type: 'verification',
+          fromDid: did!,
+          toDid: decodedChallenge.fromDid,
+          createdAt: new Date().toISOString(),
+          encoding: 'json',
+          payload: JSON.stringify(verification),
+          signature: verification.proof.proofValue,
         }
+        await send(envelope)
 
         pendingChallengeCodeRef.current = null
         setChallengeNonce(null)
@@ -180,20 +178,19 @@ export function useVerification() {
         const counter = await VerificationHelper.createVerificationFor(identity, verification.from, nonce)
         await verificationService.saveVerification(counter)
 
-        if (isConnected) {
-          const envelope: MessageEnvelope = {
-            v: 1,
-            id: counter.id,
-            type: 'verification',
-            fromDid: did,
-            toDid: verification.from,
-            createdAt: new Date().toISOString(),
-            encoding: 'json',
-            payload: JSON.stringify(counter),
-            signature: counter.proof.proofValue,
-          }
-          await send(envelope)
+        // Send counter-verification via relay (critical — recipient needs this)
+        const envelope: MessageEnvelope = {
+          v: 1,
+          id: counter.id,
+          type: 'verification',
+          fromDid: did,
+          toDid: verification.from,
+          createdAt: new Date().toISOString(),
+          encoding: 'json',
+          payload: JSON.stringify(counter),
+          signature: counter.proof.proofValue,
         }
+        await send(envelope)
 
         setPendingIncoming(null)
         setStep('done')

@@ -77,6 +77,7 @@ const Schema = {
     claim: NonEmptyString1000,
     tagsJson: nullOr(NonEmptyString1000), // JSON-serialized string[]
     context: nullOr(NonEmptyString1000),
+    // Note: createdAt is an Evolu system column (auto-added, auto-set on insert)
     proofJson: NonEmptyString1000, // JSON-serialized Proof
   },
   attestationMetadata: {

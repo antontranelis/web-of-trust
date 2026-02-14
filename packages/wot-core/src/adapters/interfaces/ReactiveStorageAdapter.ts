@@ -18,5 +18,6 @@ export interface ReactiveStorageAdapter {
   watchContacts(): Subscribable<Contact[]>
   watchReceivedVerifications(): Subscribable<Verification[]>  // to=me
   watchAllVerifications(): Subscribable<Verification[]>      // from=me OR to=me
-  watchReceivedAttestations(): Subscribable<Attestation[]>
+  watchAllAttestations(): Subscribable<Attestation[]>        // from=me OR to=me
+  watchReceivedAttestations(): Subscribable<Attestation[]>   // to=me
 }
