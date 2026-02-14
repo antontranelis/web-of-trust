@@ -63,6 +63,7 @@ export type {
   PublicAttestationsData,
 } from './adapters/interfaces/DiscoveryAdapter'
 export type { ReplicationAdapter, SpaceHandle } from './adapters/interfaces/ReplicationAdapter'
+export type { DiscoverySyncStore, DiscoverySyncField } from './adapters/interfaces/DiscoverySyncStore'
 
 // Crypto Utilities
 export {
@@ -103,3 +104,5 @@ export { InMemoryMessagingAdapter } from './adapters/messaging/InMemoryMessaging
 export { WebSocketMessagingAdapter } from './adapters/messaging/WebSocketMessagingAdapter'
 export { AutomergeReplicationAdapter } from './adapters/replication/AutomergeReplicationAdapter'
 export { HttpDiscoveryAdapter } from './adapters/discovery/HttpDiscoveryAdapter'
+export { OfflineFirstDiscoveryAdapter } from './adapters/discovery/OfflineFirstDiscoveryAdapter'
+export { InMemoryDiscoverySyncStore } from './adapters/discovery/InMemoryDiscoverySyncStore'

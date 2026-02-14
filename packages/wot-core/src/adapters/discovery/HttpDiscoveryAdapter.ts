@@ -46,42 +46,33 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
   }
 
   async resolveProfile(did: string): Promise<PublicProfile | null> {
-    try {
-      const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}`)
-      if (!res.ok) return null
-      const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      return result.valid && result.profile ? result.profile : null
-    } catch {
-      return null
-    }
+    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}`)
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`Profile fetch failed: ${res.status}`)
+    const jws = await res.text()
+    const result = await ProfileService.verifyProfile(jws)
+    return result.valid && result.profile ? result.profile : null
   }
 
   async resolveVerifications(did: string): Promise<Verification[]> {
-    try {
-      const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/v`)
-      if (!res.ok) return []
-      const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      if (!result.valid || !result.profile) return []
-      const data = result.profile as unknown as PublicVerificationsData
-      return data.verifications ?? []
-    } catch {
-      return []
-    }
+    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/v`)
+    if (res.status === 404) return []
+    if (!res.ok) throw new Error(`Verifications fetch failed: ${res.status}`)
+    const jws = await res.text()
+    const result = await ProfileService.verifyProfile(jws)
+    if (!result.valid || !result.profile) return []
+    const data = result.profile as unknown as PublicVerificationsData
+    return data.verifications ?? []
   }
 
   async resolveAttestations(did: string): Promise<Attestation[]> {
-    try {
-      const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/a`)
-      if (!res.ok) return []
-      const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      if (!result.valid || !result.profile) return []
-      const data = result.profile as unknown as PublicAttestationsData
-      return data.attestations ?? []
-    } catch {
-      return []
-    }
+    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/a`)
+    if (res.status === 404) return []
+    if (!res.ok) throw new Error(`Attestations fetch failed: ${res.status}`)
+    const jws = await res.text()
+    const result = await ProfileService.verifyProfile(jws)
+    if (!result.valid || !result.profile) return []
+    const data = result.profile as unknown as PublicAttestationsData
+    return data.attestations ?? []
   }
 }

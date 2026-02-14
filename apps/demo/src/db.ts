@@ -36,6 +36,12 @@ type AttestationMetadataId = typeof AttestationMetadataId.Type
 const ProfileId = id('Profile')
 type ProfileId = typeof ProfileId.Type
 
+const DiscoverySyncStateId = id('DiscoverySyncState')
+type DiscoverySyncStateId = typeof DiscoverySyncStateId.Type
+
+const CachedProfileId = id('CachedProfile')
+type CachedProfileId = typeof CachedProfileId.Type
+
 // --- Schema ---
 
 const Schema = {
@@ -78,6 +84,21 @@ const Schema = {
     attestationId: NonEmptyString1000,
     accepted: SqliteBoolean,
     acceptedAt: nullOr(NonEmptyString1000),
+  },
+  discoverySyncState: {
+    id: DiscoverySyncStateId,
+    did: NonEmptyString1000,
+    profileDirty: SqliteBoolean,
+    verificationsDirty: SqliteBoolean,
+    attestationsDirty: SqliteBoolean,
+  },
+  cachedProfile: {
+    id: CachedProfileId,
+    did: NonEmptyString1000,
+    name: nullOr(NonEmptyString1000),
+    bio: nullOr(NonEmptyString1000),
+    avatar: nullOr(NonEmptyString),
+    fetchedAt: NonEmptyString1000,
   },
 } as const
 
@@ -152,4 +173,4 @@ export async function resetEvolu(): Promise<void> {
   localStorage.removeItem('wot-evolu-owner-id')
 }
 
-export { Schema, type AppSchema, type ProfileId, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId }
+export { Schema, type AppSchema, type ProfileId, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId, type DiscoverySyncStateId, type CachedProfileId }

@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users } from 'lucide-react'
+import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff } from 'lucide-react'
 import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
 import { useIdentity, useOptionalAdapters } from '../context'
+import { useOnlineStatus } from '../hooks'
 
 const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
 const fallbackDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
 
-type LoadState = 'loading' | 'loaded' | 'not-found' | 'error'
+type LoadState = 'loading' | 'loaded' | 'not-found' | 'offline' | 'error'
 
 function shortDidLabel(did: string): string {
   return did.length > 24
@@ -20,6 +21,7 @@ export function PublicProfile() {
   const { did } = useParams<{ did: string }>()
   const { identity, did: myDid } = useIdentity()
   const isLoggedIn = identity !== null
+  const isOnline = useOnlineStatus()
   const adapters = useOptionalAdapters()
   const discovery = useMemo(() => adapters?.discovery ?? fallbackDiscovery, [adapters])
   const [profile, setProfile] = useState<PublicProfileType | null>(null)
@@ -57,7 +59,7 @@ export function PublicProfile() {
         ])
 
         if (!profileData) {
-          setState('not-found')
+          setState(!navigator.onLine ? 'offline' : 'not-found')
           return
         }
 
@@ -65,8 +67,9 @@ export function PublicProfile() {
         setVerifications(vData)
         setAttestations(aData)
         setState('loaded')
-      } catch {
-        setState('error')
+      } catch (error) {
+        const isNetworkError = error instanceof TypeError && /fetch|network/i.test(error.message)
+        setState(isNetworkError || !navigator.onLine ? 'offline' : 'error')
       }
     }
 
@@ -103,6 +106,24 @@ export function PublicProfile() {
           <h2 className="text-lg font-medium text-slate-700 mb-2">Kein Profil gefunden</h2>
           <p className="text-sm text-slate-500 mb-4">
             Für diese DID wurde kein öffentliches Profil hinterlegt.
+          </p>
+          <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === 'offline') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Profil</h1>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
+          <WifiOff size={48} className="mx-auto text-slate-300 mb-4" />
+          <h2 className="text-lg font-medium text-slate-700 mb-2">Du bist offline</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Das Profil kann nicht geladen werden, da keine Internetverbindung besteht.
           </p>
           <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
         </div>

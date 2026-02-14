@@ -3,6 +3,7 @@ import {
   WebCryptoAdapter,
   WebSocketMessagingAdapter,
   HttpDiscoveryAdapter,
+  OfflineFirstDiscoveryAdapter,
   type StorageAdapter,
   type ReactiveStorageAdapter,
   type CryptoAdapter,
@@ -10,6 +11,9 @@ import {
   type DiscoveryAdapter,
   type MessagingState,
   type WotIdentity,
+  type PublicProfile,
+  type PublicVerificationsData,
+  type PublicAttestationsData,
 } from '@real-life/wot-core'
 import {
   ContactService,
@@ -17,6 +21,7 @@ import {
   AttestationService,
 } from '../services'
 import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
+import { EvoluDiscoverySyncStore } from '../adapters/EvoluDiscoverySyncStore'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
 import { useIdentity } from './IdentityContext'
 
@@ -29,10 +34,12 @@ interface AdapterContextValue {
   crypto: CryptoAdapter
   messaging: MessagingAdapter
   discovery: DiscoveryAdapter
+  discoverySyncStore: EvoluDiscoverySyncStore
   messagingState: MessagingState
   contactService: ContactService
   verificationService: VerificationService
   attestationService: AttestationService
+  syncDiscovery: () => Promise<void>
   isInitialized: boolean
 }
 
@@ -68,7 +75,9 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const storage = new EvoluStorageAdapter(evolu, did)
         const crypto = new WebCryptoAdapter()
         messagingAdapter = new WebSocketMessagingAdapter(RELAY_URL)
-        const discovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
+        const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
+        const discoverySyncStore = new EvoluDiscoverySyncStore(evolu, did)
+        const discovery = new OfflineFirstDiscoveryAdapter(httpDiscovery, discoverySyncStore)
 
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(messagingAdapter)
@@ -87,6 +96,45 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           await storage.createIdentity(did, profile)
         }
 
+        // syncDiscovery: retries all pending publish operations
+        const syncDiscovery = async () => {
+          try {
+            await discovery.syncPending(did, identity, async () => {
+              const localIdentity = await storage.getIdentity()
+              const verifications = await storage.getReceivedVerifications()
+              const allAttestations = await storage.getReceivedAttestations()
+              const accepted = []
+              for (const att of allAttestations) {
+                const meta = await storage.getAttestationMetadata(att.id)
+                if (meta?.accepted) accepted.push(att)
+              }
+              const result: {
+                profile?: PublicProfile
+                verifications?: PublicVerificationsData
+                attestations?: PublicAttestationsData
+              } = {}
+              if (localIdentity) {
+                result.profile = {
+                  did,
+                  name: localIdentity.profile.name,
+                  ...(localIdentity.profile.bio ? { bio: localIdentity.profile.bio } : {}),
+                  ...(localIdentity.profile.avatar ? { avatar: localIdentity.profile.avatar } : {}),
+                  updatedAt: new Date().toISOString(),
+                }
+              }
+              if (verifications.length > 0) {
+                result.verifications = { did, verifications, updatedAt: new Date().toISOString() }
+              }
+              if (accepted.length > 0) {
+                result.attestations = { did, attestations: accepted, updatedAt: new Date().toISOString() }
+              }
+              return result
+            })
+          } catch (error) {
+            console.warn('Discovery sync failed:', error)
+          }
+        }
+
         if (!cancelled) {
           setAdapters({
             storage,
@@ -94,9 +142,11 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             crypto,
             messaging: messagingAdapter,
             discovery,
+            discoverySyncStore,
             contactService: new ContactService(storage),
             verificationService: new VerificationService(storage),
             attestationService,
+            syncDiscovery,
           })
           setIsInitialized(true)
 

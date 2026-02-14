@@ -8,9 +8,13 @@ import { useIdentity } from '../context'
  *
  * - Publishes the local profile, verifications, and attestations
  * - Fetches contact profiles and updates display names
+ * - Retries pending syncs on online/visibility events
+ *
+ * The OfflineFirstDiscoveryAdapter handles dirty-flag tracking and caching.
+ * This hook triggers publish operations and retry via syncDiscovery().
  */
 export function useProfileSync() {
-  const { storage, messaging, reactiveStorage, discovery } = useAdapters()
+  const { storage, messaging, reactiveStorage, discovery, syncDiscovery } = useAdapters()
   const { identity } = useIdentity()
   const fetchedRef = useRef(new Set<string>())
   const vaUploadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -18,45 +22,44 @@ export function useProfileSync() {
   /**
    * Upload the current user's profile via DiscoveryAdapter.
    * Called after profile changes in Identity page.
+   *
+   * The OfflineFirstDiscoveryAdapter marks dirty on failure
+   * and retries via syncPending().
    */
   const uploadProfile = useCallback(async () => {
     if (!identity) return
 
-    try {
-      const localIdentity = await storage.getIdentity()
-      if (!localIdentity) return
+    const localIdentity = await storage.getIdentity()
+    if (!localIdentity) return
 
-      const did = identity.getDid()
-      const profile: PublicProfile = {
-        did,
-        name: localIdentity.profile.name,
-        ...(localIdentity.profile.bio ? { bio: localIdentity.profile.bio } : {}),
-        ...(localIdentity.profile.avatar ? { avatar: localIdentity.profile.avatar } : {}),
-        updatedAt: new Date().toISOString(),
+    const did = identity.getDid()
+    const profile: PublicProfile = {
+      did,
+      name: localIdentity.profile.name,
+      ...(localIdentity.profile.bio ? { bio: localIdentity.profile.bio } : {}),
+      ...(localIdentity.profile.avatar ? { avatar: localIdentity.profile.avatar } : {}),
+      updatedAt: new Date().toISOString(),
+    }
+
+    await discovery.publishProfile(profile, identity)
+
+    // Notify all contacts about the profile update via relay
+    const contacts = await storage.getContacts()
+    for (const contact of contacts) {
+      const envelope: MessageEnvelope = {
+        v: 1,
+        id: crypto.randomUUID(),
+        type: 'profile-update',
+        fromDid: did,
+        toDid: contact.did,
+        createdAt: new Date().toISOString(),
+        encoding: 'json',
+        payload: JSON.stringify({ did, name: profile.name }),
+        signature: '',
       }
-
-      await discovery.publishProfile(profile, identity)
-
-      // Notify all contacts about the profile update via relay
-      const contacts = await storage.getContacts()
-      for (const contact of contacts) {
-        const envelope: MessageEnvelope = {
-          v: 1,
-          id: crypto.randomUUID(),
-          type: 'profile-update',
-          fromDid: did,
-          toDid: contact.did,
-          createdAt: new Date().toISOString(),
-          encoding: 'json',
-          payload: JSON.stringify({ did, name: profile.name }),
-          signature: '',
-        }
-        messaging.send(envelope).catch(() => {
-          // Non-blocking — contact may be offline, relay will queue
-        })
-      }
-    } catch (error) {
-      console.warn('Profile upload failed:', error)
+      messaging.send(envelope).catch(() => {
+        // Non-blocking — contact may be offline, relay will queue
+      })
     }
   }, [identity, storage, messaging, discovery])
 
@@ -68,15 +71,67 @@ export function useProfileSync() {
   }, [discovery])
 
   /**
-   * Upload profile once after onboarding (first mount after identity creation).
+   * Upload verifications and accepted attestations via DiscoveryAdapter.
+   */
+  const uploadVerificationsAndAttestations = useCallback(async () => {
+    if (!identity) return
+
+    const did = identity.getDid()
+
+    // Upload verifications
+    const verifications = await storage.getReceivedVerifications()
+    if (verifications.length > 0) {
+      await discovery.publishVerifications(
+        { did, verifications, updatedAt: new Date().toISOString() },
+        identity,
+      )
+    }
+
+    // Upload accepted attestations only
+    const allAttestations = await storage.getReceivedAttestations()
+    const accepted = []
+    for (const att of allAttestations) {
+      const meta = await storage.getAttestationMetadata(att.id)
+      if (meta?.accepted) accepted.push(att)
+    }
+    if (accepted.length > 0) {
+      await discovery.publishAttestations(
+        { did, attestations: accepted, updatedAt: new Date().toISOString() },
+        identity,
+      )
+    }
+  }, [identity, storage, discovery])
+
+  /**
+   * Retry all pending discovery syncs.
+   * Called on mount, online event, and visibility change.
    */
   useEffect(() => {
     if (!identity) return
-    const key = `wot-profile-uploaded:${identity.getDid()}`
-    if (localStorage.getItem(key)) return
-    uploadProfile().then(() => {
-      localStorage.setItem(key, '1')
-    })
+
+    // Sync pending on mount
+    syncDiscovery()
+
+    const handleOnline = () => syncDiscovery()
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') syncDiscovery()
+    }
+
+    window.addEventListener('online', handleOnline)
+    document.addEventListener('visibilitychange', handleVisible)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      document.removeEventListener('visibilitychange', handleVisible)
+    }
+  }, [identity, syncDiscovery])
+
+  /**
+   * Upload profile on mount.
+   */
+  useEffect(() => {
+    if (!identity) return
+    uploadProfile()
   }, [identity, uploadProfile])
 
   /**
@@ -141,45 +196,7 @@ export function useProfileSync() {
   }, [messaging, storage, fetchContactProfile])
 
   /**
-   * Upload verifications and accepted attestations via DiscoveryAdapter.
-   */
-  const uploadVerificationsAndAttestations = useCallback(async () => {
-    if (!identity) return
-
-    const did = identity.getDid()
-
-    try {
-      // Upload verifications
-      const verifications = await storage.getReceivedVerifications()
-      if (verifications.length > 0) {
-        await discovery.publishVerifications(
-          { did, verifications, updatedAt: new Date().toISOString() },
-          identity,
-        )
-      }
-
-      // Upload accepted attestations only
-      const allAttestations = await storage.getReceivedAttestations()
-      const accepted = []
-      for (const att of allAttestations) {
-        const meta = await storage.getAttestationMetadata(att.id)
-        if (meta?.accepted) accepted.push(att)
-      }
-      if (accepted.length > 0) {
-        await discovery.publishAttestations(
-          { did, attestations: accepted, updatedAt: new Date().toISOString() },
-          identity,
-        )
-      }
-    } catch (error) {
-      console.warn('Verifications/attestations upload failed:', error)
-    }
-  }, [identity, storage, discovery])
-
-  /**
    * Upload verifications + attestations on mount.
-   * Unlike profile (which only uploads once), this runs every mount
-   * because accepted attestations may have changed.
    */
   useEffect(() => {
     if (!identity) return

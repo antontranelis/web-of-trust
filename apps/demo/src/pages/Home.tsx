@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Shield, Award, ArrowRight, Wifi, WifiOff } from 'lucide-react'
-import { useContacts, useAttestations, useMessaging } from '../hooks'
+import { Users, Shield, Award, ArrowRight, Wifi, WifiOff, CloudOff } from 'lucide-react'
+import { useContacts, useAttestations, useMessaging, useSyncStatus } from '../hooks'
 import { useIdentity, useAdapters } from '../context'
 
 export function Home() {
@@ -10,6 +10,7 @@ export function Home() {
   const { activeContacts } = useContacts()
   const { myAttestations, receivedAttestations } = useAttestations()
   const { state: relayState, isConnected } = useMessaging()
+  const { hasPendingSync } = useSyncStatus()
   const [profileName, setProfileName] = useState<string | null>(null)
 
   useEffect(() => {
@@ -68,6 +69,13 @@ export function Home() {
             <>
               <WifiOff size={14} className="text-slate-400" />
               <span className="text-slate-500">Relay offline</span>
+            </>
+          )}
+          {hasPendingSync && (
+            <>
+              <span className="text-slate-300">|</span>
+              <CloudOff size={14} className="text-amber-500" />
+              <span className="text-amber-600">Profil-Sync ausstehend</span>
             </>
           )}
         </div>
