@@ -1,24 +1,35 @@
 import { useMemo } from 'react'
 import { useAdapters, useIdentity } from '../context'
 import { useSubscribable } from './useSubscribable'
-import type { Profile } from '@real-life/wot-core'
-import type { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
-import type { Subscribable } from '@real-life/wot-core'
+import type { Profile, Identity, Subscribable } from '@real-life/wot-core'
 
 const EMPTY_PROFILE: Profile = { name: '' }
+const EMPTY_IDENTITY: Subscribable<Identity | null> = {
+  subscribe: () => () => {},
+  getValue: () => null,
+}
 
 /**
  * Reactive profile hook — updates automatically when Evolu syncs
- * profile data from another device.
+ * profile data from another device or the user edits their profile.
  */
 export function useProfile(): Profile {
-  const { storage } = useAdapters()
-  const { did } = useIdentity()
+  const { reactiveStorage } = useAdapters()
+  const identity = useLocalIdentity()
+  return identity?.profile ?? EMPTY_PROFILE
+}
 
-  const profileSubscribable: Subscribable<Profile> = useMemo(() => {
-    if (!did) return { subscribe: () => () => {}, getValue: () => EMPTY_PROFILE }
-    return (storage as EvoluStorageAdapter).watchProfile(did)
-  }, [storage, did])
+/**
+ * Reactive identity hook — returns the full local Identity (did, profile, timestamps)
+ * or null if not yet initialized.
+ */
+export function useLocalIdentity(): Identity | null {
+  const { reactiveStorage } = useAdapters()
 
-  return useSubscribable(profileSubscribable)
+  const identitySubscribable = useMemo(
+    () => reactiveStorage.watchIdentity(),
+    [reactiveStorage],
+  )
+
+  return useSubscribable(identitySubscribable)
 }

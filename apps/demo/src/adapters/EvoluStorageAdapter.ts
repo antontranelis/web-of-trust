@@ -330,6 +330,67 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
     }
   }
 
+  watchIdentity(): Subscribable<Identity | null> {
+    const evolu = this.evolu
+    const did = this.did
+    const query = evolu.createQuery((db) =>
+      db.selectFrom('profile').selectAll()
+        .where('did', '=', str(did))
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+
+    const rowToIdentity = (): Identity | null => {
+      const rows = [...evolu.getQueryRows(query)]
+      if (rows.length === 0) return null
+      const row = rows[0]
+      const profile: Profile = {
+        name: (row.name as string) ?? '',
+        ...(row.bio != null ? { bio: row.bio as string } : {}),
+        ...(row.avatar != null ? { avatar: row.avatar as string } : {}),
+      }
+      // Use cachedIdentity timestamps if available, otherwise empty strings.
+      // IMPORTANT: Do NOT use new Date() here — getValue() must return
+      // referentially stable snapshots for useSyncExternalStore.
+      const cached = this.cachedIdentity
+      return {
+        did,
+        profile,
+        createdAt: cached?.createdAt ?? '',
+        updatedAt: cached?.updatedAt ?? '',
+      }
+    }
+
+    const identityChanged = (a: Identity | null, b: Identity | null) => {
+      if (a === null || b === null) return a !== b
+      return a.profile.name !== b.profile.name || a.profile.bio !== b.profile.bio || a.profile.avatar !== b.profile.avatar
+    }
+
+    let snapshot: Identity | null = rowToIdentity()
+
+    return {
+      subscribe: (callback) => {
+        const unsub = evolu.subscribeQuery(query)(() => {
+          const updated = rowToIdentity()
+          if (identityChanged(updated, snapshot)) {
+            snapshot = updated
+            if (snapshot) this.cachedIdentity = snapshot
+            callback(snapshot)
+          }
+        })
+        evolu.loadQuery(query).then(() => {
+          const loaded = rowToIdentity()
+          if (identityChanged(loaded, snapshot)) {
+            snapshot = loaded
+            if (snapshot) this.cachedIdentity = snapshot
+            callback(snapshot)
+          }
+        })
+        return unsub
+      },
+      getValue: () => snapshot,
+    }
+  }
+
   watchContacts(): Subscribable<Contact[]> {
     const evolu = this.evolu
     const query = evolu.createQuery((db) =>
@@ -337,16 +398,22 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
         .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
     )
     let snapshot: Contact[] = [...evolu.getQueryRows(query)].map(rowToContact)
+    let snapshotKey = JSON.stringify(snapshot)
+
+    const updateIfChanged = (callback: (value: Contact[]) => void) => {
+      const next = [...evolu.getQueryRows(query)].map(rowToContact)
+      const nextKey = JSON.stringify(next)
+      if (nextKey !== snapshotKey) {
+        snapshot = next
+        snapshotKey = nextKey
+        callback(snapshot)
+      }
+    }
+
     return {
       subscribe: (callback) => {
-        const unsub = evolu.subscribeQuery(query)(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToContact)
-          callback(snapshot)
-        })
-        evolu.loadQuery(query).then(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToContact)
-          callback(snapshot)
-        })
+        const unsub = evolu.subscribeQuery(query)(() => updateIfChanged(callback))
+        evolu.loadQuery(query).then(() => updateIfChanged(callback))
         return unsub
       },
       getValue: () => snapshot,
@@ -360,16 +427,22 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
         .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
     )
     let snapshot: Verification[] = [...evolu.getQueryRows(query)].map(rowToVerification)
+    let snapshotKey = JSON.stringify(snapshot)
+
+    const updateIfChanged = (callback: (value: Verification[]) => void) => {
+      const next = [...evolu.getQueryRows(query)].map(rowToVerification)
+      const nextKey = JSON.stringify(next)
+      if (nextKey !== snapshotKey) {
+        snapshot = next
+        snapshotKey = nextKey
+        callback(snapshot)
+      }
+    }
+
     return {
       subscribe: (callback) => {
-        const unsub = evolu.subscribeQuery(query)(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToVerification)
-          callback(snapshot)
-        })
-        evolu.loadQuery(query).then(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToVerification)
-          callback(snapshot)
-        })
+        const unsub = evolu.subscribeQuery(query)(() => updateIfChanged(callback))
+        evolu.loadQuery(query).then(() => updateIfChanged(callback))
         return unsub
       },
       getValue: () => snapshot,
@@ -383,16 +456,22 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
         .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
     )
     let snapshot: Attestation[] = [...evolu.getQueryRows(query)].map(rowToAttestation)
+    let snapshotKey = JSON.stringify(snapshot)
+
+    const updateIfChanged = (callback: (value: Attestation[]) => void) => {
+      const next = [...evolu.getQueryRows(query)].map(rowToAttestation)
+      const nextKey = JSON.stringify(next)
+      if (nextKey !== snapshotKey) {
+        snapshot = next
+        snapshotKey = nextKey
+        callback(snapshot)
+      }
+    }
+
     return {
       subscribe: (callback) => {
-        const unsub = evolu.subscribeQuery(query)(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToAttestation)
-          callback(snapshot)
-        })
-        evolu.loadQuery(query).then(() => {
-          snapshot = [...evolu.getQueryRows(query)].map(rowToAttestation)
-          callback(snapshot)
-        })
+        const unsub = evolu.subscribeQuery(query)(() => updateIfChanged(callback))
+        evolu.loadQuery(query).then(() => updateIfChanged(callback))
         return unsub
       },
       getValue: () => snapshot,

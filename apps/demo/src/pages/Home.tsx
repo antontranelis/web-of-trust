@@ -1,25 +1,17 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Users, Shield, Award, ArrowRight, Wifi, WifiOff, CloudOff } from 'lucide-react'
-import { useContacts, useAttestations, useMessaging, useSyncStatus } from '../hooks'
-import { useIdentity, useAdapters } from '../context'
+import { useContacts, useAttestations, useMessaging, useSyncStatus, useLocalIdentity } from '../hooks'
+import { useIdentity } from '../context'
 
 export function Home() {
   const { did } = useIdentity()
-  const { storage } = useAdapters()
+  const localIdentity = useLocalIdentity()
   const { activeContacts } = useContacts()
   const { myAttestations, receivedAttestations } = useAttestations()
   const { state: relayState, isConnected } = useMessaging()
   const { hasPendingSync } = useSyncStatus()
-  const [profileName, setProfileName] = useState<string | null>(null)
 
-  useEffect(() => {
-    storage.getIdentity().then((id) => {
-      setProfileName(id?.profile.name ?? null)
-    })
-  }, [storage])
-
-  const displayName = profileName || (did ? `did:...${did.slice(-8)}` : '')
+  const displayName = localIdentity?.profile.name || (did ? `did:...${did.slice(-8)}` : '')
 
   const stats = [
     {

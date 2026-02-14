@@ -1,15 +1,19 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff } from 'lucide-react'
-import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation } from '@real-life/wot-core'
+import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation, type Contact, type Identity, type Subscribable } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
 import { useIdentity, useOptionalAdapters } from '../context'
 import { useOnlineStatus } from '../hooks'
+import { useSubscribable } from '../hooks/useSubscribable'
 
 const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
 const fallbackDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
 
-type LoadState = 'loading' | 'loaded' | 'not-found' | 'offline' | 'error'
+const EMPTY_CONTACTS: Subscribable<Contact[]> = { subscribe: () => () => {}, getValue: () => [] }
+const EMPTY_IDENTITY: Subscribable<Identity | null> = { subscribe: () => () => {}, getValue: () => null }
+
+type LoadState = 'loading' | 'loaded' | 'loaded-offline' | 'not-found' | 'offline' | 'error'
 
 function shortDidLabel(did: string): string {
   return did.length > 24
@@ -29,18 +33,53 @@ export function PublicProfile() {
   const [attestations, setAttestations] = useState<Attestation[]>([])
   const [state, setState] = useState<LoadState>('loading')
   const [copiedDid, setCopiedDid] = useState(false)
-  const [isContact, setIsContact] = useState(false)
 
   const decodedDid = did ? decodeURIComponent(did) : ''
   const isMyProfile = myDid === decodedDid
 
-  // Check local contacts (only when logged in / AdapterProvider available)
-  useEffect(() => {
-    if (!adapters || !decodedDid) return
-    adapters.storage.getContacts().then(contacts => {
-      setIsContact(contacts.some(c => c.did === decodedDid))
-    })
-  }, [adapters, decodedDid])
+  // Reactive local data (contacts + own identity)
+  const contactsSubscribable = useMemo(() => adapters?.reactiveStorage.watchContacts() ?? EMPTY_CONTACTS, [adapters])
+  const contacts = useSubscribable(contactsSubscribable)
+  const identitySubscribable = useMemo(() => adapters?.reactiveStorage.watchIdentity() ?? EMPTY_IDENTITY, [adapters])
+  const localIdentity = useSubscribable(identitySubscribable)
+
+  const isContact = useMemo(() => contacts.some(c => c.did === decodedDid), [contacts, decodedDid])
+
+  const tryLocalFallback = useCallback((): boolean => {
+    // Try own profile
+    if (decodedDid === myDid && localIdentity) {
+      setProfile({
+        did: decodedDid,
+        name: localIdentity.profile.name,
+        ...(localIdentity.profile.bio ? { bio: localIdentity.profile.bio } : {}),
+        ...(localIdentity.profile.avatar ? { avatar: localIdentity.profile.avatar } : {}),
+        updatedAt: new Date().toISOString(),
+      })
+      setState('loaded-offline')
+      return true
+    }
+
+    // Try contact data
+    const contact = contacts.find(c => c.did === decodedDid)
+    if (contact?.name) {
+      setProfile({
+        did: decodedDid,
+        name: contact.name,
+        ...(contact.bio ? { bio: contact.bio } : {}),
+        ...(contact.avatar ? { avatar: contact.avatar } : {}),
+        updatedAt: contact.updatedAt,
+      })
+      setState('loaded-offline')
+      return true
+    }
+
+    return false
+  }, [decodedDid, myDid, localIdentity, contacts])
+
+  // Ref to access tryLocalFallback inside useEffect without it being a dependency.
+  // This prevents reactive data changes (contacts, localIdentity) from re-triggering fetchAll.
+  const tryLocalFallbackRef = useRef(tryLocalFallback)
+  tryLocalFallbackRef.current = tryLocalFallback
 
   useEffect(() => {
     if (!decodedDid) {
@@ -59,6 +98,7 @@ export function PublicProfile() {
         ])
 
         if (!profileData) {
+          if (!navigator.onLine && tryLocalFallbackRef.current()) return
           setState(!navigator.onLine ? 'offline' : 'not-found')
           return
         }
@@ -69,6 +109,7 @@ export function PublicProfile() {
         setState('loaded')
       } catch (error) {
         const isNetworkError = error instanceof TypeError && /fetch|network/i.test(error.message)
+        if ((isNetworkError || !navigator.onLine) && tryLocalFallbackRef.current()) return
         setState(isNetworkError || !navigator.onLine ? 'offline' : 'error')
       }
     }
@@ -179,16 +220,31 @@ export function PublicProfile() {
         </div>
       </div>
 
-      {/* Verification status */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex items-start space-x-3">
-          <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-green-800">
-            Dieses Profil ist kryptographisch signiert und verifiziert.
-            Die Signatur beweist, dass es vom Inhaber der DID erstellt wurde.
+      {/* Offline banner */}
+      {state === 'loaded-offline' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <WifiOff className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800">
+              Du bist offline. Die angezeigten Daten stammen aus dem lokalen Speicher
+              und sind möglicherweise nicht aktuell.
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Verification status */}
+      {state === 'loaded' && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-green-800">
+              Dieses Profil ist kryptographisch signiert und verifiziert.
+              Die Signatur beweist, dass es vom Inhaber der DID erstellt wurde.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Verifications */}
       {verifications.length > 0 && (
