@@ -49,10 +49,10 @@ class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
     const after = Automerge.change(before, (d: any) => fn(d as T))
     this.spaceState.doc = after
 
-    // Get binary changes and broadcast
+    // Get binary changes and broadcast (fire-and-forget, errors handled internally)
     const changes = Automerge.getChanges(before, after)
     if (changes.length > 0) {
-      this.adapter._broadcastChanges(this.spaceState, changes)
+      this.adapter._broadcastChanges(this.spaceState, changes).catch(() => {})
     }
   }
 
