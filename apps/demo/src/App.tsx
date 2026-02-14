@@ -127,8 +127,8 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <IdentityManagement
-          onComplete={(newIdentity, newDid) => {
-            setIdentity(newIdentity, newDid)
+          onComplete={(newIdentity, newDid, initialProfile) => {
+            setIdentity(newIdentity, newDid, initialProfile)
           }}
         />
       </div>

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Key, Copy, Check, AlertTriangle, Shield, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { WotIdentity } from '@real-life/wot-core'
+import { WotIdentity, type Profile } from '@real-life/wot-core'
 import { ProgressIndicator, SecurityChecklist, InfoTooltip, AvatarUpload } from '../shared'
 
 type OnboardingStep = 'generate' | 'display' | 'verify' | 'profile' | 'protect' | 'complete'
 
 interface OnboardingFlowProps {
-  onComplete: (identity: WotIdentity, did: string) => void
+  onComplete: (identity: WotIdentity, did: string, initialProfile?: Profile) => void
 }
 
 const STEPS = [
@@ -124,23 +124,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setError(null)
 
       const identity = new WotIdentity()
-      // WICHTIG: storeSeed=true - jetzt die Identity in IndexedDB speichern
       await identity.unlock(mnemonic, passphrase, true)
-
-      // Save profile with name to localStorage (AdapterContext will pick it up)
-      const now = new Date().toISOString()
-      localStorage.setItem('wot-identity', JSON.stringify({
-        did,
-        profile: { name: displayName.trim(), ...(bio.trim() ? { bio: bio.trim() } : {}), ...(avatar ? { avatar } : {}) },
-        createdAt: now,
-        updatedAt: now,
-      }))
 
       setStep('complete')
 
-      // Complete onboarding
+      // Complete onboarding — pass profile data for Evolu storage
+      const profile: Profile = {
+        name: displayName.trim(),
+        ...(bio.trim() ? { bio: bio.trim() } : {}),
+        ...(avatar ? { avatar } : {}),
+      }
       setTimeout(() => {
-        onComplete(identity, did)
+        onComplete(identity, did, profile)
       }, 2000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler beim Schützen der Identität')

@@ -1,13 +1,8 @@
 /**
  * EvoluStorageAdapter - StorageAdapter implementation backed by Evolu
  *
- * Replaces LocalStorageAdapter (IndexedDB) with Evolu for:
- * - E2E encrypted storage
- * - Multi-device sync (via relay)
- * - Deterministic keys from WotIdentity
- *
- * Data is stored in Evolu's SQLite (OPFS in browser), encrypted with
- * keys derived from the user's BIP39 seed.
+ * All profile data is stored in Evolu (SQLite via OPFS), encrypted with
+ * keys derived from the user's BIP39 seed. No localStorage dependency.
  */
 import {
   NonEmptyString,
@@ -37,19 +32,16 @@ const str = (s: string) => NonEmptyString1000.orThrow(s)
 const longStr = (s: string) => NonEmptyString.orThrow(s)
 
 export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapter {
-  constructor(private evolu: AppEvolu) {}
+  private cachedIdentity: Identity | null = null
+
+  constructor(private evolu: AppEvolu, private did: string) {}
 
   // --- Identity ---
-  // Profile (name, bio, avatar) is stored in Evolu for cross-device sync.
-  // DID + timestamps are cached in localStorage for quick access.
-
-  private localIdentity: Identity | null = null
 
   async createIdentity(did: string, profile: Profile): Promise<Identity> {
     const now = new Date().toISOString()
     const identity: Identity = { did, profile, createdAt: now, updatedAt: now }
 
-    // Store profile in Evolu (synced across devices)
     this.evolu.upsert('profile', {
       id: createIdFromString<'Profile'>(`profile-${did}`),
       did: str(did),
@@ -58,37 +50,26 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
       avatar: profile.avatar ? longStr(profile.avatar) : null,
     })
 
-    // Cache in localStorage for quick access
-    this.localIdentity = identity
-    localStorage.setItem('wot-identity', JSON.stringify(identity))
+    this.cachedIdentity = identity
     return identity
   }
 
   async getIdentity(): Promise<Identity | null> {
-    if (this.localIdentity) return this.localIdentity
+    if (this.cachedIdentity) return this.cachedIdentity
 
-    // Try localStorage first (fast)
-    const stored = localStorage.getItem('wot-identity')
-    if (stored) {
-      const cached = JSON.parse(stored) as Identity
-
-      // Try to get profile from Evolu (may have synced updates from other device)
-      const evoluProfile = await this.getProfileFromEvolu(cached.did)
-      if (evoluProfile) {
-        cached.profile = evoluProfile
-        localStorage.setItem('wot-identity', JSON.stringify(cached))
-      }
-
-      this.localIdentity = cached
-      return cached
+    const profile = await this.getProfileFromEvolu(this.did)
+    if (profile) {
+      const now = new Date().toISOString()
+      this.cachedIdentity = { did: this.did, profile, createdAt: now, updatedAt: now }
+      return this.cachedIdentity
     }
+
     return null
   }
 
   async updateIdentity(identity: Identity): Promise<void> {
     identity.updatedAt = new Date().toISOString()
 
-    // Update profile in Evolu (synced)
     this.evolu.upsert('profile', {
       id: createIdFromString<'Profile'>(`profile-${identity.did}`),
       did: str(identity.did),
@@ -97,12 +78,9 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
       avatar: identity.profile.avatar ? longStr(identity.profile.avatar) : null,
     })
 
-    // Update localStorage cache
-    this.localIdentity = identity
-    localStorage.setItem('wot-identity', JSON.stringify(identity))
+    this.cachedIdentity = identity
   }
 
-  /** Load profile from Evolu (for cross-device sync) */
   private async getProfileFromEvolu(did: string): Promise<Profile | null> {
     const query = this.evolu.createQuery((db) =>
       db.selectFrom('profile')
@@ -236,7 +214,6 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
       throw new Error(`Failed to save attestation: ${JSON.stringify(result.error)}`)
     }
 
-    // Create default metadata
     this.evolu.upsert('attestationMetadata', {
       id: createIdFromString<'AttestationMetadata'>(`meta-${attestation.id}`),
       attestationId: str(attestation.id),
@@ -296,22 +273,14 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
 
   // --- Lifecycle ---
 
-  async init(): Promise<void> {
-    // Evolu is already initialized in createWotEvolu
-  }
+  async init(): Promise<void> {}
 
   async clear(): Promise<void> {
-    localStorage.removeItem('wot-identity')
-    this.localIdentity = null
+    this.cachedIdentity = null
   }
 
   // --- Reactive (ReactiveStorageAdapter) ---
-  //
-  // useSyncExternalStore requires getValue() to return the same reference
-  // when data hasn't changed. We cache the mapped snapshot and only update
-  // it in the subscribe callback when Evolu notifies us of a change.
 
-  /** Watch profile for sync updates (e.g. from another device) */
   watchProfile(did: string): Subscribable<Profile> {
     const evolu = this.evolu
     const query = evolu.createQuery((db) =>
@@ -342,14 +311,8 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
           const updated = rowToProfile()
           if (profileChanged(updated, snapshot)) {
             snapshot = updated
-            // Also update localStorage cache
-            const stored = localStorage.getItem('wot-identity')
-            if (stored) {
-              const cached = JSON.parse(stored) as Identity
-              cached.profile = updated
-              cached.updatedAt = new Date().toISOString()
-              localStorage.setItem('wot-identity', JSON.stringify(cached))
-              this.localIdentity = cached
+            if (this.cachedIdentity) {
+              this.cachedIdentity = { ...this.cachedIdentity, profile: updated, updatedAt: new Date().toISOString() }
             }
             callback(snapshot)
           }
@@ -380,7 +343,6 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
           snapshot = [...evolu.getQueryRows(query)].map(rowToContact)
           callback(snapshot)
         })
-        // Trigger initial load from OPFS — subscribeQuery only fires on mutations
         evolu.loadQuery(query).then(() => {
           snapshot = [...evolu.getQueryRows(query)].map(rowToContact)
           callback(snapshot)

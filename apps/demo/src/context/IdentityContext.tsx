@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { WotIdentity } from '@real-life/wot-core'
+import { WotIdentity, type Profile } from '@real-life/wot-core'
 
 interface IdentityContextValue {
   identity: WotIdentity | null
   did: string | null
   hasStoredIdentity: boolean | null // null = loading, true/false = checked
-  setIdentity: (identity: WotIdentity, did: string) => void
+  initialProfile: Profile | null
+  setIdentity: (identity: WotIdentity, did: string, initialProfile?: Profile) => void
   clearIdentity: () => void
+  consumeInitialProfile: () => Profile | null
 }
 
 const IdentityContext = createContext<IdentityContextValue | null>(null)
@@ -15,6 +17,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   const [identity, setIdentityState] = useState<WotIdentity | null>(null)
   const [did, setDid] = useState<string | null>(null)
   const [hasStoredIdentity, setHasStoredIdentity] = useState<boolean | null>(null)
+  const [initialProfile, setInitialProfile] = useState<Profile | null>(null)
 
   // Check on mount: try session-key auto-unlock, then fall back to checking stored identity
   useEffect(() => {
@@ -50,16 +53,24 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     initIdentity()
   }, [])
 
-  const setIdentity = (newIdentity: WotIdentity, newDid: string) => {
+  const setIdentity = (newIdentity: WotIdentity, newDid: string, profile?: Profile) => {
     setIdentityState(newIdentity)
     setDid(newDid)
     setHasStoredIdentity(true)
+    if (profile) setInitialProfile(profile)
   }
 
   const clearIdentity = () => {
     setIdentityState(null)
     setDid(null)
     setHasStoredIdentity(false)
+    setInitialProfile(null)
+  }
+
+  const consumeInitialProfile = (): Profile | null => {
+    const profile = initialProfile
+    setInitialProfile(null)
+    return profile
   }
 
   return (
@@ -68,8 +79,10 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         identity,
         did,
         hasStoredIdentity,
+        initialProfile,
         setIdentity,
         clearIdentity,
+        consumeInitialProfile,
       }}
     >
       {children}

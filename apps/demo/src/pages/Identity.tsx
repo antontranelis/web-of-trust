@@ -107,7 +107,6 @@ export function Identity() {
       setIsDeleting(true)
       await identity.deleteStoredIdentity()
       await resetEvolu()
-      localStorage.removeItem('wot-identity')
       clearIdentity()
       window.location.href = '/'
     } catch (error) {

@@ -18,6 +18,7 @@ import {
 } from '../services'
 import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
+import { useIdentity } from './IdentityContext'
 
 const RELAY_URL = import.meta.env.VITE_RELAY_URL ?? 'wss://relay.utopia-lab.org'
 const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
@@ -51,18 +52,20 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
   const [initError, setInitError] = useState<string | null>(null)
   const [adapters, setAdapters] = useState<Omit<AdapterContextValue, 'isInitialized' | 'messagingState'> | null>(null)
   const [messagingState, setMessagingState] = useState<MessagingState>('disconnected')
+  const { consumeInitialProfile } = useIdentity()
 
   useEffect(() => {
     let cancelled = false
     let messagingAdapter: WebSocketMessagingAdapter | null = null
 
-    async function initEvolu() {
+    async function initAdapters() {
       try {
+        const did = identity.getDid()
         const evolu = isEvoluInitialized()
           ? getEvolu()
           : await createWotEvolu(identity)
 
-        const storage = new EvoluStorageAdapter(evolu)
+        const storage = new EvoluStorageAdapter(evolu, did)
         const crypto = new WebCryptoAdapter()
         messagingAdapter = new WebSocketMessagingAdapter(RELAY_URL)
         const discovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
@@ -70,14 +73,18 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(messagingAdapter)
 
-        // Ensure identity exists — migrate localStorage profile to Evolu if needed
-        const did = identity.getDid()
-        const existing = await storage.getIdentity()
+        // Ensure identity exists in Evolu.
+        // On a new device (recovery/import), Evolu may still be syncing from relay,
+        // so we wait briefly before deciding to create a fresh profile.
+        let existing = await storage.getIdentity()
         if (!existing && did) {
-          await storage.createIdentity(did, { name: '' })
-        } else if (existing) {
-          // Ensure profile is in Evolu (migration from localStorage-only era)
-          await storage.updateIdentity(existing)
+          // Wait for Evolu relay sync before creating empty profile
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          existing = await storage.getIdentity()
+        }
+        if (!existing && did) {
+          const profile = consumeInitialProfile() ?? { name: '' }
+          await storage.createIdentity(did, profile)
         }
 
         if (!cancelled) {
@@ -94,7 +101,6 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           setIsInitialized(true)
 
           // Connect to relay after adapters are set
-          const did = identity.getDid()
           if (did && !cancelled) {
             try {
               setMessagingState('connecting')
@@ -108,7 +114,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           }
         }
       } catch (error) {
-        console.error('Failed to initialize Evolu:', error)
+        console.error('Failed to initialize adapters:', error)
         if (!cancelled) {
           const msg = error instanceof Error ? error.message : String(error)
           if (msg.includes('opfs') || msg.includes('storage') || msg.includes('access') || msg.includes('SecurityError')) {
@@ -120,7 +126,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       }
     }
 
-    initEvolu()
+    initAdapters()
     return () => {
       cancelled = true
       messagingAdapter?.disconnect()

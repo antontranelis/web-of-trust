@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { WotIdentity } from '@real-life/wot-core'
+import { WotIdentity, type Profile } from '@real-life/wot-core'
 import { useIdentity } from '../../context'
 import { OnboardingFlow } from './OnboardingFlow'
 import { RecoveryFlow } from './RecoveryFlow'
@@ -8,7 +8,7 @@ import { UnlockFlow } from './UnlockFlow'
 type Mode = 'unlock' | 'onboarding' | 'recovery'
 
 interface IdentityManagementProps {
-  onComplete: (identity: WotIdentity, did: string) => void
+  onComplete: (identity: WotIdentity, did: string, initialProfile?: Profile) => void
 }
 
 export function IdentityManagement({ onComplete }: IdentityManagementProps) {

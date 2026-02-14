@@ -98,20 +98,9 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
       const identity = new WotIdentity()
       await identity.deleteStoredIdentity()
 
-      // WICHTIG: storeSeed=true - Identity in IndexedDB speichern
       await identity.unlock(mnemonic, passphrase, true)
 
       const recoveredDid = identity.getDid()
-
-      // Save minimal identity to localStorage — profile will sync from Evolu
-      const now = new Date().toISOString()
-      localStorage.setItem('wot-identity', JSON.stringify({
-        did: recoveredDid,
-        profile: { name: '' },
-        createdAt: now,
-        updatedAt: now,
-      }))
-
       setDid(recoveredDid)
       setStep('complete')
 
