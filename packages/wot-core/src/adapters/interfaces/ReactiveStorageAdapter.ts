@@ -16,6 +16,7 @@ import type { Attestation } from '../../types/attestation'
 export interface ReactiveStorageAdapter {
   watchIdentity(): Subscribable<Identity | null>
   watchContacts(): Subscribable<Contact[]>
-  watchReceivedVerifications(): Subscribable<Verification[]>
+  watchReceivedVerifications(): Subscribable<Verification[]>  // to=me
+  watchAllVerifications(): Subscribable<Verification[]>      // from=me OR to=me
   watchReceivedAttestations(): Subscribable<Attestation[]>
 }

@@ -330,6 +330,58 @@ describe('Verification with WotIdentity', () => {
       expect(verificationBtoA.to).toBe(annaDid)
     })
 
+    it('should create counter-verification with createVerificationFor', async () => {
+      // Simulates relay flow: Alice creates challenge, Bob responds AND creates counter-verification
+      const challengeCode = await VerificationHelper.createChallenge(anna, 'Anna')
+      const challenge = JSON.parse(atob(challengeCode))
+
+      // Bob creates his counter-verification for Anna (from=Ben, to=Anna)
+      const counterVerification = await VerificationHelper.createVerificationFor(
+        ben,
+        annaDid,
+        challenge.nonce
+      )
+
+      expect(counterVerification.from).toBe(benDid)
+      expect(counterVerification.to).toBe(annaDid)
+      expect(counterVerification.id).toContain(challenge.nonce)
+
+      // Signature must be valid
+      const isValid = await VerificationHelper.verifySignature(counterVerification)
+      expect(isValid).toBe(true)
+    })
+
+    it('should produce two distinct verifications in relay flow', async () => {
+      // Full relay flow: one QR scan produces TWO verifications
+      const challengeCode = await VerificationHelper.createChallenge(anna, 'Anna')
+      const challenge = JSON.parse(atob(challengeCode))
+
+      const responseCode = await VerificationHelper.respondToChallenge(challengeCode, ben, 'Ben')
+
+      // Alice's verification: from=Anna, to=Ben (via completeVerification)
+      const aliceVerification = await VerificationHelper.completeVerification(
+        responseCode, anna, challenge.nonce
+      )
+
+      // Bob's counter-verification: from=Ben, to=Anna (via createVerificationFor)
+      const bobVerification = await VerificationHelper.createVerificationFor(
+        ben, annaDid, challenge.nonce
+      )
+
+      // Both must be valid
+      expect(await VerificationHelper.verifySignature(aliceVerification)).toBe(true)
+      expect(await VerificationHelper.verifySignature(bobVerification)).toBe(true)
+
+      // Directions are opposite
+      expect(aliceVerification.from).toBe(annaDid)
+      expect(aliceVerification.to).toBe(benDid)
+      expect(bobVerification.from).toBe(benDid)
+      expect(bobVerification.to).toBe(annaDid)
+
+      // Different IDs
+      expect(aliceVerification.id).not.toBe(bobVerification.id)
+    })
+
     it('should use nonce from response when challenge state is lost', async () => {
       // Scenario: User navigates away or reloads page after creating challenge
       // Challenge state is lost, but response contains the nonce

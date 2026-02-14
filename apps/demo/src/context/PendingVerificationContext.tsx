@@ -1,27 +1,29 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import type { Verification } from '@real-life/wot-core'
 
-export interface PendingVerification {
-  responseCode: string
-  decoded: Record<string, string>
+/** Incoming verification awaiting user confirmation (from QR scan). */
+export interface PendingIncoming {
+  verification: Verification
+  fromDid: string
 }
 
-interface PendingVerificationContextType {
-  pending: PendingVerification | null
-  challengeNonce: string | null
+interface ConfettiContextType {
   confettiKey: number
   toastMessage: string | null
-  setPending: (p: PendingVerification | null) => void
-  setChallengeNonce: (nonce: string | null) => void
   triggerConfetti: (message?: string) => void
+  challengeNonce: string | null
+  setChallengeNonce: (nonce: string | null) => void
+  pendingIncoming: PendingIncoming | null
+  setPendingIncoming: (pending: PendingIncoming | null) => void
 }
 
-const PendingVerificationContext = createContext<PendingVerificationContextType | null>(null)
+const ConfettiContext = createContext<ConfettiContextType | null>(null)
 
-export function PendingVerificationProvider({ children }: { children: ReactNode }) {
-  const [pending, setPending] = useState<PendingVerification | null>(null)
-  const [challengeNonce, setChallengeNonce] = useState<string | null>(null)
+export function ConfettiProvider({ children }: { children: ReactNode }) {
   const [confettiKey, setConfettiKey] = useState(0)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [challengeNonce, setChallengeNonce] = useState<string | null>(null)
+  const [pendingIncoming, setPendingIncoming] = useState<PendingIncoming | null>(null)
 
   const triggerConfetti = useCallback((message?: string) => {
     setConfettiKey(k => k + 1)
@@ -29,16 +31,20 @@ export function PendingVerificationProvider({ children }: { children: ReactNode 
   }, [])
 
   return (
-    <PendingVerificationContext.Provider value={{ pending, setPending, challengeNonce, setChallengeNonce, confettiKey, toastMessage, triggerConfetti }}>
+    <ConfettiContext.Provider value={{ confettiKey, toastMessage, triggerConfetti, challengeNonce, setChallengeNonce, pendingIncoming, setPendingIncoming }}>
       {children}
-    </PendingVerificationContext.Provider>
+    </ConfettiContext.Provider>
   )
 }
 
-export function usePendingVerification() {
-  const ctx = useContext(PendingVerificationContext)
+export function useConfetti() {
+  const ctx = useContext(ConfettiContext)
   if (!ctx) {
-    throw new Error('usePendingVerification must be used within PendingVerificationProvider')
+    throw new Error('useConfetti must be used within ConfettiProvider')
   }
   return ctx
 }
+
+// Legacy alias — will be removed after all consumers are migrated
+export const PendingVerificationProvider = ConfettiProvider
+export const usePendingVerification = useConfetti

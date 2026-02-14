@@ -186,6 +186,20 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
     return [...rows].map(rowToVerification)
   }
 
+  /** All verifications where I am sender OR recipient (for verification status per contact) */
+  async getAllVerifications(): Promise<Verification[]> {
+    const query = this.evolu.createQuery((db) =>
+      db.selectFrom('verification')
+        .selectAll()
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+    const rows = await this.evolu.loadQuery(query)
+    const myDid = this.did
+    return [...rows]
+      .filter(r => r.fromDid === myDid || r.toDid === myDid)
+      .map(rowToVerification)
+  }
+
   async getVerification(id: string): Promise<Verification | null> {
     const query = this.evolu.createQuery((db) =>
       db.selectFrom('verification')
@@ -404,6 +418,41 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
 
     const updateIfChanged = (callback: (value: Contact[]) => void) => {
       const next = [...evolu.getQueryRows(query)].map(rowToContact)
+      const nextKey = JSON.stringify(next)
+      if (nextKey !== snapshotKey) {
+        snapshot = next
+        snapshotKey = nextKey
+        callback(snapshot)
+      }
+    }
+
+    return {
+      subscribe: (callback) => {
+        const unsub = evolu.subscribeQuery(query)(() => updateIfChanged(callback))
+        evolu.loadQuery(query).then(() => updateIfChanged(callback))
+        return unsub
+      },
+      getValue: () => snapshot,
+    }
+  }
+
+  /** Reactive: all verifications where I am sender OR recipient */
+  watchAllVerifications(): Subscribable<Verification[]> {
+    const evolu = this.evolu
+    const myDid = this.did
+    const query = evolu.createQuery((db) =>
+      db.selectFrom('verification').selectAll()
+        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
+    )
+    const filterMine = (rows: any) =>
+      [...rows]
+        .filter((r: any) => r.fromDid === myDid || r.toDid === myDid)
+        .map(rowToVerification)
+    let snapshot: Verification[] = filterMine(evolu.getQueryRows(query))
+    let snapshotKey = JSON.stringify(snapshot)
+
+    const updateIfChanged = (callback: (value: Verification[]) => void) => {
+      const next = filterMine(evolu.getQueryRows(query))
       const nextKey = JSON.stringify(next)
       if (nextKey !== snapshotKey) {
         snapshot = next

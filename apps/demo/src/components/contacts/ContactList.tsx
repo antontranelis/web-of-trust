@@ -1,11 +1,12 @@
 import { Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useContacts, useAttestations } from '../../hooks'
+import { useContacts, useAttestations, useVerificationStatus } from '../../hooks'
 import { ContactCard } from './ContactCard'
 
 export function ContactList() {
   const { activeContacts, pendingContacts, isLoading, removeContact } = useContacts()
   const { attestations } = useAttestations()
+  const { getStatus } = useVerificationStatus()
 
   const getAttestationCount = (did: string) => {
     return attestations.filter((a) => a.to === did).length
@@ -52,6 +53,7 @@ export function ContactList() {
                 key={contact.did}
                 contact={contact}
                 attestationCount={getAttestationCount(contact.did)}
+                verificationStatus={getStatus(contact.did)}
               />
             ))}
           </div>

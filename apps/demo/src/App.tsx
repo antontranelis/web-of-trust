@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AdapterProvider, IdentityProvider, useIdentity, useAdapters, PendingVerificationProvider, usePendingVerification } from './context'
+import { useConfetti } from './context/PendingVerificationContext'
 import { AppShell, IdentityManagement, Confetti } from './components'
 import { Home, Identity, Contacts, Verify, Attestations, PublicProfile } from './pages'
 import { useProfileSync, useMessaging, useContacts } from './hooks'
+import { useVerificationStatus, getVerificationStatus } from './hooks/useVerificationStatus'
 import { VerificationHelper } from '@real-life/wot-core'
-import type { VerificationPayload } from './types/verification-messages'
+import type { Verification, MessageEnvelope } from '@real-life/wot-core'
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
@@ -17,58 +19,127 @@ function ProfileSyncEffect() {
 }
 
 /**
- * Global listener for incoming verification messages.
- * - response: If Alice leaves /verify and Bob responds, stores pending and navigates back.
- * - complete: Bob receives Alice's completion → triggers global confetti.
+ * Global listener for verification relay messages.
+ *
+ * receive → verify signature → save → auto counter-verification if needed.
+ *
+ * Counter-verification: when I receive a verification from a contact
+ * and I haven't verified them yet, automatically create + send one back.
+ * This makes the flow symmetric: B scans A's QR → both get verified.
  */
 function VerificationListenerEffect() {
-  const { onMessage } = useMessaging()
-  const { challengeNonce, setPending, triggerConfetti } = usePendingVerification()
+  const { onMessage, send } = useMessaging()
   const { verificationService } = useAdapters()
-  const { activeContacts } = useContacts()
-  const navigate = useNavigate()
+  const { identity, did } = useIdentity()
+  const { contacts } = useContacts()
+  const { allVerifications } = useVerificationStatus()
+  const { challengeNonce, setChallengeNonce, setPendingIncoming } = useConfetti()
 
   useEffect(() => {
     const unsubscribe = onMessage(async (envelope) => {
       if (envelope.type !== 'verification') return
 
-      let payload: VerificationPayload
+      let verification: Verification
       try {
-        payload = JSON.parse(envelope.payload)
+        verification = JSON.parse(envelope.payload)
       } catch {
         return
       }
 
-      // Alice receives Bob's response → store pending and navigate to /verify
-      if (payload.action === 'response' && challengeNonce) {
-        const decoded = JSON.parse(atob(payload.responseCode))
-        if (decoded.nonce !== challengeNonce) return
+      if (!verification.id || !verification.from || !verification.to || !verification.proof) return
 
-        const alreadyContact = activeContacts.some(c => c.did === decoded.toDid)
-        if (alreadyContact) return
+      try {
+        const isValid = await VerificationHelper.verifySignature(verification)
+        if (!isValid) return
 
-        setPending({ responseCode: payload.responseCode, decoded })
-        navigate('/verify')
+        await verificationService.saveVerification(verification)
+      } catch {
+        return
       }
 
-      // Bob receives Alice's verification-complete → save + confetti + toast
-      if (payload.action === 'complete') {
-        try {
-          const verification = payload.verification
-          const isValid = await VerificationHelper.verifySignature(verification)
-          if (!isValid) return
+      // Counter-verification: if I'm the recipient and I haven't
+      // verified the sender yet.
+      //
+      // Two paths:
+      // 1. Known contact → auto counter-verify (trusted)
+      // 2. Unknown sender with valid nonce → show confirmation UI
+      //    (nonce proves QR scan, but user must confirm in-person)
+      if (did && identity && verification.to === did) {
+        const alreadyVerified = allVerifications.some(
+          v => v.from === did && v.to === verification.from
+        )
 
-          await verificationService.saveVerification(verification)
-          const peerContact = activeContacts.find(c => c.did === envelope.fromDid)
-          const peerName = peerContact?.name || 'Kontakt'
-          triggerConfetti(`${peerName} und du habt euch gegenseitig verifiziert!`)
-        } catch {
-          // Ignore invalid complete messages
+        if (!alreadyVerified) {
+          const isContact = contacts.some(c => c.did === verification.from)
+
+          if (isContact) {
+            // Known contact: auto counter-verify
+            try {
+              const nonce = crypto.randomUUID()
+              const counter = await VerificationHelper.createVerificationFor(identity, verification.from, nonce)
+              await verificationService.saveVerification(counter)
+
+              const counterEnvelope: MessageEnvelope = {
+                v: 1,
+                id: counter.id,
+                type: 'verification',
+                fromDid: did,
+                toDid: verification.from,
+                createdAt: new Date().toISOString(),
+                encoding: 'json',
+                payload: JSON.stringify(counter),
+                signature: counter.proof.proofValue,
+              }
+              await send(counterEnvelope)
+            } catch {
+              // Counter-verification failed — non-critical
+            }
+          } else {
+            // Unknown sender: only accept if nonce proves QR scan
+            if (challengeNonce && verification.id.includes(challengeNonce)) {
+              setChallengeNonce(null) // Nonce consumed
+              setPendingIncoming({ verification, fromDid: verification.from })
+            }
+            // else: spam — ignore
+          }
         }
       }
     })
     return unsubscribe
-  }, [onMessage, challengeNonce, setPending, navigate, activeContacts, triggerConfetti, verificationService])
+  }, [onMessage, verificationService, did, identity, contacts, allVerifications, send, challengeNonce, setChallengeNonce, setPendingIncoming])
+
+  return null
+}
+
+/**
+ * Reactive mutual verification detection.
+ *
+ * Watches all verifications and triggers confetti when a contact's
+ * status transitions to "mutual". No session state needed.
+ */
+function MutualVerificationEffect() {
+  const { triggerConfetti } = usePendingVerification()
+  const { did } = useIdentity()
+  const { activeContacts } = useContacts()
+  const { allVerifications } = useVerificationStatus()
+  const previousStatusRef = useRef(new Map<string, string>())
+
+  useEffect(() => {
+    if (!did) return
+
+    const prev = previousStatusRef.current
+    for (const contact of activeContacts) {
+      const status = getVerificationStatus(did, contact.did, allVerifications)
+      const prevStatus = prev.get(contact.did) || 'none'
+
+      if (status === 'mutual' && prevStatus !== 'mutual') {
+        const name = contact.name || 'Kontakt'
+        triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
+      }
+
+      prev.set(contact.did, status)
+    }
+  }, [did, activeContacts, allVerifications, triggerConfetti])
 
   return null
 }
@@ -141,6 +212,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
       <PendingVerificationProvider>
         <ProfileSyncEffect />
         <VerificationListenerEffect />
+        <MutualVerificationEffect />
         <GlobalConfetti />
         {children}
       </PendingVerificationProvider>

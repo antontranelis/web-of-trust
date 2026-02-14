@@ -20,14 +20,24 @@ vi.mock('../src/context/AdapterContext', () => ({
 
 vi.mock('../src/context/PendingVerificationContext', () => ({
   PendingVerificationProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ConfettiProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   usePendingVerification: () => ({
-    pending: null,
-    challengeNonce: null,
     confettiKey: 0,
     toastMessage: null,
-    setPending: vi.fn(),
-    setChallengeNonce: vi.fn(),
     triggerConfetti: vi.fn(),
+    challengeNonce: null,
+    setChallengeNonce: vi.fn(),
+    pendingIncoming: null,
+    setPendingIncoming: vi.fn(),
+  }),
+  useConfetti: () => ({
+    confettiKey: 0,
+    toastMessage: null,
+    triggerConfetti: vi.fn(),
+    challengeNonce: null,
+    setChallengeNonce: vi.fn(),
+    pendingIncoming: null,
+    setPendingIncoming: vi.fn(),
   }),
 }))
 
@@ -60,6 +70,14 @@ vi.mock('../src/hooks/useContacts', () => ({
     removeContact: vi.fn(),
     refresh: vi.fn(),
   }),
+}))
+
+vi.mock('../src/hooks/useVerificationStatus', () => ({
+  useVerificationStatus: () => ({
+    getStatus: () => 'none',
+    allVerifications: [],
+  }),
+  getVerificationStatus: () => 'none',
 }))
 
 // Mock identity context with controllable state

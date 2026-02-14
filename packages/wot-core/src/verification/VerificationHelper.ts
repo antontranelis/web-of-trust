@@ -111,6 +111,45 @@ export class VerificationHelper {
   }
 
   /**
+   * Create a verification for a specific DID (Empfänger-Prinzip).
+   * Used when Bob verifies Alice: from=Bob, to=Alice.
+   *
+   * @param identity - WotIdentity of the signer (from)
+   * @param toDid - DID of the person being verified (to/recipient)
+   * @param nonce - Nonce from the challenge for deterministic ID
+   * @returns Signed Verification object
+   */
+  static async createVerificationFor(
+    identity: WotIdentity,
+    toDid: string,
+    nonce: string
+  ): Promise<Verification> {
+    const timestamp = new Date().toISOString()
+
+    const verificationData = JSON.stringify({
+      from: identity.getDid(),
+      to: toDid,
+      timestamp,
+    })
+
+    const signature = await identity.sign(verificationData)
+
+    return {
+      id: `urn:uuid:ver-${nonce}-${identity.getDid().slice(-8)}`,
+      from: identity.getDid(),
+      to: toDid,
+      timestamp,
+      proof: {
+        type: 'Ed25519Signature2020',
+        verificationMethod: `${identity.getDid()}#key-1`,
+        created: timestamp,
+        proofPurpose: 'authentication',
+        proofValue: signature,
+      },
+    }
+  }
+
+  /**
    * Verify signature on a verification object
    *
    * @param verification - Verification object to verify

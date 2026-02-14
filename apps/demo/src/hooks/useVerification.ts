@@ -1,41 +1,40 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { VerificationHelper } from '@real-life/wot-core'
-import type { VerificationChallenge, VerificationResponse, MessageEnvelope } from '@real-life/wot-core'
+import type { VerificationChallenge, MessageEnvelope } from '@real-life/wot-core'
 import { useAdapters } from '../context'
 import { useIdentity } from '../context'
-import { usePendingVerification } from '../context'
+import { useConfetti } from '../context/PendingVerificationContext'
 import { useContacts } from './useContacts'
 import { useMessaging } from './useMessaging'
 import { useProfileSync } from './useProfileSync'
-import type { VerificationPayload } from '../types/verification-messages'
 
 type VerificationStep =
   | 'idle'
-  | 'initiating'           // Alice: QR shown, waiting for relay response
-  | 'confirm-respond'      // Bob: sees Alice's profile, must confirm before responding
-  | 'responding'           // Bob: processing scanned challenge
-  | 'waiting-for-complete' // Bob: response sent via relay, waiting for confirmation
-  | 'confirm-complete'     // Alice: sees Bob's profile, must confirm before completing
-  | 'completing'           // Alice: auto-completing verification
+  | 'initiating'       // QR shown, waiting for scan
+  | 'confirm-respond'  // Scanned QR, peer info shown, waiting for confirmation
+  | 'responding'       // Creating verification + sending
   | 'done'
   | 'error'
 
 /**
  * Hook for in-person verification flow using WotIdentity.
  *
- * Supports relay-assisted flow: after Bob scans Alice's QR code,
- * the response is sent via relay. Alice auto-completes and sends
- * confirmation back. Only ONE QR scan needed.
+ * Simplified flow (no session state):
+ * 1. createChallenge() → show QR code
+ * 2. prepareResponse(challengeCode) → show peer info for confirmation
+ * 3. confirmAndRespond() → create verification, add contact, send via relay
+ * 4. done
  *
- * Falls back to manual code exchange if relay is offline.
+ * Confetti is handled by MutualVerificationEffect in App.tsx
+ * (reactive, watches allVerifications for mutual transitions).
  */
 export function useVerification() {
   const { verificationService, storage } = useAdapters()
   const { identity, did } = useIdentity()
-  const { addContact, activeContacts } = useContacts()
-  const { send, onMessage, isConnected } = useMessaging()
-  const { pending, setPending, setChallengeNonce, triggerConfetti } = usePendingVerification()
+  const { addContact } = useContacts()
+  const { send, isConnected } = useMessaging()
   const { syncContactProfile } = useProfileSync()
+  const { setChallengeNonce, pendingIncoming, setPendingIncoming } = useConfetti()
 
   const getProfileName = useCallback(async () => {
     const id = await storage.getIdentity()
@@ -44,98 +43,11 @@ export function useVerification() {
 
   const [step, setStep] = useState<VerificationStep>('idle')
   const [challenge, setChallenge] = useState<VerificationChallenge | null>(null)
-  const [response, setResponse] = useState<VerificationResponse | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [peerName, setPeerName] = useState<string | null>(null)
   const [peerDid, setPeerDid] = useState<string | null>(null)
 
-  // Refs to avoid stale closures in the onMessage listener
-  const stepRef = useRef(step)
-  stepRef.current = step
-  const challengeNonceRef = useRef<string | null>(null)
-  const activeContactsRef = useRef(activeContacts)
-  activeContactsRef.current = activeContacts
-  const peerNameRef = useRef(peerName)
-  peerNameRef.current = peerName
-
-  // Pending data for confirmation steps
   const pendingChallengeCodeRef = useRef<string | null>(null)
-  const pendingResponseCodeRef = useRef<string | null>(null)
-  const pendingDecodedRef = useRef<Record<string, string> | null>(null)
-
-  // Consume pending verification from global listener (if Alice was away from /verify)
-  useEffect(() => {
-    if (pending && step === 'idle') {
-      pendingResponseCodeRef.current = pending.responseCode
-      pendingDecodedRef.current = pending.decoded
-      challengeNonceRef.current = pending.decoded.nonce
-      setPeerName(pending.decoded.toName || null)
-      setPeerDid(pending.decoded.toDid || null)
-      setStep('confirm-complete')
-      setPending(null)
-    }
-  }, [pending, step, setPending])
-
-  // Listen for incoming verification messages via relay
-  useEffect(() => {
-    const unsubscribe = onMessage(async (envelope: MessageEnvelope) => {
-      if (envelope.type !== 'verification') return
-
-      let payload: VerificationPayload
-      try {
-        payload = JSON.parse(envelope.payload)
-      } catch {
-        return
-      }
-
-      if (payload.action === 'response') {
-        // ALICE receives Bob's response via relay
-        if (stepRef.current !== 'initiating') return
-
-        try {
-          const responseCode = payload.responseCode
-          const decoded = JSON.parse(atob(responseCode))
-
-          // Validate nonce matches our challenge
-          if (decoded.nonce !== challengeNonceRef.current) return
-
-          // Skip confirm screen if peer is already a verified contact
-          const alreadyContact = activeContactsRef.current.some(c => c.did === decoded.toDid)
-          if (alreadyContact) return
-
-          // Store pending data and pause for confirmation
-          pendingResponseCodeRef.current = responseCode
-          pendingDecodedRef.current = decoded
-          setPeerName(decoded.toName || null)
-          setPeerDid(decoded.toDid || null)
-          setStep('confirm-complete')
-        } catch (e) {
-          setError(e instanceof Error ? e : new Error('Failed to complete verification'))
-          setStep('error')
-        }
-      }
-
-      if (payload.action === 'complete') {
-        // BOB receives Alice's verification-complete
-        if (stepRef.current !== 'waiting-for-complete') return
-
-        try {
-          const verification = payload.verification
-          const isValid = await VerificationHelper.verifySignature(verification)
-          if (!isValid) return
-
-          // Save may fail if global listener already saved it — that's OK
-          await verificationService.saveVerification(verification).catch(() => {})
-          const name = peerNameRef.current || 'Kontakt'
-          triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
-          setStep('done')
-        } catch {
-          // Ignore invalid complete messages
-        }
-      }
-    })
-    return unsubscribe
-  }, [onMessage, identity, did, verificationService, addContact, send, triggerConfetti])
 
   const createChallenge = useCallback(async () => {
     if (!identity) {
@@ -150,7 +62,6 @@ export function useVerification() {
       const challengeCode = await VerificationHelper.createChallenge(identity, name)
       const decodedChallenge = JSON.parse(atob(challengeCode))
       setChallenge(decodedChallenge)
-      challengeNonceRef.current = decodedChallenge.nonce
       setChallengeNonce(decodedChallenge.nonce)
 
       return challengeCode
@@ -162,7 +73,7 @@ export function useVerification() {
     }
   }, [identity, getProfileName, setChallengeNonce])
 
-  // Step 1: Decode challenge and show peer info for confirmation
+  // Decode challenge and show peer info for confirmation
   const prepareResponse = useCallback(
     async (challengeCode: string) => {
       try {
@@ -173,7 +84,6 @@ export function useVerification() {
         setPeerName(decodedChallenge.fromName || null)
         setPeerDid(decodedChallenge.fromDid || null)
 
-        // Store for later use after confirmation
         pendingChallengeCodeRef.current = challengeCode
         setStep('confirm-respond')
       } catch (e) {
@@ -186,7 +96,7 @@ export function useVerification() {
     []
   )
 
-  // Step 2: After Bob confirms, create crypto response and send
+  // After confirmation: create verification, add contact, send via relay
   const confirmAndRespond = useCallback(
     async () => {
       if (!identity) {
@@ -204,17 +114,7 @@ export function useVerification() {
 
         const decodedChallenge = JSON.parse(atob(challengeCode))
 
-        const name = await getProfileName()
-        const responseCode = await VerificationHelper.respondToChallenge(
-          challengeCode,
-          identity,
-          name
-        )
-
-        const decodedResponse = JSON.parse(atob(responseCode))
-        setResponse(decodedResponse)
-
-        // Add the challenge initiator as an active contact
+        // Add as contact
         await addContact(
           decodedChallenge.fromDid,
           decodedChallenge.fromPublicKey,
@@ -223,32 +123,33 @@ export function useVerification() {
         )
         syncContactProfile(decodedChallenge.fromDid)
 
-        // Send response via relay if connected
+        // Create verification (Empfänger-Prinzip: from=me, to=peer)
+        const verification = await VerificationHelper.createVerificationFor(
+          identity,
+          decodedChallenge.fromDid,
+          decodedChallenge.nonce
+        )
+        await verificationService.saveVerification(verification)
+
+        // Send via relay
         if (isConnected) {
-          const responsePayload: VerificationPayload = {
-            action: 'response',
-            responseCode,
-          }
           const envelope: MessageEnvelope = {
             v: 1,
-            id: `ver-${crypto.randomUUID()}`,
+            id: verification.id,
             type: 'verification',
             fromDid: did!,
             toDid: decodedChallenge.fromDid,
             createdAt: new Date().toISOString(),
             encoding: 'json',
-            payload: JSON.stringify(responsePayload),
-            signature: '',
+            payload: JSON.stringify(verification),
+            signature: verification.proof.proofValue,
           }
           await send(envelope)
-          setStep('waiting-for-complete')
-        } else {
-          // Fallback: no relay, return response code for manual exchange
-          setStep('done')
         }
 
         pendingChallengeCodeRef.current = null
-        return responseCode
+        setChallengeNonce(null)
+        setStep('done')
       } catch (e) {
         const err = e instanceof Error ? e : new Error('Failed to respond to challenge')
         setError(err)
@@ -256,141 +157,84 @@ export function useVerification() {
         throw err
       }
     },
-    [identity, addContact, getProfileName, isConnected, send, did, syncContactProfile]
+    [identity, addContact, isConnected, send, did, syncContactProfile, verificationService]
   )
 
-  // Alice confirms Bob's profile and completes verification (relay flow)
-  const confirmAndComplete = useCallback(
+  // Confirm incoming verification: add sender as contact + counter-verify
+  const confirmIncoming = useCallback(
     async () => {
-      if (!identity) {
-        throw new Error('No identity found')
-      }
-
-      const responseCode = pendingResponseCodeRef.current
-      const decoded = pendingDecodedRef.current
-      if (!responseCode || !decoded) {
-        throw new Error('No pending response')
+      if (!identity || !did || !pendingIncoming) {
+        throw new Error('No pending incoming verification')
       }
 
       try {
-        setStep('completing')
-        setError(null)
+        const { verification } = pendingIncoming
 
-        const verification = await VerificationHelper.completeVerification(
-          responseCode,
-          identity,
-          challengeNonceRef.current!
-        )
+        // Add sender as contact
+        const publicKey = VerificationHelper.publicKeyFromDid(verification.from)
+        await addContact(verification.from, publicKey, undefined, 'active')
+        syncContactProfile(verification.from)
 
-        await verificationService.saveVerification(verification)
-        await addContact(decoded.toDid, decoded.toPublicKey, decoded.toName, 'active')
-        syncContactProfile(decoded.toDid)
+        // Create + send counter-verification
+        const nonce = crypto.randomUUID()
+        const counter = await VerificationHelper.createVerificationFor(identity, verification.from, nonce)
+        await verificationService.saveVerification(counter)
 
-        // Send verification-complete back to Bob
-        const completePayload: VerificationPayload = {
-          action: 'complete',
-          verification,
+        if (isConnected) {
+          const envelope: MessageEnvelope = {
+            v: 1,
+            id: counter.id,
+            type: 'verification',
+            fromDid: did,
+            toDid: verification.from,
+            createdAt: new Date().toISOString(),
+            encoding: 'json',
+            payload: JSON.stringify(counter),
+            signature: counter.proof.proofValue,
+          }
+          await send(envelope)
         }
-        const completeEnvelope: MessageEnvelope = {
-          v: 1,
-          id: verification.id,
-          type: 'verification',
-          fromDid: did!,
-          toDid: decoded.toDid,
-          createdAt: new Date().toISOString(),
-          encoding: 'json',
-          payload: JSON.stringify(completePayload),
-          signature: verification.proof.proofValue,
-        }
-        send(completeEnvelope).catch(() => {
-          // Non-critical: Bob already has the contact, just misses the confetti trigger
-        })
 
-        pendingResponseCodeRef.current = null
-        pendingDecodedRef.current = null
-        const name = decoded.toName || 'Kontakt'
-        triggerConfetti(`${name} und du habt euch gegenseitig verifiziert!`)
+        setPendingIncoming(null)
         setStep('done')
       } catch (e) {
-        setError(e instanceof Error ? e : new Error('Failed to complete verification'))
-        setStep('error')
-      }
-    },
-    [identity, did, verificationService, addContact, send, triggerConfetti, syncContactProfile]
-  )
-
-  // Manual complete (fallback when relay is offline)
-  const completeVerification = useCallback(
-    async (responseCode: string) => {
-      if (!identity) {
-        throw new Error('No identity found')
-      }
-
-      try {
-        setStep('completing')
-        setError(null)
-
-        const decodedResponse = JSON.parse(atob(responseCode))
-        setResponse(decodedResponse)
-
-        // Use nonce from response if challenge state is lost
-        const expectedNonce = challenge?.nonce || decodedResponse.nonce
-
-        const verification = await VerificationHelper.completeVerification(
-          responseCode,
-          identity,
-          expectedNonce
-        )
-
-        await verificationService.saveVerification(verification)
-        await addContact(
-          decodedResponse.toDid,
-          decodedResponse.toPublicKey,
-          decodedResponse.toName,
-          'active'
-        )
-        syncContactProfile(decodedResponse.toDid)
-
-        setStep('done')
-        return verification
-      } catch (e) {
-        const err = e instanceof Error ? e : new Error('Failed to complete verification')
+        const err = e instanceof Error ? e : new Error('Counter-verification failed')
         setError(err)
         setStep('error')
         throw err
       }
     },
-    [identity, verificationService, addContact, challenge, syncContactProfile]
+    [identity, did, pendingIncoming, addContact, syncContactProfile, verificationService, isConnected, send, setPendingIncoming]
   )
+
+  const rejectIncoming = useCallback(() => {
+    setPendingIncoming(null)
+  }, [setPendingIncoming])
 
   const reset = useCallback(() => {
     setStep('idle')
     setChallenge(null)
-    setResponse(null)
     setError(null)
     setPeerName(null)
     setPeerDid(null)
-    challengeNonceRef.current = null
     pendingChallengeCodeRef.current = null
-    pendingResponseCodeRef.current = null
-    pendingDecodedRef.current = null
     setChallengeNonce(null)
-    setPending(null)
-  }, [setChallengeNonce, setPending])
+    setPendingIncoming(null)
+  }, [setChallengeNonce, setPendingIncoming])
 
   return {
     step,
     challenge,
-    response,
     error,
     peerName,
     peerDid,
     isConnected,
+    pendingIncoming,
     createChallenge,
     prepareResponse,
     confirmAndRespond,
-    confirmAndComplete,
-    completeVerification,
+    confirmIncoming,
+    rejectIncoming,
     reset,
   }
 }

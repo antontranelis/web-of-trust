@@ -1,23 +1,32 @@
-import { Shield, Trash2, Award } from 'lucide-react'
+import { Shield, ShieldCheck, ShieldAlert, ArrowDownLeft, ArrowUpRight, Trash2, Award } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Contact } from '@real-life/wot-core'
+import type { VerificationDirection } from '../../hooks/useVerificationStatus'
 import { Avatar } from '../shared'
 
 interface ContactCardProps {
   contact: Contact
   onRemove?: () => void
   attestationCount?: number
+  verificationStatus?: VerificationDirection
 }
 
-export function ContactCard({ contact, onRemove, attestationCount = 0 }: ContactCardProps) {
+const verificationInfo: Record<VerificationDirection, { label: string; color: string; icon: typeof Shield }> = {
+  mutual: { label: 'Gegenseitig verifiziert', color: 'bg-green-100 text-green-700', icon: ShieldCheck },
+  incoming: { label: 'Hat mich verifiziert', color: 'bg-blue-100 text-blue-700', icon: ArrowDownLeft },
+  outgoing: { label: 'Von mir verifiziert', color: 'bg-amber-100 text-amber-700', icon: ArrowUpRight },
+  none: { label: 'Nicht verifiziert', color: 'bg-slate-100 text-slate-500', icon: ShieldAlert },
+}
+
+export function ContactCard({ contact, onRemove, attestationCount = 0, verificationStatus = 'none' }: ContactCardProps) {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-700',
-    active: 'bg-green-100 text-green-700',
+    active: verificationInfo[verificationStatus].color,
   }
 
   const statusLabels = {
     pending: 'Ausstehend',
-    active: 'Verifiziert',
+    active: verificationInfo[verificationStatus].label,
   }
 
   const shortDid = contact.did.slice(0, 12) + '...' + contact.did.slice(-6)
@@ -44,12 +53,15 @@ export function ContactCard({ contact, onRemove, attestationCount = 0 }: Contact
 
           {contact.status === 'active' && (
             <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-              {contact.verifiedAt && (
-                <span className="flex items-center gap-1">
-                  <Shield size={12} />
-                  {new Date(contact.verifiedAt).toLocaleDateString('de-DE')}
-                </span>
-              )}
+              {contact.verifiedAt && (() => {
+                const StatusIcon = verificationInfo[verificationStatus].icon
+                return (
+                  <span className="flex items-center gap-1">
+                    <StatusIcon size={12} />
+                    {new Date(contact.verifiedAt).toLocaleDateString('de-DE')}
+                  </span>
+                )
+              })()}
               <span className="flex items-center gap-1">
                 <Award size={12} />
                 {attestationCount} Attestation{attestationCount !== 1 ? 'en' : ''}

@@ -139,6 +139,11 @@ export class LocalStorageAdapter implements StorageAdapter {
     return db.getAll('verifications')
   }
 
+  async getAllVerifications(): Promise<Verification[]> {
+    const db = this.ensureDb()
+    return db.getAll('verifications')
+  }
+
   async getVerification(id: string): Promise<Verification | null> {
     const db = this.ensureDb()
     return (await db.get('verifications', id)) || null

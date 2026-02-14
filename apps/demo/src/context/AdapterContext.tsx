@@ -94,6 +94,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         if (!existing && did) {
           const profile = consumeInitialProfile() ?? { name: '' }
           await storage.createIdentity(did, profile)
+          // Mark profile dirty so syncDiscovery() uploads it to wot-profiles
+          if (profile.name) {
+            await discoverySyncStore.markDirty(did, 'profile')
+          }
         }
 
         // syncDiscovery: retries all pending publish operations

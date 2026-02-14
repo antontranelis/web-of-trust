@@ -29,9 +29,12 @@ export interface StorageAdapter {
   updateContact(contact: Contact): Promise<void>
   removeContact(did: string): Promise<void>
 
-  // Verifications (Empfänger-Prinzip: I receive verifications about me)
+  // Verifications
+  // Both incoming (to=me) and outgoing (from=me) are stored locally.
+  // Empfänger-Prinzip: the signed verification is sent to the recipient.
   saveVerification(verification: Verification): Promise<void>
-  getReceivedVerifications(): Promise<Verification[]>
+  getReceivedVerifications(): Promise<Verification[]>    // to=me (others verified me)
+  getAllVerifications(): Promise<Verification[]>          // from=me OR to=me
   getVerification(id: string): Promise<Verification | null>
 
   // Attestations (Empfänger-Prinzip: I receive attestations about me)
