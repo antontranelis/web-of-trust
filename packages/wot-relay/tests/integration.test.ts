@@ -4,7 +4,7 @@ import { RelayServer } from '../src/relay.js'
 import type { MessageEnvelope, DeliveryReceipt, MessagingAdapter } from '@real-life/wot-core'
 import { createResourceRef } from '@real-life/wot-core'
 
-const PORT = 9877
+const PORT = 9878
 const RELAY_URL = `ws://localhost:${PORT}`
 
 const ALICE_DID = 'did:key:z6MkAlice1234567890abcdefghijklmnopqrstuvwxyz'
