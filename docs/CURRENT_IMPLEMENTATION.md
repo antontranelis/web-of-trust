@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-14
-**Phase:** Week 5+++ - Offline-First Discovery + Reactive Identity
+**Datum:** 2026-02-15
+**Phase:** Week 5++++ - Messaging Outbox + WebSocket Heartbeat
 
 ---
 
@@ -552,7 +552,7 @@ Dies führte zu einer umfassenden Neu-Evaluation des gesamten Technology-Stacks 
 | ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
 | CryptoAdapter | ✅ Implementiert | WebCryptoAdapter (Ed25519 + AES-256-GCM symmetric) |
 | DiscoveryAdapter | ✅ Implementiert | HttpDiscoveryAdapter (wot-profiles HTTP Service) |
-| MessagingAdapter | ✅ Implementiert | InMemoryMessagingAdapter + WebSocketMessagingAdapter + wot-relay |
+| MessagingAdapter | ✅ Implementiert | InMemory + WebSocket (Heartbeat) + Outbox (Decorator) + wot-relay |
 | ReplicationAdapter | ✅ Implementiert | AutomergeReplicationAdapter (Encrypted CRDT Spaces) |
 | AuthorizationAdapter | ⏳ Spezifiziert | UCAN-like (Phase 3+) |
 
@@ -598,6 +598,8 @@ Neue Types für Cross-User-Messaging:
 - ✅ **ResourceRef** — Branded string `wot:<type>:<id>` für Ressourcen-Adressierung (5 Typen)
 - ✅ **8 MessageTypes** — verification, attestation, contact-request, item-key, space-invite, group-key-rotation, ack, content
 - ✅ **MessagingAdapter Interface** — connect, disconnect, getState, send, onMessage, onReceipt, registerTransport, resolveTransport
+- ✅ **OutboxStore Interface** — enqueue, dequeue, getPending, has, incrementRetry, count
+- ✅ **OutboxEntry Type** — envelope, createdAt, retryCount
 
 #### InMemoryMessagingAdapter (`packages/wot-core`)
 
@@ -625,6 +627,7 @@ Browser-nativer WebSocket Client:
 - ✅ **Browser WebSocket API** — Keine `ws` Dependency in wot-core
 - ✅ **Implements MessagingAdapter** — connect, disconnect, send, onMessage, onReceipt
 - ✅ **Pending Receipts** — Korreliert send() → receipt via Message-ID
+- ✅ **Ping/Pong Heartbeat** — 15s Ping, 5s Timeout → erkennt tote TCP-Verbindungen
 
 #### Demo App Integration
 
@@ -1340,6 +1343,126 @@ Verifications/Attestations:
 
 ---
 
+## Week 5++++: Messaging Outbox + WebSocket Heartbeat (2026-02-15) ✅
+
+### Übersicht
+
+Zwei zusammenhängende Probleme gelöst: (1) Nachrichten (Attestationen, Verifikationen) gingen verloren wenn der Sender offline war — der Relay hat zwar eine Queue für offline *Empfänger*, aber nicht für offline *Sender*. (2) Der Relay-Status-Indikator aktualisierte sich nicht reaktiv bei Verbindungsverlust — WebSocket `onclose` feuert nicht sofort bei physischem Netzwerk-Disconnect, und `navigator.onLine` ist unzuverlässig.
+
+### Implementiert
+
+#### OutboxMessagingAdapter (Decorator Pattern)
+
+Neuer Wrapper um `WebSocketMessagingAdapter` (gleiches Pattern wie `OfflineFirstDiscoveryAdapter`):
+
+- ✅ **`send()` schlägt nie fehl** — Bei Disconnect/Fehler/Timeout wird in persistente Outbox gequeued
+- ✅ **Synthetic Receipt** — Sofortige `accepted`-Receipt bei Offline-Queue statt Error
+- ✅ **`flushOutbox()`** — FIFO-Iteration bei Reconnect, `dequeue()` bei Erfolg, `incrementRetry()` bei Fehler
+- ✅ **Send Timeout** — 15s Timeout für `inner.send()` (WebSocket kann bei halbtoten Verbindungen hängen)
+- ✅ **`skipTypes`** — Konfigurierbar: `['profile-update']` überspringt die Outbox (Fire-and-Forget)
+- ✅ **Dedup** — Gleiche `envelope.id` wird nicht doppelt gequeued
+- ✅ **Flushing Guard** — Verhindert parallele Flush-Operationen
+
+**Neue Interfaces/Klassen in wot-core:**
+
+- ✅ **OutboxStore Interface** (`adapters/interfaces/OutboxStore.ts`) — 6 Methoden: `enqueue`, `dequeue`, `getPending`, `has`, `incrementRetry`, `count`
+- ✅ **OutboxEntry Type** — `{ envelope, createdAt, retryCount }`
+- ✅ **InMemoryOutboxStore** — Map-basiert für Tests
+- ✅ **OutboxMessagingAdapter** — Decorator mit Outbox-Logik
+
+**Neue Klassen in Demo-App:**
+
+- ✅ **EvoluOutboxStore** (`adapters/EvoluOutboxStore.ts`) — Evolu-basierte persistente Outbox
+  - Neue Evolu-Tabelle `outbox` (envelopeId, envelopeJson, retryCount)
+  - Soft-Delete via `isDeleted: true`
+  - `watchPendingCount()` — Subscribable für reaktiven UI-Badge
+
+#### WebSocket Ping/Pong Heartbeat
+
+Application-Level Heartbeat zur Erkennung toter TCP-Verbindungen:
+
+- ✅ **Client sendet `ping`** alle 15 Sekunden
+- ✅ **Relay antwortet `pong`** sofort
+- ✅ **Timeout 5 Sekunden** — Kein `pong` → `ws.close()` + `setState('disconnected')`
+- ✅ **Worst-Case Detection** — ~20s (15s Intervall + 5s Timeout)
+
+**Warum nötig:** `navigator.onLine` ist laut MDN "inherently unreliable" — es prüft nur ob ein Netzwerk-Interface existiert, nicht ob Internet erreichbar ist. WebSocket `onclose` feuert bei physischem Ethernet-Disconnect erst nach TCP-Timeout (Minuten). Nur aktives Probing erkennt tote Verbindungen zuverlässig.
+
+**Geänderte Dateien:**
+
+- `WebSocketMessagingAdapter.ts` — `startHeartbeat()`, `stopHeartbeat()`, `handlePong()`, `pong` Case in `onmessage`
+- `wot-relay/src/relay.ts` — `ping` Handler → `sendTo(ws, { type: 'pong' })`
+- `wot-relay/src/types.ts` — `{ type: 'ping' }` in ClientMessage, `{ type: 'pong' }` in RelayMessage
+
+#### Fire-and-Forget Sends
+
+Alle `send()`-Aufrufe für Nachrichten die auch lokal gespeichert werden:
+
+- ✅ **useVerification** — `send(envelope).catch(() => {})` statt `await send(envelope)` (3 Stellen: confirmAndRespond, confirmIncoming, counterVerify)
+- ✅ **AttestationService** — `this.messaging.send(envelope).catch(...)` statt `await`
+- **Begründung:** Daten sind lokal bereits gespeichert, Outbox übernimmt Retry — kein Grund den UI-Flow zu blockieren
+
+#### Auto-Reconnect + Flush bei Online/Visibility
+
+- ✅ **10s Reconnect-Timer** — In AdapterContext, prüft `getState()` und ruft `reconnectRelay()` auf
+- ✅ **Offline-Handler** — Browser `offline` Event → sofort `disconnect()` + `setState('disconnected')`
+- ✅ **Online/Visibility Events** — `reconnectRelay()` + `syncDiscovery()` + `flushOutbox()` bei Online-Reconnect und Tab-Wechsel zurück
+
+#### UI: Outbox-Status auf Home-Seite
+
+- ✅ **useOutboxStatus Hook** — Nutzt `outboxStore.watchPendingCount()` für reaktiven Pending-Count
+- ✅ **Pending-Badge** — Send-Icon + "{n} Nachricht(en) in Warteschlange" neben Relay-Status und Profil-Sync-Status
+
+### Tests Week 5++++
+
+**18 neue Tests:**
+
+#### OutboxMessagingAdapter Tests (18 Tests)
+
+```text
+packages/wot-core/tests/OutboxMessagingAdapter.test.ts
+
+Send (connected):
+✓ Delegate to inner adapter when connected
+✓ No outbox entry when send succeeds
+✓ Queue on inner.send() failure
+✓ Queue on send timeout
+
+Send (disconnected):
+✓ Queue message and return synthetic receipt
+✓ Synthetic receipt has correct messageId and status
+
+Skip Types:
+✓ Do not queue skipTypes messages when connected
+✓ Do not queue skipTypes messages when disconnected
+
+Dedup:
+✓ Do not enqueue duplicate envelope IDs
+
+Flush:
+✓ Flush sends pending messages FIFO
+✓ Dequeue on successful send
+✓ Increment retryCount on failed send
+✓ Stop flushing on disconnect
+✓ Guard prevents parallel flush
+
+Connect:
+✓ Trigger flushOutbox after connect
+
+Delegation:
+✓ Delegate onMessage to inner
+✓ Delegate disconnect to inner
+✓ Delegate getState to inner
+```
+
+**Gesamt: 261 Tests** (205 wot-core + 41 demo + 15 wot-relay) — alle passing ✅
+
+### Commits
+
+25. **feat: messaging outbox for offline reliability + WebSocket heartbeat** — OutboxMessagingAdapter, Ping/Pong, Fire-and-Forget, EvoluOutboxStore, 18 Tests
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -1429,6 +1552,9 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - ~~Reactive Identity (watchIdentity, useProfile reaktiv)~~ ✅
 - ~~localStorage eliminiert (Evolu = Single Source of Truth)~~ ✅
 - ~~Profile-Upload Fix (Dirty-Flag-basiert statt unconditional)~~ ✅
+- ~~Messaging Outbox (OutboxMessagingAdapter + EvoluOutboxStore)~~ ✅
+- ~~WebSocket Heartbeat (Ping/Pong, tote Verbindungen erkennen)~~ ✅
+- ~~Fire-and-Forget Sends (Verifications, Attestations)~~ ✅
 - **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
@@ -1554,13 +1680,16 @@ packages/wot-core/src/
 │   │   ├── MessagingAdapter.ts     # Cross-User Messaging
 │   │   ├── DiscoveryAdapter.ts     # Public Profile Discovery
 │   │   ├── DiscoverySyncStore.ts   # Offline-Cache Interface
+│   │   ├── OutboxStore.ts         # Messaging Outbox Interface
 │   │   ├── ReplicationAdapter.ts   # CRDT Spaces + SpaceHandle<T>
 │   │   └── index.ts
 │   ├── crypto/
 │   │   └── WebCryptoAdapter.ts     # Ed25519 + X25519 + AES-256-GCM
 │   ├── messaging/
 │   │   ├── InMemoryMessagingAdapter.ts  # Shared-Bus für Tests
-│   │   └── WebSocketMessagingAdapter.ts # Browser WebSocket Client
+│   │   ├── InMemoryOutboxStore.ts       # In-Memory Outbox für Tests
+│   │   ├── OutboxMessagingAdapter.ts    # Offline-Queue Decorator
+│   │   └── WebSocketMessagingAdapter.ts # Browser WebSocket Client + Heartbeat
 │   ├── discovery/
 │   │   ├── HttpDiscoveryAdapter.ts          # HTTP-based (wot-profiles)
 │   │   ├── OfflineFirstDiscoveryAdapter.ts  # Offline-Cache Wrapper
@@ -1650,6 +1779,7 @@ apps/demo/src/
 ├── adapters/
 │   ├── EvoluStorageAdapter.ts         # StorageAdapter + ReactiveStorageAdapter via Evolu
 │   ├── EvoluDiscoverySyncStore.ts     # Evolu-basierter Offline-Cache für Discovery
+│   ├── EvoluOutboxStore.ts            # Evolu-basierte persistente Messaging-Outbox
 │   └── rowMappers.ts                  # Evolu Row ↔ WoT Type Konvertierung
 ├── context/
 │   ├── AdapterContext.tsx             # Evolu init + alle Adapter (Storage, Messaging, Discovery)
@@ -1661,6 +1791,7 @@ apps/demo/src/
 │   ├── useContacts.ts
 │   ├── useAttestations.ts
 │   ├── useMessaging.ts                # Relay send/onMessage/state
+│   ├── useOutboxStatus.ts            # Reaktiver Outbox-Pending-Count
 │   ├── useProfileSync.ts             # Upload/Fetch Profile, Dirty-Flag-Sync
 │   ├── useProfile.ts                  # Reaktives Profil via watchIdentity()
 │   ├── useSubscribable.ts            # Subscribable<T> → React State
@@ -1688,7 +1819,7 @@ apps/demo/src/
 ### Tests
 
 ```
-packages/wot-core/tests/                              # 175 Tests
+packages/wot-core/tests/                              # 205 Tests
 ├── WotIdentity.test.ts              # 20 Tests  (+3 signJws)
 ├── SeedStorage.test.ts              # 12 Tests
 ├── ContactStorage.test.ts           # 15 Tests
@@ -1702,7 +1833,8 @@ packages/wot-core/tests/                              # 175 Tests
 ├── EncryptedSyncService.test.ts     # 8 Tests
 ├── GroupKeyService.test.ts          # 10 Tests
 ├── AutomergeReplication.test.ts     # 16 Tests
-├── OfflineFirstDiscoveryAdapter.test.ts  # 19 Tests  NEU (Week 5+++)
+├── OfflineFirstDiscoveryAdapter.test.ts  # 19 Tests
+├── OutboxMessagingAdapter.test.ts   # 18 Tests  NEU (Week 5++++)
 └── setup.ts                         # fake-indexeddb setup
 
 packages/wot-profiles/tests/                          # 19 Tests

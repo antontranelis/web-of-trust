@@ -2,7 +2,7 @@
 
 > Framework-agnostische Architektur des Web of Trust
 >
-> Aktualisiert: 2026-02-14 (v2: 7-Adapter-Architektur + Offline-First)
+> Aktualisiert: 2026-02-15 (v2: 7-Adapter-Architektur + Offline-First + Outbox)
 
 ## Überblick
 
@@ -244,8 +244,24 @@ Verantwortlich für:
 **Implementierungen:**
 
 - `InMemoryMessagingAdapter` (Tests) — Shared-Bus Pattern für Unit-Tests
-- `WebSocketMessagingAdapter` (POC) — Browser-nativer WebSocket Client + wot-relay Server
+- `WebSocketMessagingAdapter` (POC) — Browser-nativer WebSocket Client + wot-relay Server, Ping/Pong Heartbeat (15s/5s)
+- `OutboxMessagingAdapter` (POC) — Decorator mit persistenter Outbox-Queue für Offline-Zuverlässigkeit
 - Matrix Client (Produktion, geplant)
+
+**Offline-Zuverlässigkeit (Decorator Pattern):**
+
+```text
+OutboxMessagingAdapter (Wrapper)
+  └── WebSocketMessagingAdapter (Inner)
+       └── wot-relay (Server)
+
+send() → connected? → inner.send() mit Timeout
+                    → Fehler/Timeout → outbox.enqueue()
+       → disconnected? → outbox.enqueue() + synthetic receipt
+       → reconnect → flushOutbox() (FIFO)
+```
+
+Der `OutboxMessagingAdapter` stellt sicher, dass kritische Nachrichten (Attestationen, Verifikationen) nie verloren gehen. Konfigurierbare `skipTypes` (z.B. `profile-update`) überspringen die Outbox für Fire-and-Forget-Nachrichten.
 
 #### ReplicationAdapter
 
@@ -297,12 +313,15 @@ packages/wot-core/src/
 │   │   ├── MessagingAdapter.ts         # Cross-User Messaging
 │   │   ├── DiscoveryAdapter.ts         # Public Profile Discovery
 │   │   ├── DiscoverySyncStore.ts       # Offline-Cache Interface
+│   │   ├── OutboxStore.ts             # Messaging Outbox Interface
 │   │   └── ReplicationAdapter.ts       # CRDT Spaces + SpaceHandle<T>
 │   ├── crypto/
 │   │   └── WebCryptoAdapter.ts         # Ed25519 + X25519 + AES-256-GCM
 │   ├── messaging/
-│   │   ├── InMemoryMessagingAdapter.ts # Shared-Bus für Tests
-│   │   └── WebSocketMessagingAdapter.ts # Browser WebSocket Client
+│   │   ├── InMemoryMessagingAdapter.ts  # Shared-Bus für Tests
+│   │   ├── InMemoryOutboxStore.ts       # In-Memory Outbox für Tests
+│   │   ├── OutboxMessagingAdapter.ts    # Offline-Queue Decorator
+│   │   └── WebSocketMessagingAdapter.ts # Browser WebSocket Client + Heartbeat
 │   ├── discovery/
 │   │   ├── HttpDiscoveryAdapter.ts     # HTTP-based (wot-profiles)
 │   │   ├── OfflineFirstDiscoveryAdapter.ts  # Offline-Cache Wrapper

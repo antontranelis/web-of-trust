@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { User, Users, Shield, Award, Home } from 'lucide-react'
+import { Fingerprint, Users, QrCode, Award, Home } from 'lucide-react'
 
 const navItems = [
   { to: '/', icon: Home, label: 'Start' },
-  { to: '/identity', icon: User, label: 'Identität' },
+  { to: '/identity', icon: Fingerprint, label: 'Identität' },
   { to: '/contacts', icon: Users, label: 'Kontakte' },
-  { to: '/verify', icon: Shield, label: 'Verifizieren' },
+  { to: '/verify', icon: QrCode, label: 'Verifizieren' },
   { to: '/attestations', icon: Award, label: 'Attestationen' },
 ]
 
