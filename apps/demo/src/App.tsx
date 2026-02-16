@@ -104,7 +104,9 @@ function MutualVerificationEffect() {
 
       // Only trigger dialog for transitions to 'mutual' after initial load.
       // On first render, just record current state without triggering.
-      if (initializedRef.current && prevStatus !== undefined && status === 'mutual' && prevStatus !== 'mutual') {
+      // For contacts added after init, default to 'none' so transitions are detected.
+      const effectivePrev = prevStatus ?? (initializedRef.current ? 'none' : undefined)
+      if (initializedRef.current && effectivePrev !== undefined && status === 'mutual' && effectivePrev !== 'mutual') {
         triggerMutualDialog({ name: contact.name || 'Kontakt', did: contact.did })
       }
 
