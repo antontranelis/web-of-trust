@@ -200,7 +200,6 @@ function MutualVerificationDialog() {
 function IncomingAttestationDialog() {
   const { incomingAttestation, dismissAttestationDialog } = usePendingVerification()
   const { attestationService } = useAdapters()
-  const navigate = useNavigate()
 
   if (!incomingAttestation) return null
 
@@ -230,23 +229,12 @@ function IncomingAttestationDialog() {
           </p>
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={handlePublish}
-            className="flex-1 px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
-          >
-            Veröffentlichen
-          </button>
-          <button
-            onClick={() => {
-              dismissAttestationDialog()
-              navigate(`/attestations/new?to=${encodeURIComponent(incomingAttestation.senderDid)}`)
-            }}
-            className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
-          >
-            Attestierung für {incomingAttestation.senderName}
-          </button>
-        </div>
+        <button
+          onClick={handlePublish}
+          className="w-full px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
+        >
+          Veröffentlichen
+        </button>
       </div>
     </div>
   )
