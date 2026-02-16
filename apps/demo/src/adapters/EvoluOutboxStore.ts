@@ -3,7 +3,7 @@
  *
  * Stores unsent message envelopes in Evolu (SQLite via OPFS).
  * Data survives page reloads and app restarts.
- * Pattern follows EvoluDiscoverySyncStore.
+ * Pattern follows EvoluPublishStateStore.
  */
 import {
   NonEmptyString,

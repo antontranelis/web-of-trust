@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Users, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useContacts, useAttestations, useVerificationStatus, useVerification } from '../../hooks'
+import { useContacts, useAttestations, useVerificationStatus, useVerification, useGraphCache } from '../../hooks'
 import { useIdentity, useAdapters } from '../../context'
 import { ContactCard } from './ContactCard'
 import { Avatar } from '../shared/Avatar'
@@ -85,9 +85,18 @@ export function ContactList() {
   const { getStatus, allVerifications } = useVerificationStatus()
   const { did } = useIdentity()
   const { counterVerify } = useVerification()
+  const { getEntry } = useGraphCache()
 
-  const getAttestationCount = (did: string) => {
-    return attestations.filter((a) => a.to === did).length
+  const getAttestationCount = (contactDid: string) => {
+    // Prefer graph cache count, fall back to local attestations
+    const entry = getEntry(contactDid)
+    if (entry) return entry.attestationCount
+    return attestations.filter((a) => a.to === contactDid).length
+  }
+
+  const getVerificationCount = (contactDid: string) => {
+    const entry = getEntry(contactDid)
+    return entry?.verificationCount
   }
 
   // Incoming verifications where I haven't counter-verified yet
@@ -163,6 +172,7 @@ export function ContactList() {
               <ContactCard
                 key={contact.did}
                 contact={contact}
+                verificationCount={getVerificationCount(contact.did)}
                 attestationCount={getAttestationCount(contact.did)}
                 verificationStatus={getStatus(contact.did)}
               />

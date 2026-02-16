@@ -1,11 +1,10 @@
 /**
- * EvoluDiscoverySyncStore - Persistent DiscoverySyncStore backed by Evolu
+ * EvoluPublishStateStore - Persistent PublishStateStore backed by Evolu
  *
- * Stores dirty-flags and cached profiles in Evolu (SQLite via OPFS).
+ * Stores dirty-flags for publish operations in Evolu (SQLite via OPFS).
  * Data survives page reloads and app restarts.
  */
 import {
-  NonEmptyString,
   NonEmptyString1000,
   booleanToSqliteBoolean,
   sqliteBooleanToBoolean,
@@ -13,9 +12,8 @@ import {
   type Evolu,
 } from '@evolu/common'
 import type {
-  DiscoverySyncStore,
-  DiscoverySyncField,
-  PublicProfile,
+  PublishStateStore,
+  PublishStateField,
   Subscribable,
 } from '@real-life/wot-core'
 import type { AppSchema } from '../db'
@@ -23,7 +21,6 @@ import type { AppSchema } from '../db'
 type AppEvolu = Evolu<AppSchema>
 
 const str = (s: string) => NonEmptyString1000.orThrow(s)
-const longStr = (s: string) => NonEmptyString.orThrow(s)
 
 /**
  * Dirty state snapshot for reactive UI.
@@ -34,10 +31,10 @@ export interface DirtyState {
   attestations: boolean
 }
 
-export class EvoluDiscoverySyncStore implements DiscoverySyncStore {
+export class EvoluPublishStateStore implements PublishStateStore {
   constructor(private evolu: AppEvolu, private did: string) {}
 
-  async markDirty(did: string, field: DiscoverySyncField): Promise<void> {
+  async markDirty(did: string, field: PublishStateField): Promise<void> {
     const current = await this.loadSyncState(did)
     const update = { ...current }
     if (field === 'profile') update.profileDirty = true
@@ -53,7 +50,7 @@ export class EvoluDiscoverySyncStore implements DiscoverySyncStore {
     })
   }
 
-  async clearDirty(did: string, field: DiscoverySyncField): Promise<void> {
+  async clearDirty(did: string, field: PublishStateField): Promise<void> {
     const current = await this.loadSyncState(did)
     const update = { ...current }
     if (field === 'profile') update.profileDirty = false
@@ -69,43 +66,13 @@ export class EvoluDiscoverySyncStore implements DiscoverySyncStore {
     })
   }
 
-  async getDirtyFields(did: string): Promise<Set<DiscoverySyncField>> {
+  async getDirtyFields(did: string): Promise<Set<PublishStateField>> {
     const state = await this.loadSyncState(did)
-    const fields = new Set<DiscoverySyncField>()
+    const fields = new Set<PublishStateField>()
     if (state.profileDirty) fields.add('profile')
     if (state.verificationsDirty) fields.add('verifications')
     if (state.attestationsDirty) fields.add('attestations')
     return fields
-  }
-
-  async cacheProfile(did: string, profile: PublicProfile): Promise<void> {
-    this.evolu.upsert('cachedProfile', {
-      id: createIdFromString<'CachedProfile'>(`cache-${did}`),
-      did: str(did),
-      name: profile.name ? str(profile.name) : null,
-      bio: profile.bio ? str(profile.bio) : null,
-      avatar: profile.avatar ? longStr(profile.avatar) : null,
-      fetchedAt: str(new Date().toISOString()),
-    })
-  }
-
-  async getCachedProfile(did: string): Promise<PublicProfile | null> {
-    const query = this.evolu.createQuery((db) =>
-      db.selectFrom('cachedProfile')
-        .selectAll()
-        .where('did', '=', str(did))
-        .where('isDeleted', 'is not', booleanToSqliteBoolean(true))
-    )
-    const rows = await this.evolu.loadQuery(query)
-    if (rows.length === 0) return null
-    const row = rows[0]
-    return {
-      did: row.did as string,
-      name: (row.name as string) ?? '',
-      ...(row.bio != null ? { bio: row.bio as string } : {}),
-      ...(row.avatar != null ? { avatar: row.avatar as string } : {}),
-      updatedAt: row.fetchedAt as string,
-    }
   }
 
   /**

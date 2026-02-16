@@ -42,6 +42,15 @@ type DiscoverySyncStateId = typeof DiscoverySyncStateId.Type
 const CachedProfileId = id('CachedProfile')
 type CachedProfileId = typeof CachedProfileId.Type
 
+const CachedGraphEntryId = id('CachedGraphEntry')
+type CachedGraphEntryId = typeof CachedGraphEntryId.Type
+
+const CachedGraphVerificationId = id('CachedGraphVerification')
+type CachedGraphVerificationId = typeof CachedGraphVerificationId.Type
+
+const CachedGraphAttestationId = id('CachedGraphAttestation')
+type CachedGraphAttestationId = typeof CachedGraphAttestationId.Type
+
 const OutboxId = id('Outbox')
 type OutboxId = typeof OutboxId.Type
 
@@ -75,6 +84,7 @@ const Schema = {
   },
   attestation: {
     id: AttestationId,
+    attestationId: nullOr(NonEmptyString1000), // Original attestation ID (urn:uuid:...)
     fromDid: NonEmptyString1000,
     toDid: NonEmptyString1000,
     claim: NonEmptyString1000,
@@ -103,6 +113,39 @@ const Schema = {
     bio: nullOr(NonEmptyString1000),
     avatar: nullOr(NonEmptyString),
     fetchedAt: NonEmptyString1000,
+  },
+  cachedGraphEntry: {
+    id: CachedGraphEntryId,
+    did: NonEmptyString1000,
+    name: nullOr(NonEmptyString1000),
+    bio: nullOr(NonEmptyString1000),
+    avatar: nullOr(NonEmptyString),
+    verificationCount: NonEmptyString1000, // string-encoded integer
+    attestationCount: NonEmptyString1000,  // string-encoded integer
+    verifierDidsJson: nullOr(NonEmptyString), // JSON string[]
+    fetchedAt: NonEmptyString1000,
+  },
+  cachedGraphVerification: {
+    id: CachedGraphVerificationId,
+    subjectDid: NonEmptyString1000, // whose profile this belongs to
+    verificationId: NonEmptyString1000,
+    fromDid: NonEmptyString1000,
+    toDid: NonEmptyString1000,
+    timestamp: NonEmptyString1000,
+    proofJson: NonEmptyString1000,
+    locationJson: nullOr(NonEmptyString1000),
+  },
+  cachedGraphAttestation: {
+    id: CachedGraphAttestationId,
+    subjectDid: NonEmptyString1000, // whose profile this belongs to
+    attestationId: NonEmptyString1000,
+    fromDid: NonEmptyString1000,
+    toDid: NonEmptyString1000,
+    claim: NonEmptyString1000,
+    tagsJson: nullOr(NonEmptyString1000),
+    context: nullOr(NonEmptyString1000),
+    attestationCreatedAt: NonEmptyString1000,
+    proofJson: NonEmptyString1000,
   },
   outbox: {
     id: OutboxId,
@@ -176,4 +219,4 @@ export async function resetEvolu(): Promise<void> {
   localStorage.removeItem('wot-evolu-owner-id')
 }
 
-export { Schema, type AppSchema, type ProfileId, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId, type DiscoverySyncStateId, type CachedProfileId, type OutboxId }
+export { Schema, type AppSchema, type ProfileId, type ContactId, type VerificationId, type AttestationId, type AttestationMetadataId, type DiscoverySyncStateId, type CachedProfileId, type CachedGraphEntryId, type CachedGraphVerificationId, type CachedGraphAttestationId, type OutboxId }

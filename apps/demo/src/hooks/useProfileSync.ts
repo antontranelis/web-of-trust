@@ -94,12 +94,10 @@ export function useProfileSync() {
       const meta = await storage.getAttestationMetadata(att.id)
       if (meta?.accepted) accepted.push(att)
     }
-    if (accepted.length > 0) {
-      await discovery.publishAttestations(
-        { did, attestations: accepted, updatedAt: new Date().toISOString() },
-        identity,
-      )
-    }
+    await discovery.publishAttestations(
+      { did, attestations: accepted, updatedAt: new Date().toISOString() },
+      identity,
+    )
   }, [identity, storage, discovery])
 
   /**

@@ -235,6 +235,7 @@ export class EvoluStorageAdapter implements StorageAdapter, ReactiveStorageAdapt
   async saveAttestation(attestation: Attestation): Promise<void> {
     const result = this.evolu.upsert('attestation', {
       id: createIdFromString<'Attestation'>(attestation.id),
+      attestationId: str(attestation.id),
       fromDid: str(attestation.from),
       toDid: str(attestation.to),
       claim: str(attestation.claim),

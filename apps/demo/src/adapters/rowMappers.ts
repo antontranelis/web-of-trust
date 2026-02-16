@@ -30,7 +30,7 @@ export function rowToVerification(row: any): Verification {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function rowToAttestation(row: any): Attestation {
   return {
-    id: row.id,
+    id: row.attestationId ?? row.id,
     from: row.fromDid,
     to: row.toDid,
     claim: row.claim,

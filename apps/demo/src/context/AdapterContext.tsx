@@ -22,7 +22,8 @@ import {
   AttestationService,
 } from '../services'
 import { EvoluStorageAdapter } from '../adapters/EvoluStorageAdapter'
-import { EvoluDiscoverySyncStore } from '../adapters/EvoluDiscoverySyncStore'
+import { EvoluPublishStateStore } from '../adapters/EvoluPublishStateStore'
+import { EvoluGraphCacheStore } from '../adapters/EvoluGraphCacheStore'
 import { EvoluOutboxStore } from '../adapters/EvoluOutboxStore'
 import { createWotEvolu, isEvoluInitialized, getEvolu } from '../db'
 import { useIdentity } from './IdentityContext'
@@ -36,7 +37,8 @@ interface AdapterContextValue {
   crypto: CryptoAdapter
   messaging: MessagingAdapter
   discovery: DiscoveryAdapter
-  discoverySyncStore: EvoluDiscoverySyncStore
+  publishStateStore: EvoluPublishStateStore
+  graphCacheStore: EvoluGraphCacheStore
   outboxStore: EvoluOutboxStore
   messagingState: MessagingState
   contactService: ContactService
@@ -88,8 +90,9 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           sendTimeoutMs: 15_000,
         })
         const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
-        const discoverySyncStore = new EvoluDiscoverySyncStore(evolu, did)
-        const discovery = new OfflineFirstDiscoveryAdapter(httpDiscovery, discoverySyncStore)
+        const publishStateStore = new EvoluPublishStateStore(evolu, did)
+        const graphCacheStore = new EvoluGraphCacheStore(evolu)
+        const discovery = new OfflineFirstDiscoveryAdapter(httpDiscovery, publishStateStore, graphCacheStore)
 
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(outboxAdapter)
@@ -108,7 +111,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           await storage.createIdentity(did, profile)
           // Mark profile dirty so syncDiscovery() uploads it to wot-profiles
           if (profile.name) {
-            await discoverySyncStore.markDirty(did, 'profile')
+            await publishStateStore.markDirty(did, 'profile')
           }
         }
 
@@ -179,7 +182,8 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             crypto,
             messaging: outboxAdapter,
             discovery,
-            discoverySyncStore,
+            publishStateStore,
+            graphCacheStore,
             outboxStore,
             contactService: new ContactService(storage),
             verificationService: new VerificationService(storage),

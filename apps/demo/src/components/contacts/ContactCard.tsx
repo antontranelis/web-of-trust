@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, ShieldAlert, ArrowDownLeft, ArrowUpRight, Trash2, Award } from 'lucide-react'
+import { Shield, ShieldCheck, ShieldAlert, ArrowDownLeft, ArrowUpRight, Trash2, Award, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Contact } from '@real-life/wot-core'
 import type { VerificationDirection } from '../../hooks/useVerificationStatus'
@@ -7,6 +7,7 @@ import { Avatar } from '../shared'
 interface ContactCardProps {
   contact: Contact
   onRemove?: () => void
+  verificationCount?: number | undefined
   attestationCount?: number
   verificationStatus?: VerificationDirection
 }
@@ -18,7 +19,7 @@ const verificationInfo: Record<VerificationDirection, { label: string; color: st
   none: { label: 'Nicht verifiziert', color: 'bg-slate-100 text-slate-500', icon: ShieldAlert },
 }
 
-export function ContactCard({ contact, onRemove, attestationCount = 0, verificationStatus = 'none' }: ContactCardProps) {
+export function ContactCard({ contact, onRemove, verificationCount, attestationCount = 0, verificationStatus = 'none' }: ContactCardProps) {
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-700',
     active: verificationInfo[verificationStatus].color,
@@ -62,6 +63,12 @@ export function ContactCard({ contact, onRemove, attestationCount = 0, verificat
                   </span>
                 )
               })()}
+              {verificationCount != null && verificationCount > 0 && (
+                <span className="flex items-center gap-1">
+                  <Users size={12} />
+                  {verificationCount} Verifikation{verificationCount !== 1 ? 'en' : ''}
+                </span>
+              )}
               <span className="flex items-center gap-1">
                 <Award size={12} />
                 {attestationCount} Attestation{attestationCount !== 1 ? 'en' : ''}

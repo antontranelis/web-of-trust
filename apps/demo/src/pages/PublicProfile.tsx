@@ -33,6 +33,8 @@ export function PublicProfile() {
   const [attestations, setAttestations] = useState<Attestation[]>([])
   const [state, setState] = useState<LoadState>('loading')
   const [copiedDid, setCopiedDid] = useState(false)
+  const [resolvedNames, setResolvedNames] = useState<Map<string, string>>(new Map())
+  const [mutualContacts, setMutualContacts] = useState<string[]>([])
 
   const decodedDid = did ? decodeURIComponent(did) : ''
   const isMyProfile = myDid === decodedDid
@@ -87,6 +89,29 @@ export function PublicProfile() {
       return
     }
 
+    async function tryCachedFallback(): Promise<boolean> {
+      try {
+        if (!adapters?.graphCacheStore) return false
+        const entry = await adapters.graphCacheStore.getEntry(decodedDid)
+        if (!entry?.name) return false
+        setProfile({
+          did: decodedDid,
+          name: entry.name,
+          ...(entry.bio ? { bio: entry.bio } : {}),
+          ...(entry.avatar ? { avatar: entry.avatar } : {}),
+          updatedAt: entry.fetchedAt,
+        })
+        const cachedV = await adapters.graphCacheStore.getCachedVerifications(decodedDid)
+        const cachedA = await adapters.graphCacheStore.getCachedAttestations(decodedDid)
+        setVerifications(cachedV)
+        setAttestations(cachedA)
+        setState('loaded-offline')
+        return true
+      } catch {
+        return false
+      }
+    }
+
     async function fetchAll() {
       setState('loading')
       try {
@@ -98,7 +123,10 @@ export function PublicProfile() {
         ])
 
         if (!profileData) {
-          if (!navigator.onLine && tryLocalFallbackRef.current()) return
+          if (!navigator.onLine) {
+            if (await tryCachedFallback()) return
+            if (tryLocalFallbackRef.current()) return
+          }
           setState(!navigator.onLine ? 'offline' : 'not-found')
           return
         }
@@ -107,21 +135,75 @@ export function PublicProfile() {
         setVerifications(vData)
         setAttestations(aData)
         setState('loaded')
+
+        // Cache fetched data for offline use
+        if (adapters?.graphCacheStore) {
+          adapters.graphCacheStore.cacheEntry(decodedDid, profileData, vData, aData).catch(() => {})
+        }
       } catch (error) {
-        const isNetworkError = error instanceof TypeError && /fetch|network/i.test(error.message)
-        if ((isNetworkError || !navigator.onLine) && tryLocalFallbackRef.current()) return
-        setState(isNetworkError || !navigator.onLine ? 'offline' : 'error')
+        const msg = error instanceof Error ? error.message : ''
+        const isNetworkError = !navigator.onLine || /fetch|network|abort|timeout/i.test(msg)
+        if (isNetworkError) {
+          if (await tryCachedFallback()) return
+          if (tryLocalFallbackRef.current()) return
+        }
+        setState(isNetworkError ? 'offline' : 'error')
       }
     }
 
     fetchAll()
-  }, [decodedDid, discovery])
+  }, [decodedDid, discovery, adapters?.graphCacheStore])
+
+  // Resolve DID names and mutual contacts after data loads
+  useEffect(() => {
+    if (!adapters?.graphCacheStore || (verifications.length === 0 && attestations.length === 0)) return
+
+    let cancelled = false
+
+    async function resolveGraph() {
+      const allDids = new Set<string>()
+      for (const v of verifications) allDids.add(v.from)
+      for (const a of attestations) allDids.add(a.from)
+
+      if (allDids.size > 0) {
+        const names = await adapters!.graphCacheStore.resolveNames([...allDids])
+        if (!cancelled) setResolvedNames(names)
+      }
+
+      if (decodedDid && !isMyProfile) {
+        const contactDids = contacts.filter(c => c.status === 'active').map(c => c.did)
+        if (contactDids.length > 0) {
+          const mutual = await adapters!.graphCacheStore.findMutualContacts(decodedDid, contactDids)
+          if (!cancelled) setMutualContacts(mutual)
+        }
+      }
+    }
+
+    resolveGraph()
+    return () => { cancelled = true }
+  }, [verifications, attestations, adapters?.graphCacheStore, decodedDid, isMyProfile, contacts])
 
   const handleCopyDid = async () => {
     await navigator.clipboard.writeText(decodedDid)
     setCopiedDid(true)
     setTimeout(() => setCopiedDid(false), 2000)
   }
+
+  const displayName = useCallback((targetDid: string): string => {
+    const suffix = targetDid === myDid ? ' (Du)' : ''
+    // Check if it's one of my contacts (they have local names)
+    const contact = contacts.find(c => c.did === targetDid)
+    if (contact?.name) return contact.name + suffix
+    // Check graph cache
+    const cached = resolvedNames.get(targetDid)
+    if (cached) return cached + suffix
+    // Fall back to short DID
+    return shortDidLabel(targetDid) + suffix
+  }, [contacts, resolvedNames, myDid])
+
+  const isKnownContact = useCallback((targetDid: string): boolean => {
+    return contacts.some(c => c.did === targetDid && c.status === 'active')
+  }, [contacts])
 
   const shortDid = decodedDid.length > 30
     ? `${decodedDid.slice(0, 16)}...${decodedDid.slice(-8)}`
@@ -246,6 +328,21 @@ export function PublicProfile() {
         </div>
       )}
 
+      {/* Mutual contacts */}
+      {mutualContacts.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <Users className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              {mutualContacts.length === 1
+                ? `${displayName(mutualContacts[0])} kennt diese Person auch.`
+                : `${mutualContacts.length} deiner Kontakte kennen diese Person: ${mutualContacts.map(d => displayName(d)).join(', ')}.`
+              }
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Verifications */}
       {verifications.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-lg p-4">
@@ -256,16 +353,24 @@ export function PublicProfile() {
             </h3>
           </div>
           <div className="space-y-2">
-            {verifications.map((v) => (
-              <div key={v.id} className="flex items-center justify-between text-sm">
-                <span className="text-slate-600 font-mono text-xs">
-                  {shortDidLabel(v.from)}
-                </span>
-                <span className="text-xs text-slate-400">
-                  {new Date(v.timestamp).toLocaleDateString('de-DE')}
-                </span>
-              </div>
-            ))}
+            {verifications.map((v) => {
+              const name = displayName(v.from)
+              const known = isKnownContact(v.from)
+              return (
+                <div key={v.id} className="flex items-center justify-between text-sm">
+                  <Link
+                    to={`/p/${encodeURIComponent(v.from)}`}
+                    className={`text-xs truncate hover:text-primary-600 transition-colors ${known ? 'text-slate-800 font-medium' : 'text-slate-600'}`}
+                  >
+                    {name}
+                    {known && <span className="text-blue-500 ml-1">(Kontakt)</span>}
+                  </Link>
+                  <span className="text-xs text-slate-400 shrink-0 ml-2">
+                    {new Date(v.timestamp).toLocaleDateString('de-DE')}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -280,14 +385,26 @@ export function PublicProfile() {
             </h3>
           </div>
           <div className="space-y-3">
-            {attestations.map((a) => (
-              <div key={a.id} className="border-l-2 border-amber-200 pl-3">
-                <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  von {shortDidLabel(a.from)} &middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
-                </p>
-              </div>
-            ))}
+            {attestations.map((a) => {
+              const name = displayName(a.from)
+              const known = isKnownContact(a.from)
+              return (
+                <div key={a.id} className={`border-l-2 pl-3 ${known ? 'border-green-300' : 'border-amber-200'}`}>
+                  <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    von{' '}
+                    <Link
+                      to={`/p/${encodeURIComponent(a.from)}`}
+                      className={`hover:text-primary-600 transition-colors ${known ? 'text-slate-700 font-medium' : ''}`}
+                    >
+                      {name}
+                    </Link>
+                    {known && <span className="text-green-600 ml-1">(dein Kontakt)</span>}
+                    {' '}&middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                  </p>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
