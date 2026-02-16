@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-15
-**Phase:** Week 5++++ - Messaging Outbox + WebSocket Heartbeat
+**Datum:** 2026-02-16
+**Phase:** Week 6 - Discovery Refactor + Multi-Device + Notification Queue
 
 ---
 
@@ -1463,6 +1463,98 @@ Delegation:
 
 ---
 
+## Week 6: Discovery Refactor + Multi-Device + UX Polish (2026-02-16) ✅
+
+### Übersicht
+
+Umfassender Refactor des Discovery-Systems (GraphCacheStore + PublishStateStore statt monolithischem DiscoverySyncStore), Relay Multi-Device-Support, Notification-Queue, und diverse Bugfixes.
+
+### Implementiert
+
+#### DiscoverySyncStore → GraphCacheStore + PublishStateStore
+
+Monolithisches `DiscoverySyncStore` Interface aufgeteilt in zwei fokussierte Stores:
+
+- ✅ **GraphCacheStore** (`adapters/interfaces/GraphCacheStore.ts`) — Cached Profile-Summaries für Trust-Graph-Anzeige
+- ✅ **PublishStateStore** (`adapters/interfaces/PublishStateStore.ts`) — Dirty-Flags für Profile-Publish-State
+- ✅ **InMemoryGraphCacheStore** — Map-basiert für Tests
+- ✅ **InMemoryPublishStateStore** — Map-basiert für Tests
+- ✅ **GraphCacheService** (`services/GraphCacheService.ts`) — Batch Profile Resolution via `resolveSummaries`
+- ✅ **EvoluGraphCacheStore** — Evolu-basierte Persistenz in Demo-App
+- ✅ **EvoluPublishStateStore** — Evolu-basierte Persistenz in Demo-App
+
+#### Batch Profile Resolution
+
+- ✅ **`POST /p/batch`** Endpoint in wot-profiles — Löst mehrere DIDs auf einmal auf
+- ✅ **`resolveSummaries(dids)`** in DiscoveryAdapter Interface — Batch-Methode
+- ✅ **`useGraphCache` Hook** — Batch-Resolution für PublicProfile Trust-Graph
+
+#### Relay Multi-Device Support
+
+- ✅ **`Map<string, Set<WebSocket>>`** statt `Map<string, WebSocket>` — Mehrere Geräte pro DID
+- ✅ **Broadcast an alle Geräte** — `handleSend` liefert an alle verbundenen Sockets einer DID
+- ✅ **Sauberes Cleanup** — Socket entfernen bei Disconnect, DID erst löschen wenn kein Socket mehr verbunden
+- ✅ **3 neue Tests** — Multi-Device Delivery, partielle Disconnects, vollständige DID-Entfernung
+
+#### Notification Queue
+
+- ✅ **Dedup-Queue** statt 3 separater Dialog-States — Mehrere Attestations/Verifikationen nacheinander statt Überschreiben
+- ✅ **`enqueue(notification)`** mit ID-basiertem Dedup
+- ✅ **`dismiss()`** entfernt erstes Element, zeigt nächstes
+- ✅ **Wrapper-Kompatibilität** — `triggerMutualDialog`, `triggerAttestationDialog`, `setPendingIncoming` nutzen intern die Queue
+- ✅ **Tests** — NotificationQueue.test.ts
+
+#### MutualVerificationEffect: Konfetti-Reload-Fix
+
+- ✅ **sessionStorage** statt useRef für "schon gezeigt"-Tracking
+- ✅ **Überlebt Reload**, aber nicht Browser-Neustart — Konfetti zeigt sich einmal pro Session
+
+#### Identity Page: Profil-Links
+
+- ✅ **Verifikations-/Attestation-Namen verlinkt** auf `/p/{did}` (wie in PublicProfile)
+
+#### VerificationFlow: Auto-Regenerate Nonce
+
+- ✅ **Automatische Nonce-Neugenerierung** nach eingehender Verifikation auf `/verify`
+- ✅ **Mehrere Kontakte verifizieren** ohne die Seite zu verlassen
+
+#### Attestation Emoji-Fix
+
+- ✅ **`btoa()` Unicode-Crash behoben** — `btoa()` wirft `InvalidCharacterError` bei Emojis/Unicode
+- ✅ **`saveIncomingAttestation()`** — Nimmt Attestation-Objekt direkt, kein Base64-Roundtrip mehr
+- ✅ **`importAttestation()`** delegiert intern an `saveIncomingAttestation()`
+
+#### Attestation UI: Import/Export entfernt
+
+- ✅ **Import-Button** und Route entfernt
+- ✅ **Copy/Export-Button** aus AttestationCard entfernt
+
+### Tests Week 6
+
+**3 neue Relay-Tests + Notification-Queue-Tests:**
+
+```text
+packages/wot-relay/tests/relay.test.ts (3 neue Tests, 18 gesamt)
+
+Multi-Device:
+✓ should deliver message to all devices of a DID
+✓ should keep other devices connected when one disconnects
+✓ should remove DID when all devices disconnect
+```
+
+**Gesamt: ~270 Tests** — alle passing ✅
+
+### Commits
+
+26. **refactor: replace DiscoverySyncStore with GraphCacheStore + PublishStateStore** — Split + GraphCacheService + Batch Endpoint
+27. **feat: integrate GraphCacheStore + PublishStateStore in demo app** — Evolu Stores + useGraphCache + PublicProfile Refactor
+28. **feat: notification queue + fix confetti on reload** — Dedup-Queue + sessionStorage
+29. **feat: link names to profiles on identity page + auto-regenerate nonce** — Profil-Links + Nonce-Regen
+30. **fix: attestations with emojis not arriving + remove import/export** — btoa-Fix + UI Cleanup
+31. **feat: relay multi-device support** — Set<WebSocket> pro DID
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -1519,16 +1611,23 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte
 
-### Priorität 1: Demo App — Spaces UI ⬅️ NÄCHSTER SCHRITT
+### Priorität 1: Delivery Acknowledgment ⬅️ NÄCHSTER SCHRITT
+
+- **Relay-seitiges ACK-Protokoll** — Nachrichten bleiben in Queue bis Empfänger ACK sendet
+  - Neuer Client-Message-Typ: `{ type: 'ack', messageId }`
+  - Relay speichert zugestellte Nachrichten bis ACK
+  - Bei Reconnect: Redelivery aller unbestätigten Nachrichten
+  - WebSocketMessagingAdapter: ACK senden nach onMessage-Callback + Auto-Reconnect
+
+### Priorität 2: Demo App — Spaces UI
 
 - **Spaces-Seite in Demo App** — AutomergeReplicationAdapter in AdapterContext einbinden
   - Space erstellen, Members einladen, geteilte Daten bearbeiten
   - Verschlüsselte Sync-Funktionalität live testen
   - useSpaces Hook für React-Integration
 
-### Priorität 2: Polish + UX
+### Priorität 3: Polish + UX
 
-- **Profil-Name im Verification-Handshake** — `useVerification` sendet echten Namen statt hardcoded `'User'`
 - **Spaces-Persistenz** — Automerge Docs in IndexedDB persistieren (aktuell nur in-memory)
 
 ### Priorität 3: RLS Integration & Module
@@ -1555,6 +1654,11 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - ~~Messaging Outbox (OutboxMessagingAdapter + EvoluOutboxStore)~~ ✅
 - ~~WebSocket Heartbeat (Ping/Pong, tote Verbindungen erkennen)~~ ✅
 - ~~Fire-and-Forget Sends (Verifications, Attestations)~~ ✅
+- ~~DiscoverySyncStore → GraphCacheStore + PublishStateStore~~ ✅ (Week 6)
+- ~~Batch Profile Resolution (resolveSummaries, /p/batch)~~ ✅ (Week 6)
+- ~~Relay Multi-Device Support~~ ✅ (Week 6)
+- ~~Notification Queue (Dedup + Konfetti-Fix)~~ ✅ (Week 6)
+- ~~Attestation Emoji-Fix (btoa → saveIncomingAttestation)~~ ✅ (Week 6)
 - **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
@@ -1679,7 +1783,8 @@ packages/wot-core/src/
 │   │   ├── CryptoAdapter.ts        # + Symmetric + EncryptedPayload Type
 │   │   ├── MessagingAdapter.ts     # Cross-User Messaging
 │   │   ├── DiscoveryAdapter.ts     # Public Profile Discovery
-│   │   ├── DiscoverySyncStore.ts   # Offline-Cache Interface
+│   │   ├── GraphCacheStore.ts      # Profile-Summary Cache Interface
+│   │   ├── PublishStateStore.ts   # Profile-Publish Dirty-Flags Interface
 │   │   ├── OutboxStore.ts         # Messaging Outbox Interface
 │   │   ├── ReplicationAdapter.ts   # CRDT Spaces + SpaceHandle<T>
 │   │   └── index.ts
@@ -1693,7 +1798,8 @@ packages/wot-core/src/
 │   ├── discovery/
 │   │   ├── HttpDiscoveryAdapter.ts          # HTTP-based (wot-profiles)
 │   │   ├── OfflineFirstDiscoveryAdapter.ts  # Offline-Cache Wrapper
-│   │   └── InMemoryDiscoverySyncStore.ts    # In-Memory Cache für Tests
+│   │   ├── InMemoryGraphCacheStore.ts       # In-Memory Cache für Tests
+│   │   └── InMemoryPublishStateStore.ts     # In-Memory Dirty-Flags für Tests
 │   ├── replication/
 │   │   └── AutomergeReplicationAdapter.ts   # Automerge + E2EE + GroupKeys
 │   ├── storage/
@@ -1701,6 +1807,7 @@ packages/wot-core/src/
 │   └── index.ts
 ├── services/
 │   ├── ProfileService.ts           # signProfile, verifyProfile (JWS)
+│   ├── GraphCacheService.ts        # Batch Profile Resolution
 │   ├── EncryptedSyncService.ts     # Encrypt/Decrypt CRDT Changes (AES-256-GCM)
 │   ├── GroupKeyService.ts          # Group Key Management (per Space, Generations)
 │   └── index.ts
@@ -1778,7 +1885,8 @@ apps/demo/src/
 │       └── index.ts
 ├── adapters/
 │   ├── EvoluStorageAdapter.ts         # StorageAdapter + ReactiveStorageAdapter via Evolu
-│   ├── EvoluDiscoverySyncStore.ts     # Evolu-basierter Offline-Cache für Discovery
+│   ├── EvoluGraphCacheStore.ts        # Evolu-basierter Graph-Cache für Profile-Summaries
+│   ├── EvoluPublishStateStore.ts      # Evolu-basierte Dirty-Flags für Profile-Publish
 │   ├── EvoluOutboxStore.ts            # Evolu-basierte persistente Messaging-Outbox
 │   └── rowMappers.ts                  # Evolu Row ↔ WoT Type Konvertierung
 ├── context/
@@ -1793,6 +1901,7 @@ apps/demo/src/
 │   ├── useMessaging.ts                # Relay send/onMessage/state
 │   ├── useOutboxStatus.ts            # Reaktiver Outbox-Pending-Count
 │   ├── useProfileSync.ts             # Upload/Fetch Profile, Dirty-Flag-Sync
+│   ├── useGraphCache.ts              # Batch Profile Resolution für Trust-Graph
 │   ├── useProfile.ts                  # Reaktives Profil via watchIdentity()
 │   ├── useSubscribable.ts            # Subscribable<T> → React State
 │   ├── useOnlineStatus.ts            # navigator.onLine + Events
@@ -1841,8 +1950,8 @@ packages/wot-profiles/tests/                          # 19 Tests
 ├── profile-store.test.ts            # 4 Tests
 └── profile-rest.test.ts             # 15 Tests
 
-packages/wot-relay/tests/                              # 15 Tests
-├── relay.test.ts                    # 9 Tests
+packages/wot-relay/tests/                              # 18 Tests
+├── relay.test.ts                    # 12 Tests (inkl. 3 Multi-Device)
 └── integration.test.ts              # 6 Tests
 ```
 
