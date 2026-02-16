@@ -7,6 +7,7 @@ import { Avatar } from '../shared/Avatar'
 import { ShowCode } from './ShowCode'
 import { ScanCode } from './ScanCode'
 import { useAdapters } from '../../context'
+import { useConfetti } from '../../context/PendingVerificationContext'
 
 type Mode = 'ready' | 'confirm' | 'success' | 'error'
 
@@ -23,6 +24,7 @@ export function VerificationFlow() {
     reset,
   } = useVerification()
   const { discovery } = useAdapters()
+  const { challengeNonce } = useConfetti()
 
   const [mode, setMode] = useState<Mode>('ready')
   const [challengeCode, setChallengeCode] = useState('')
@@ -42,6 +44,15 @@ export function VerificationFlow() {
       .then((code) => setChallengeCode(code))
       .catch(() => {})
   }, [createChallenge])
+
+  // Auto-regenerate challenge when nonce is consumed (verification came in)
+  useEffect(() => {
+    if (challengeNonce === null && challengeCreated.current && mode === 'ready') {
+      createChallenge()
+        .then((code) => setChallengeCode(code))
+        .catch(() => {})
+    }
+  }, [challengeNonce, mode, createChallenge])
 
   // Cleanup scanner on unmount
   useEffect(() => {

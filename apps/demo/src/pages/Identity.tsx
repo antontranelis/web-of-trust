@@ -1,6 +1,7 @@
-import { useIdentity } from '../context'
+import { useIdentity, usePendingVerification } from '../context'
 import { useAdapters } from '../context'
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Copy, Check, Fingerprint, Shield, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock } from 'lucide-react'
 import { Avatar, AvatarUpload } from '../components/shared'
 import { resetEvolu } from '../db'
@@ -14,6 +15,7 @@ export function Identity() {
   const syncedProfile = useProfile()
   const { receivedAttestations, setAttestationAccepted } = useAttestations()
   const { contacts } = useContacts()
+  const { incomingAttestation } = usePendingVerification()
 
   // Reactive verifications
   const verificationsSubscribable = useMemo(() => reactiveStorage.watchReceivedVerifications(), [reactiveStorage])
@@ -43,6 +45,7 @@ export function Identity() {
   }, [syncedProfile, isEditingProfile, justSaved])
 
   // Load accepted state for received attestations
+  // Re-runs when attestation dialog closes (incomingAttestation → null)
   useEffect(() => {
     async function loadAccepted() {
       const map: Record<string, boolean> = {}
@@ -53,7 +56,7 @@ export function Identity() {
       setAcceptedMap(map)
     }
     loadAccepted()
-  }, [receivedAttestations, storage])
+  }, [receivedAttestations, storage, incomingAttestation])
 
   const handleToggleAttestation = async (attestationId: string, publish: boolean) => {
     await setAttestationAccepted(attestationId, publish)
@@ -235,9 +238,12 @@ export function Identity() {
                   : v.from
                 return (
                   <div key={v.id} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-700">
-                      {name || <span className="font-mono text-xs text-slate-500">{shortDid}</span>}
-                    </span>
+                    <Link
+                      to={`/p/${encodeURIComponent(v.from)}`}
+                      className="text-slate-700 hover:text-blue-600 transition-colors"
+                    >
+                      {name || <span className="font-mono text-xs">{shortDid}</span>}
+                    </Link>
                     <span className="text-xs text-slate-400">
                       {new Date(v.timestamp).toLocaleDateString('de-DE')}
                     </span>
@@ -272,7 +278,14 @@ export function Identity() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        von {fromName || shortFrom} &middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                        von{' '}
+                        <Link
+                          to={`/p/${encodeURIComponent(a.from)}`}
+                          className="hover:text-blue-600 transition-colors"
+                        >
+                          {fromName || shortFrom}
+                        </Link>
+                        {' '}&middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
                       </p>
                     </div>
                     <button
