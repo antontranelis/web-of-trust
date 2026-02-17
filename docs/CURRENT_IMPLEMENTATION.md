@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-16
-**Phase:** Week 6 - Discovery Refactor + Multi-Device + Notification Queue
+**Datum:** 2026-02-17
+**Phase:** Week 6+ - Delivery Acknowledgment
 
 ---
 
@@ -1555,6 +1555,74 @@ Multi-Device:
 
 ---
 
+## Week 6+: Delivery Acknowledgment (2026-02-17) ✅
+
+### Übersicht
+
+Nachrichten (Attestations, Verifikationen) konnten unter bestimmten Umständen verloren gehen: Der Relay löschte sie aus der Queue sobald sie gesendet wurden — ohne zu wissen ob der Empfänger sie tatsächlich verarbeitet hat. Jetzt bestätigt der Empfänger jede Nachricht mit ACK. Der Relay behält Nachrichten bis ACK eintrifft. Bei Reconnect: Redelivery aller unbestätigten Nachrichten.
+
+### Implementiert
+
+#### ACK-Protokoll
+
+- ✅ **Neuer Client-Message-Typ** — `{ type: 'ack', messageId: string }` in Relay-Protokoll
+- ✅ **At-least-once Delivery** — Relay speichert alle zugestellten Nachrichten bis ACK
+- ✅ **Redelivery bei Reconnect** — `handleRegister` liefert unACKed Nachrichten automatisch erneut
+- ✅ **Client-side Idempotency** — Duplikate werden in der App erkannt (Attestation-ID, Verification-ID)
+
+#### Queue Schema-Erweiterung (`queue.ts`)
+
+Neues Schema mit Delivery-Tracking:
+
+- ✅ **`message_id`** — Envelope-ID für ACK-Matching (UNIQUE Index)
+- ✅ **`status`** — `'queued'` (offline) oder `'delivered'` (gesendet, wartet auf ACK)
+- ✅ **`delivered_at`** — Zeitstempel der Zustellung
+- ✅ **`dequeue()`** — Markiert als 'delivered' statt zu löschen (vorher: DELETE)
+- ✅ **`markDelivered()`** — Für online-zugestellte Nachrichten
+- ✅ **`ack()`** — Löscht Nachricht nach ACK-Empfang
+- ✅ **`getUnacked()`** — Alle zugestellten aber unbestätigten Nachrichten (für Redelivery)
+- ✅ **Schema-Migration** — Erkennt altes Schema (ohne `message_id`), droppt und erstellt neu
+
+#### Relay-Server (`relay.ts`)
+
+- ✅ **`handleAck()`** — Löscht Nachricht aus Queue nach ACK
+- ✅ **`handleRegister()`** — Liefert zuerst unACKed (Redelivery), dann neue queued Messages
+- ✅ **`handleSend()`** — Online-Delivery speichert Nachricht in DB bis ACK (vorher: kein DB-Eintrag)
+
+#### WebSocketMessagingAdapter
+
+- ✅ **Auto-ACK** — Sendet `{ type: 'ack', messageId }` nach erfolgreichem onMessage-Callback
+- ✅ **Error-Handling** — Kein ACK bei Callback-Fehler → Redelivery beim nächsten Connect
+
+#### Multi-Device ACK-Semantik
+
+- ✅ **Ein ACK von einem Gerät reicht** — Evolu synchronisiert zwischen Geräten
+- ✅ **Doppel-Delivery harmlos** — App dedupliziert über Attestation-/Verification-ID
+
+### Tests Week 6+
+
+**6 neue ACK-Tests (24 total):**
+
+```text
+packages/wot-relay/tests/relay.test.ts
+
+Delivery Acknowledgment:
+✓ should remove message from queue after ACK
+✓ should redeliver unACKed messages on reconnect
+✓ should persist online-delivered messages until ACK
+✓ should ACK messages individually
+✓ should ignore ACK from unregistered client
+✓ should accept ACK from any device of the same DID
+```
+
+**Gesamt: ~273 Tests** (249 wot-core + 24 wot-relay) — alle passing ✅
+
+### Commits
+
+32. **feat: delivery acknowledgment protocol** — ACK-Typ, Queue-Schema, Redelivery, Auto-ACK, Schema-Migration, 6 Tests
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -1611,15 +1679,7 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 ## Nächste Schritte
 
-### Priorität 1: Delivery Acknowledgment ⬅️ NÄCHSTER SCHRITT
-
-- **Relay-seitiges ACK-Protokoll** — Nachrichten bleiben in Queue bis Empfänger ACK sendet
-  - Neuer Client-Message-Typ: `{ type: 'ack', messageId }`
-  - Relay speichert zugestellte Nachrichten bis ACK
-  - Bei Reconnect: Redelivery aller unbestätigten Nachrichten
-  - WebSocketMessagingAdapter: ACK senden nach onMessage-Callback + Auto-Reconnect
-
-### Priorität 2: Demo App — Spaces UI
+### Priorität 1: Demo App — Spaces UI ⬅️ NÄCHSTER SCHRITT
 
 - **Spaces-Seite in Demo App** — AutomergeReplicationAdapter in AdapterContext einbinden
   - Space erstellen, Members einladen, geteilte Daten bearbeiten
@@ -1659,6 +1719,7 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - ~~Relay Multi-Device Support~~ ✅ (Week 6)
 - ~~Notification Queue (Dedup + Konfetti-Fix)~~ ✅ (Week 6)
 - ~~Attestation Emoji-Fix (btoa → saveIncomingAttestation)~~ ✅ (Week 6)
+- ~~Delivery Acknowledgment (ACK-Protokoll, Redelivery, Schema-Migration)~~ ✅ (Week 6+)
 - **Identity-System konsolidieren** — altes IdentityService/useIdentity entfernen (Plan existiert, niedrige Priorität)
 
 ### Zurückgestellt
