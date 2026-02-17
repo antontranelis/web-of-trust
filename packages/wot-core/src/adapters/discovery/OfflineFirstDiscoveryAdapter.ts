@@ -4,6 +4,7 @@ import type { Attestation } from '../../types/attestation'
 import type { WotIdentity } from '../../identity/WotIdentity'
 import type {
   DiscoveryAdapter,
+  ProfileResolveResult,
   PublicVerificationsData,
   PublicAttestationsData,
   ProfileSummary,
@@ -65,23 +66,25 @@ export class OfflineFirstDiscoveryAdapter implements DiscoveryAdapter {
     }
   }
 
-  async resolveProfile(did: string): Promise<PublicProfile | null> {
+  async resolveProfile(did: string): Promise<ProfileResolveResult> {
     try {
       return await this.inner.resolveProfile(did)
-    } catch (error) {
+    } catch {
       // Fallback to cached profile
       const cached = await this.graphCache.getEntry(did)
       if (cached?.name) {
         return {
-          did: cached.did,
-          name: cached.name,
-          ...(cached.bio ? { bio: cached.bio } : {}),
-          ...(cached.avatar ? { avatar: cached.avatar } : {}),
-          updatedAt: cached.fetchedAt,
+          profile: {
+            did: cached.did,
+            name: cached.name,
+            ...(cached.bio ? { bio: cached.bio } : {}),
+            ...(cached.avatar ? { avatar: cached.avatar } : {}),
+            updatedAt: cached.fetchedAt,
+          },
+          fromCache: true,
         }
       }
-      // No cache available — re-throw so the UI can detect the network error
-      throw error
+      return { profile: null, fromCache: true }
     }
   }
 

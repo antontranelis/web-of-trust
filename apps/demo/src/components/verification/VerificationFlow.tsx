@@ -70,7 +70,7 @@ export function VerificationFlow() {
     if (mode !== 'confirm' || !peerDid) return
     let cancelled = false
     discovery.resolveProfile(peerDid)
-      .then((profile) => { if (!cancelled && profile) setPeerProfile(profile) })
+      .then((r) => { if (!cancelled && r.profile) setPeerProfile(r.profile) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [mode, peerDid, discovery])

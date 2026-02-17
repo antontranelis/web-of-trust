@@ -59,6 +59,7 @@ export type { ReactiveStorageAdapter } from './adapters/interfaces/ReactiveStora
 export type { MessagingAdapter } from './adapters/interfaces/MessagingAdapter'
 export type {
   DiscoveryAdapter,
+  ProfileResolveResult,
   PublicVerificationsData,
   PublicAttestationsData,
   ProfileSummary,

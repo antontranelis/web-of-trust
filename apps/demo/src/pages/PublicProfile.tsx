@@ -4,8 +4,19 @@ import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award
 import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation, type Contact, type Identity, type Subscribable } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
 import { useIdentity, useOptionalAdapters } from '../context'
-import { useOnlineStatus } from '../hooks'
 import { useSubscribable } from '../hooks/useSubscribable'
+
+/** Keep only the newest verification per sender DID */
+function deduplicateByFrom(verifications: Verification[]): Verification[] {
+  const byFrom = new Map<string, Verification>()
+  for (const v of verifications) {
+    const existing = byFrom.get(v.from)
+    if (!existing || v.timestamp > existing.timestamp) {
+      byFrom.set(v.from, v)
+    }
+  }
+  return [...byFrom.values()]
+}
 
 const PROFILE_SERVICE_URL = import.meta.env.VITE_PROFILE_SERVICE_URL ?? 'http://localhost:8788'
 const fallbackDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
@@ -25,7 +36,6 @@ export function PublicProfile() {
   const { did } = useParams<{ did: string }>()
   const { identity, did: myDid } = useIdentity()
   const isLoggedIn = identity !== null
-  const isOnline = useOnlineStatus()
   const adapters = useOptionalAdapters()
   const discovery = useMemo(() => adapters?.discovery ?? fallbackDiscovery, [adapters])
   const [profile, setProfile] = useState<PublicProfileType | null>(null)
@@ -89,71 +99,41 @@ export function PublicProfile() {
       return
     }
 
-    async function tryCachedFallback(): Promise<boolean> {
-      try {
-        if (!adapters?.graphCacheStore) return false
-        const entry = await adapters.graphCacheStore.getEntry(decodedDid)
-        if (!entry?.name) return false
-        setProfile({
-          did: decodedDid,
-          name: entry.name,
-          ...(entry.bio ? { bio: entry.bio } : {}),
-          ...(entry.avatar ? { avatar: entry.avatar } : {}),
-          updatedAt: entry.fetchedAt,
-        })
-        const cachedV = await adapters.graphCacheStore.getCachedVerifications(decodedDid)
-        const cachedA = await adapters.graphCacheStore.getCachedAttestations(decodedDid)
-        setVerifications(cachedV)
-        setAttestations(cachedA)
-        setState('loaded-offline')
-        return true
-      } catch {
-        return false
-      }
-    }
-
     async function fetchAll() {
       setState('loading')
 
-      // If already offline, skip network and go straight to cache
-      if (!navigator.onLine) {
-        if (await tryCachedFallback()) return
-        if (tryLocalFallbackRef.current()) return
-        setState('offline')
-        return
-      }
-
       try {
-        // Fetch profile, verifications, and attestations in parallel via DiscoveryAdapter
-        const [profileData, vData, aData] = await Promise.all([
+        const [profileResult, vData, aData] = await Promise.all([
           discovery.resolveProfile(decodedDid),
           discovery.resolveVerifications(decodedDid),
           discovery.resolveAttestations(decodedDid),
         ])
 
-        if (!profileData) {
-          setState('not-found')
+        if (!profileResult.profile) {
+          if (profileResult.fromCache) {
+            // Offline + no cache → try local data (own identity / contacts)
+            if (tryLocalFallbackRef.current()) return
+            setState('offline')
+          } else {
+            setState('not-found')
+          }
           return
         }
 
-        setProfile(profileData)
-        setVerifications(vData)
+        setProfile(profileResult.profile)
+        // Deduplicate verifications by sender (keep newest per from-DID)
+        const uniqueV = deduplicateByFrom(vData)
+        setVerifications(uniqueV)
         setAttestations(aData)
-        setState('loaded')
+        setState(profileResult.fromCache ? 'loaded-offline' : 'loaded')
 
-        // Cache fetched data for offline use
-        if (adapters?.graphCacheStore) {
-          adapters.graphCacheStore.cacheEntry(decodedDid, profileData, vData, aData).catch(() => {})
+        // Cache fresh data for offline use
+        if (!profileResult.fromCache && adapters?.graphCacheStore) {
+          adapters.graphCacheStore.cacheEntry(decodedDid, profileResult.profile, vData, aData).catch(() => {})
         }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : ''
-        const errName = error instanceof DOMException ? error.name : ''
-        const isNetworkError = !navigator.onLine || /fetch|network|abort|timeout/i.test(msg) || errName === 'AbortError' || errName === 'TimeoutError'
-        if (isNetworkError) {
-          if (await tryCachedFallback()) return
-          if (tryLocalFallbackRef.current()) return
-        }
-        setState(isNetworkError ? 'offline' : 'error')
+      } catch {
+        if (tryLocalFallbackRef.current()) return
+        setState('error')
       }
     }
 

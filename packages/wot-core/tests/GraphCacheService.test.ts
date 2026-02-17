@@ -55,7 +55,7 @@ function createMockDiscovery(overrides: Partial<DiscoveryAdapter> = {}): Discove
     publishProfile: vi.fn().mockResolvedValue(undefined),
     publishVerifications: vi.fn().mockResolvedValue(undefined),
     publishAttestations: vi.fn().mockResolvedValue(undefined),
-    resolveProfile: vi.fn().mockResolvedValue(null),
+    resolveProfile: vi.fn().mockResolvedValue({ profile: null, fromCache: false }),
     resolveVerifications: vi.fn().mockResolvedValue([]),
     resolveAttestations: vi.fn().mockResolvedValue([]),
     ...overrides,
@@ -79,7 +79,7 @@ describe('GraphCacheService', () => {
       const attestations = [makeAttestation(BOB_DID, ALICE_DID, 'Zuverlässig')]
 
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(ALICE_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: ALICE_PROFILE, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue(verifications),
         resolveAttestations: vi.fn().mockResolvedValue(attestations),
       })
@@ -126,7 +126,7 @@ describe('GraphCacheService', () => {
 
     it('should fetch all three in parallel', async () => {
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(ALICE_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: ALICE_PROFILE, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
       })
@@ -153,7 +153,7 @@ describe('GraphCacheService', () => {
 
     it('should return null and trigger background refresh when not cached', async () => {
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(ALICE_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: ALICE_PROFILE, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
       })
@@ -174,7 +174,7 @@ describe('GraphCacheService', () => {
 
       const updatedProfile = { ...ALICE_PROFILE, name: 'Alice Updated' }
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(updatedProfile),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: updatedProfile, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
       })
@@ -201,7 +201,7 @@ describe('GraphCacheService', () => {
 
       // Bob is not cached
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(BOB_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: BOB_PROFILE, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
       })
@@ -224,7 +224,7 @@ describe('GraphCacheService', () => {
           maxConcurrent = Math.max(maxConcurrent, concurrent)
           await new Promise(r => setTimeout(r, 10))
           concurrent--
-          return null
+          return { profile: null, fromCache: false }
         }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
@@ -291,7 +291,7 @@ describe('GraphCacheService', () => {
 
     it('should fall back to refreshContacts when resolveSummaries not available', async () => {
       discovery = createMockDiscovery({
-        resolveProfile: vi.fn().mockResolvedValue(ALICE_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: ALICE_PROFILE, fromCache: false }),
         resolveVerifications: vi.fn().mockResolvedValue([]),
         resolveAttestations: vi.fn().mockResolvedValue([]),
       })

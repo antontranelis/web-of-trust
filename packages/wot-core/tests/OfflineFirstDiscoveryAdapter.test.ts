@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { OfflineFirstDiscoveryAdapter } from '../src/adapters/discovery/OfflineFirstDiscoveryAdapter'
 import { InMemoryPublishStateStore } from '../src/adapters/discovery/InMemoryPublishStateStore'
 import { InMemoryGraphCacheStore } from '../src/adapters/discovery/InMemoryGraphCacheStore'
-import type { DiscoveryAdapter, PublicVerificationsData, PublicAttestationsData } from '../src/adapters/interfaces/DiscoveryAdapter'
+import type { DiscoveryAdapter, PublicVerificationsData, PublicAttestationsData, ProfileResolveResult } from '../src/adapters/interfaces/DiscoveryAdapter'
 import type { PublicProfile } from '../src/types/identity'
 import type { WotIdentity } from '../src/identity/WotIdentity'
 
@@ -33,7 +33,7 @@ function createMockInner(overrides: Partial<DiscoveryAdapter> = {}): DiscoveryAd
     publishProfile: vi.fn().mockResolvedValue(undefined),
     publishVerifications: vi.fn().mockResolvedValue(undefined),
     publishAttestations: vi.fn().mockResolvedValue(undefined),
-    resolveProfile: vi.fn().mockResolvedValue(null),
+    resolveProfile: vi.fn().mockResolvedValue({ profile: null, fromCache: false }),
     resolveVerifications: vi.fn().mockResolvedValue([]),
     resolveAttestations: vi.fn().mockResolvedValue([]),
     ...overrides,
@@ -120,20 +120,19 @@ describe('OfflineFirstDiscoveryAdapter', () => {
   })
 
   describe('resolveProfile', () => {
-    it('should pass through profile from inner on successful resolve', async () => {
+    it('should return profile with fromCache=false on successful resolve', async () => {
       inner = createMockInner({
-        resolveProfile: vi.fn().mockResolvedValue(TEST_PROFILE),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: TEST_PROFILE, fromCache: false }),
       })
       adapter = new OfflineFirstDiscoveryAdapter(inner, publishState, graphCache)
 
       const result = await adapter.resolveProfile(ALICE_DID)
 
-      expect(result).toEqual(TEST_PROFILE)
-      // resolveProfile does not cache — caching is done by GraphCacheService.refresh()
-      // or explicitly by the UI after fetching all data together
+      expect(result.profile).toEqual(TEST_PROFILE)
+      expect(result.fromCache).toBe(false)
     })
 
-    it('should return cached profile from graph cache when inner fails', async () => {
+    it('should return cached profile with fromCache=true when inner fails', async () => {
       // Pre-populate graph cache
       await graphCache.cacheEntry(ALICE_DID, TEST_PROFILE, [], [])
 
@@ -144,27 +143,34 @@ describe('OfflineFirstDiscoveryAdapter', () => {
 
       const result = await adapter.resolveProfile(ALICE_DID)
 
-      expect(result).not.toBeNull()
-      expect(result!.name).toBe('Alice')
-      expect(result!.did).toBe(ALICE_DID)
+      expect(result.profile).not.toBeNull()
+      expect(result.profile!.name).toBe('Alice')
+      expect(result.profile!.did).toBe(ALICE_DID)
+      expect(result.fromCache).toBe(true)
     })
 
-    it('should re-throw when inner fails and no cache exists', async () => {
+    it('should return null profile with fromCache=true when inner fails and no cache exists', async () => {
       inner = createMockInner({
         resolveProfile: vi.fn().mockRejectedValue(new Error('Offline')),
       })
       adapter = new OfflineFirstDiscoveryAdapter(inner, publishState, graphCache)
 
-      await expect(adapter.resolveProfile(ALICE_DID)).rejects.toThrow('Offline')
+      const result = await adapter.resolveProfile(ALICE_DID)
+
+      expect(result.profile).toBeNull()
+      expect(result.fromCache).toBe(true)
     })
 
-    it('should not cache when inner returns null', async () => {
+    it('should return null profile with fromCache=false when inner returns null', async () => {
       inner = createMockInner({
-        resolveProfile: vi.fn().mockResolvedValue(null),
+        resolveProfile: vi.fn().mockResolvedValue({ profile: null, fromCache: false }),
       })
       adapter = new OfflineFirstDiscoveryAdapter(inner, publishState, graphCache)
 
-      await adapter.resolveProfile(ALICE_DID)
+      const result = await adapter.resolveProfile(ALICE_DID)
+
+      expect(result.profile).toBeNull()
+      expect(result.fromCache).toBe(false)
 
       const cached = await graphCache.getEntry(ALICE_DID)
       expect(cached).toBeNull()
@@ -184,7 +190,22 @@ describe('OfflineFirstDiscoveryAdapter', () => {
       expect(result).toEqual(verifications)
     })
 
-    it('should return empty array when inner fails', async () => {
+    it('should return cached verifications when inner fails', async () => {
+      const verifications = [{ id: 'v1', from: 'did:key:bob', to: ALICE_DID, timestamp: '2026-01-01', proof: {} }] as any
+      await graphCache.cacheEntry(ALICE_DID, TEST_PROFILE, verifications, [])
+
+      inner = createMockInner({
+        resolveVerifications: vi.fn().mockRejectedValue(new Error('Offline')),
+      })
+      adapter = new OfflineFirstDiscoveryAdapter(inner, publishState, graphCache)
+
+      const result = await adapter.resolveVerifications(ALICE_DID)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('v1')
+    })
+
+    it('should return empty array when inner fails and no cache exists', async () => {
       inner = createMockInner({
         resolveVerifications: vi.fn().mockRejectedValue(new Error('Offline')),
       })
@@ -209,7 +230,22 @@ describe('OfflineFirstDiscoveryAdapter', () => {
       expect(result).toEqual(attestations)
     })
 
-    it('should return empty array when inner fails', async () => {
+    it('should return cached attestations when inner fails', async () => {
+      const attestations = [{ id: 'a1', from: 'did:key:bob', to: ALICE_DID, claim: 'Test', createdAt: '2026-01-01', proof: {} }] as any
+      await graphCache.cacheEntry(ALICE_DID, TEST_PROFILE, [], attestations)
+
+      inner = createMockInner({
+        resolveAttestations: vi.fn().mockRejectedValue(new Error('Offline')),
+      })
+      adapter = new OfflineFirstDiscoveryAdapter(inner, publishState, graphCache)
+
+      const result = await adapter.resolveAttestations(ALICE_DID)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('a1')
+    })
+
+    it('should return empty array when inner fails and no cache exists', async () => {
       inner = createMockInner({
         resolveAttestations: vi.fn().mockRejectedValue(new Error('Offline')),
       })

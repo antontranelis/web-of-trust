@@ -22,7 +22,7 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
   useEffect(() => {
     let cancelled = false
     discovery.resolveProfile(verification.from)
-      .then((p) => { if (!cancelled && p) setProfile(p) })
+      .then((r) => { if (!cancelled && r.profile) setProfile(r.profile) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [verification.from, discovery])

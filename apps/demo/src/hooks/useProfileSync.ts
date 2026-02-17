@@ -67,7 +67,7 @@ export function useProfileSync() {
    * Fetch a contact's profile via DiscoveryAdapter.
    */
   const fetchContactProfile = useCallback(async (contactDid: string) => {
-    return discovery.resolveProfile(contactDid)
+    return discovery.resolveProfile(contactDid).then(r => r.profile)
   }, [discovery])
 
   /**
@@ -78,8 +78,16 @@ export function useProfileSync() {
 
     const did = identity.getDid()
 
-    // Upload verifications
-    const verifications = await storage.getReceivedVerifications()
+    // Upload verifications (deduplicated by sender — keep newest per from-DID)
+    const allVerifications = await storage.getReceivedVerifications()
+    const byFrom = new Map<string, typeof allVerifications[0]>()
+    for (const v of allVerifications) {
+      const existing = byFrom.get(v.from)
+      if (!existing || v.timestamp > existing.timestamp) {
+        byFrom.set(v.from, v)
+      }
+    }
+    const verifications = [...byFrom.values()]
     if (verifications.length > 0) {
       await discovery.publishVerifications(
         { did, verifications, updatedAt: new Date().toISOString() },

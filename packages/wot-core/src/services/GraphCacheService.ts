@@ -49,13 +49,13 @@ export class GraphCacheService {
    */
   async refresh(did: string): Promise<CachedGraphEntry | null> {
     try {
-      const [profile, verifications, attestations] = await Promise.all([
+      const [profileResult, verifications, attestations] = await Promise.all([
         this.discovery.resolveProfile(did),
         this.discovery.resolveVerifications(did),
         this.discovery.resolveAttestations(did),
       ])
 
-      await this.store.cacheEntry(did, profile, verifications, attestations)
+      await this.store.cacheEntry(did, profileResult.profile, verifications, attestations)
       return this.store.getEntry(did)
     } catch {
       return this.store.getEntry(did)

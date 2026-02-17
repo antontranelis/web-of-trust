@@ -4,6 +4,7 @@ import type { Attestation } from '../../types/attestation'
 import type { WotIdentity } from '../../identity/WotIdentity'
 import type {
   DiscoveryAdapter,
+  ProfileResolveResult,
   PublicVerificationsData,
   PublicAttestationsData,
   ProfileSummary,
@@ -54,13 +55,14 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
     if (!res.ok) throw new Error(`Attestations upload failed: ${res.status}`)
   }
 
-  async resolveProfile(did: string): Promise<PublicProfile | null> {
+  async resolveProfile(did: string): Promise<ProfileResolveResult> {
     const res = await this.fetchWithTimeout(`${this.baseUrl}/p/${encodeURIComponent(did)}`)
-    if (res.status === 404) return null
+    if (res.status === 404) return { profile: null, fromCache: false }
     if (!res.ok) throw new Error(`Profile fetch failed: ${res.status}`)
     const jws = await res.text()
     const result = await ProfileService.verifyProfile(jws)
-    return result.valid && result.profile ? result.profile : null
+    const profile = result.valid && result.profile ? result.profile : null
+    return { profile, fromCache: false }
   }
 
   async resolveVerifications(did: string): Promise<Verification[]> {

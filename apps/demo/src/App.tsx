@@ -129,7 +129,7 @@ function MutualVerificationDialog() {
     if (!mutualPeer) { setPeerProfile(null); return }
     let cancelled = false
     discovery.resolveProfile(mutualPeer.did)
-      .then((p) => { if (!cancelled && p) setPeerProfile(p) })
+      .then((r) => { if (!cancelled && r.profile) setPeerProfile(r.profile) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [mutualPeer, discovery])
@@ -277,7 +277,7 @@ function IncomingVerificationDialog() {
     if (!pendingIncoming) { setProfile(null); return }
     let cancelled = false
     discovery.resolveProfile(pendingIncoming.fromDid)
-      .then((p) => { if (!cancelled && p) setProfile(p) })
+      .then((r) => { if (!cancelled && r.profile) setProfile(r.profile) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [pendingIncoming, discovery])

@@ -35,6 +35,15 @@ export interface ProfileSummary {
 }
 
 /**
+ * Result of resolving a profile — includes cache metadata.
+ * Allows callers to distinguish fresh network data from cached fallback.
+ */
+export interface ProfileResolveResult {
+  profile: PublicProfile | null
+  fromCache: boolean
+}
+
+/**
  * Discovery adapter interface for public profile lookup.
  *
  * Framework-agnostic: Can be implemented with HTTP REST (POC, wot-profiles),
@@ -62,7 +71,7 @@ export interface DiscoveryAdapter {
   publishAttestations(data: PublicAttestationsData, identity: WotIdentity): Promise<void>
 
   // Resolve public data for a DID (verifies JWS signature)
-  resolveProfile(did: string): Promise<PublicProfile | null>
+  resolveProfile(did: string): Promise<ProfileResolveResult>
   resolveVerifications(did: string): Promise<Verification[]>
   resolveAttestations(did: string): Promise<Attestation[]>
 
