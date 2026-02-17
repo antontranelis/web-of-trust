@@ -89,7 +89,7 @@ export class OfflineFirstDiscoveryAdapter implements DiscoveryAdapter {
     try {
       return await this.inner.resolveVerifications(did)
     } catch {
-      return []
+      return await this.graphCache.getCachedVerifications(did)
     }
   }
 
@@ -97,7 +97,7 @@ export class OfflineFirstDiscoveryAdapter implements DiscoveryAdapter {
     try {
       return await this.inner.resolveAttestations(did)
     } catch {
-      return []
+      return await this.graphCache.getCachedAttestations(did)
     }
   }
 

@@ -114,6 +114,15 @@ export function PublicProfile() {
 
     async function fetchAll() {
       setState('loading')
+
+      // If already offline, skip network and go straight to cache
+      if (!navigator.onLine) {
+        if (await tryCachedFallback()) return
+        if (tryLocalFallbackRef.current()) return
+        setState('offline')
+        return
+      }
+
       try {
         // Fetch profile, verifications, and attestations in parallel via DiscoveryAdapter
         const [profileData, vData, aData] = await Promise.all([
@@ -123,11 +132,7 @@ export function PublicProfile() {
         ])
 
         if (!profileData) {
-          if (!navigator.onLine) {
-            if (await tryCachedFallback()) return
-            if (tryLocalFallbackRef.current()) return
-          }
-          setState(!navigator.onLine ? 'offline' : 'not-found')
+          setState('not-found')
           return
         }
 
@@ -142,7 +147,8 @@ export function PublicProfile() {
         }
       } catch (error) {
         const msg = error instanceof Error ? error.message : ''
-        const isNetworkError = !navigator.onLine || /fetch|network|abort|timeout/i.test(msg)
+        const errName = error instanceof DOMException ? error.name : ''
+        const isNetworkError = !navigator.onLine || /fetch|network|abort|timeout/i.test(msg) || errName === 'AbortError' || errName === 'TimeoutError'
         if (isNetworkError) {
           if (await tryCachedFallback()) return
           if (tryLocalFallbackRef.current()) return
@@ -202,8 +208,9 @@ export function PublicProfile() {
   }, [contacts, resolvedNames, myDid])
 
   const isKnownContact = useCallback((targetDid: string): boolean => {
+    if (targetDid === myDid) return true
     return contacts.some(c => c.did === targetDid && c.status === 'active')
-  }, [contacts])
+  }, [contacts, myDid])
 
   const shortDid = decodedDid.length > 30
     ? `${decodedDid.slice(0, 16)}...${decodedDid.slice(-8)}`
@@ -363,7 +370,7 @@ export function PublicProfile() {
                     className={`text-xs truncate hover:text-primary-600 transition-colors ${known ? 'text-slate-800 font-medium' : 'text-slate-600'}`}
                   >
                     {name}
-                    {known && <span className="text-blue-500 ml-1">(Kontakt)</span>}
+                    {known && v.from !== myDid && <span className="text-blue-500 ml-1">(Kontakt)</span>}
                   </Link>
                   <span className="text-xs text-slate-400 shrink-0 ml-2">
                     {new Date(v.timestamp).toLocaleDateString('de-DE')}
@@ -399,7 +406,7 @@ export function PublicProfile() {
                     >
                       {name}
                     </Link>
-                    {known && <span className="text-green-600 ml-1">(dein Kontakt)</span>}
+                    {known && a.from !== myDid && <span className="text-green-600 ml-1">(dein Kontakt)</span>}
                     {' '}&middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
                   </p>
                 </div>

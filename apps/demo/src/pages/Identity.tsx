@@ -69,6 +69,11 @@ export function Identity() {
     return contacts.find(c => c.did === contactDid)?.name
   }
 
+  const isKnownContact = (targetDid: string): boolean => {
+    if (targetDid === did) return true
+    return contacts.some(c => c.did === targetDid && c.status === 'active')
+  }
+
   const handleSaveProfile = async () => {
     const existing = await storage.getIdentity()
     if (existing) {
@@ -274,7 +279,7 @@ export function Identity() {
                   : a.from
                 const isPublic = acceptedMap[a.id] ?? false
                 return (
-                  <div key={a.id} className="flex items-center gap-3 border-l-2 border-amber-200 pl-3">
+                  <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-green-300' : 'border-amber-200'}`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
                       <p className="text-xs text-slate-400 mt-0.5">

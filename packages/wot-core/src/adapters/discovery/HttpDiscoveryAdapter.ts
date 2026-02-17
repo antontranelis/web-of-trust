@@ -17,11 +17,19 @@ import { ProfileService } from '../../services/ProfileService'
  * Replaceable by Automerge Auto-Groups, IPFS, DHT, etc.
  */
 export class HttpDiscoveryAdapter implements DiscoveryAdapter {
+  private readonly TIMEOUT_MS = 5_000
+
   constructor(private baseUrl: string) {}
+
+  private fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.TIMEOUT_MS)
+    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer))
+  }
 
   async publishProfile(data: PublicProfile, identity: WotIdentity): Promise<void> {
     const jws = await identity.signJws(data)
-    const res = await fetch(
+    const res = await this.fetchWithTimeout(
       `${this.baseUrl}/p/${encodeURIComponent(data.did)}`,
       { method: 'PUT', body: jws, headers: { 'Content-Type': 'text/plain' } },
     )
@@ -30,7 +38,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
 
   async publishVerifications(data: PublicVerificationsData, identity: WotIdentity): Promise<void> {
     const jws = await identity.signJws(data)
-    const res = await fetch(
+    const res = await this.fetchWithTimeout(
       `${this.baseUrl}/p/${encodeURIComponent(data.did)}/v`,
       { method: 'PUT', body: jws, headers: { 'Content-Type': 'text/plain' } },
     )
@@ -39,7 +47,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
 
   async publishAttestations(data: PublicAttestationsData, identity: WotIdentity): Promise<void> {
     const jws = await identity.signJws(data)
-    const res = await fetch(
+    const res = await this.fetchWithTimeout(
       `${this.baseUrl}/p/${encodeURIComponent(data.did)}/a`,
       { method: 'PUT', body: jws, headers: { 'Content-Type': 'text/plain' } },
     )
@@ -47,7 +55,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
   }
 
   async resolveProfile(did: string): Promise<PublicProfile | null> {
-    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}`)
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/p/${encodeURIComponent(did)}`)
     if (res.status === 404) return null
     if (!res.ok) throw new Error(`Profile fetch failed: ${res.status}`)
     const jws = await res.text()
@@ -56,7 +64,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
   }
 
   async resolveVerifications(did: string): Promise<Verification[]> {
-    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/v`)
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/p/${encodeURIComponent(did)}/v`)
     if (res.status === 404) return []
     if (!res.ok) throw new Error(`Verifications fetch failed: ${res.status}`)
     const jws = await res.text()
@@ -67,7 +75,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
   }
 
   async resolveAttestations(did: string): Promise<Attestation[]> {
-    const res = await fetch(`${this.baseUrl}/p/${encodeURIComponent(did)}/a`)
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/p/${encodeURIComponent(did)}/a`)
     if (res.status === 404) return []
     if (!res.ok) throw new Error(`Attestations fetch failed: ${res.status}`)
     const jws = await res.text()
@@ -79,7 +87,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
 
   async resolveSummaries(dids: string[]): Promise<ProfileSummary[]> {
     const params = dids.map(d => encodeURIComponent(d)).join(',')
-    const res = await fetch(`${this.baseUrl}/s?dids=${params}`)
+    const res = await this.fetchWithTimeout(`${this.baseUrl}/s?dids=${params}`)
     if (!res.ok) throw new Error(`Summary fetch failed: ${res.status}`)
     return res.json()
   }
