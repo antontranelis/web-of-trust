@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle } from 'lucide-react'
+import { useLanguage } from '../../i18n'
 
 interface ChecklistItem {
   id: string
@@ -12,6 +13,7 @@ interface SecurityChecklistProps {
 }
 
 export function SecurityChecklist({ items, onToggle }: SecurityChecklistProps) {
+  const { t } = useLanguage()
   const allChecked = items.every((item) => item.checked)
 
   return (
@@ -21,7 +23,7 @@ export function SecurityChecklist({ items, onToggle }: SecurityChecklistProps) {
       }`}
     >
       <h3 className="text-sm font-medium text-slate-900 mb-3">
-        Sicherheits-Checkliste {allChecked && '✓'}
+        {t.securityChecklist.title} {allChecked && '✓'}
       </h3>
       <div className="space-y-2">
         {items.map((item) => (

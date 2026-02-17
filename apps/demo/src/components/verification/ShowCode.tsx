@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Copy, Check } from 'lucide-react'
 import QRCode from 'qrcode'
+import { useLanguage } from '../../i18n'
 
 interface ShowCodeProps {
   code: string
 }
 
 export function ShowCode({ code }: ShowCodeProps) {
+  const { t } = useLanguage()
   const [copied, setCopied] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
 
@@ -45,7 +47,7 @@ export function ShowCode({ code }: ShowCodeProps) {
       {qrDataUrl && (
         <div className="flex justify-center">
           <div className="bg-white rounded-lg p-4 border-2 border-slate-200 shadow-sm">
-            <img src={qrDataUrl} alt="QR Code" className="w-64 h-64" />
+            <img src={qrDataUrl} alt={t.showCode.qrCodeAlt} className="w-64 h-64" />
           </div>
         </div>
       )}
@@ -59,12 +61,12 @@ export function ShowCode({ code }: ShowCodeProps) {
           {copied ? (
             <>
               <Check size={16} className="text-green-500" />
-              <span className="text-green-600">Kopiert!</span>
+              <span className="text-green-600">{t.common.copied}</span>
             </>
           ) : (
             <>
               <Copy size={16} />
-              <span>Code kopieren</span>
+              <span>{t.showCode.copyCode}</span>
             </>
           )}
         </button>

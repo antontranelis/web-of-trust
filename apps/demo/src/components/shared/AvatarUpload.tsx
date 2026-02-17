@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { Camera, X } from 'lucide-react'
 import { Avatar } from './Avatar'
+import { useLanguage } from '../../i18n'
 
 interface AvatarUploadProps {
   name?: string
@@ -46,6 +47,7 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
 }
 
 export function AvatarUpload({ name, avatar, onAvatarChange }: AvatarUploadProps) {
+  const { t } = useLanguage()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,7 +102,7 @@ export function AvatarUpload({ name, avatar, onAvatarChange }: AvatarUploadProps
         onClick={() => fileInputRef.current?.click()}
         className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
       >
-        {avatar ? 'Bild ändern' : 'Bild hochladen'}
+        {avatar ? t.avatarUpload.changeImage : t.avatarUpload.uploadImage}
       </button>
     </div>
   )

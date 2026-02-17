@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Contact } from '@real-life/wot-core'
 import type { VerificationDirection } from '../../hooks/useVerificationStatus'
 import { Avatar } from '../shared'
+import { useLanguage, plural } from '../../i18n'
 
 interface ContactCardProps {
   contact: Contact
@@ -12,21 +13,23 @@ interface ContactCardProps {
   verificationStatus?: VerificationDirection
 }
 
-const verificationInfo: Record<VerificationDirection, { label: string; color: string; icon: typeof Shield }> = {
-  mutual: { label: 'Gegenseitig verifiziert', color: 'bg-green-100 text-green-700', icon: ShieldCheck },
-  incoming: { label: 'Hat mich verifiziert', color: 'bg-blue-100 text-blue-700', icon: ArrowDownLeft },
-  outgoing: { label: 'Von mir verifiziert', color: 'bg-amber-100 text-amber-700', icon: ArrowUpRight },
-  none: { label: 'Nicht verifiziert', color: 'bg-slate-100 text-slate-500', icon: ShieldAlert },
-}
-
 export function ContactCard({ contact, onRemove, verificationCount, attestationCount = 0, verificationStatus = 'none' }: ContactCardProps) {
+  const { t, fmt, formatDate } = useLanguage()
+
+  const verificationInfo: Record<VerificationDirection, { label: string; color: string; icon: typeof Shield }> = {
+    mutual: { label: t.contacts.statusMutual, color: 'bg-green-100 text-green-700', icon: ShieldCheck },
+    incoming: { label: t.contacts.statusIncoming, color: 'bg-blue-100 text-blue-700', icon: ArrowDownLeft },
+    outgoing: { label: t.contacts.statusOutgoing, color: 'bg-amber-100 text-amber-700', icon: ArrowUpRight },
+    none: { label: t.contacts.statusNone, color: 'bg-slate-100 text-slate-500', icon: ShieldAlert },
+  }
+
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-700',
     active: verificationInfo[verificationStatus].color,
   }
 
   const statusLabels = {
-    pending: 'Ausstehend',
+    pending: t.contacts.statusPending,
     active: verificationInfo[verificationStatus].label,
   }
 
@@ -59,19 +62,19 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
                 return (
                   <span className="flex items-center gap-1">
                     <StatusIcon size={12} />
-                    {new Date(contact.verifiedAt).toLocaleDateString('de-DE')}
+                    {formatDate(new Date(contact.verifiedAt))}
                   </span>
                 )
               })()}
               {verificationCount != null && verificationCount > 0 && (
                 <span className="flex items-center gap-1">
                   <Users size={12} />
-                  {verificationCount} Verifikation{verificationCount !== 1 ? 'en' : ''}
+                  {fmt(t.contacts.verificationCount, { count: verificationCount, label: plural(verificationCount, t.common.verificationOne, t.common.verificationMany) })}
                 </span>
               )}
               <span className="flex items-center gap-1">
                 <Award size={12} />
-                {attestationCount} Attestation{attestationCount !== 1 ? 'en' : ''}
+                {fmt(t.contacts.attestationCount, { count: attestationCount, label: plural(attestationCount, t.common.attestationOne, t.common.attestationMany) })}
               </span>
             </div>
           )}
@@ -82,7 +85,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
             <Link
               to={`/attestations/new?to=${contact.did}`}
               className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-              title="Attestation erstellen"
+              title={t.contacts.createAttestationTitle}
             >
               <Award size={18} />
             </Link>
@@ -94,7 +97,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
             <button
               onClick={onRemove}
               className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              title="Entfernen"
+              title={t.contacts.removeTitle}
             >
               <Trash2 size={18} />
             </button>

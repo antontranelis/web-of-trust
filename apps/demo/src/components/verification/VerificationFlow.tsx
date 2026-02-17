@@ -7,6 +7,7 @@ import { Avatar } from '../shared/Avatar'
 import { ShowCode } from './ShowCode'
 import { ScanCode } from './ScanCode'
 import { useAdapters } from '../../context'
+import { useLanguage } from '../../i18n'
 import { useConfetti } from '../../context/PendingVerificationContext'
 
 type Mode = 'ready' | 'confirm' | 'success' | 'error'
@@ -25,6 +26,7 @@ export function VerificationFlow() {
   } = useVerification()
   const { discovery } = useAdapters()
   const { challengeNonce } = useConfetti()
+  const { t, fmt } = useLanguage()
 
   const [mode, setMode] = useState<Mode>('ready')
   const [challengeCode, setChallengeCode] = useState('')
@@ -109,7 +111,7 @@ export function VerificationFlow() {
         }
       )
     } catch (err) {
-      setScanError('Kamera konnte nicht gestartet werden. Bitte überprüfe die Berechtigungen.')
+      setScanError(t.verification.cameraError)
       setIsScanning(false)
       console.error('Scanner error:', err)
     }
@@ -168,9 +170,9 @@ export function VerificationFlow() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-slate-900">Verifizieren</h2>
+          <h2 className="text-xl font-bold text-slate-900">{t.verification.title}</h2>
           <p className="text-sm text-slate-500 mt-1">
-            Zeige deinen Code oder scanne den Code der anderen Person.
+            {t.verification.subtitle}
           </p>
         </div>
 
@@ -205,7 +207,7 @@ export function VerificationFlow() {
           <>
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-sm text-slate-400">oder</span>
+              <span className="text-sm text-slate-400">{t.common.or}</span>
               <div className="flex-1 h-px bg-slate-200" />
             </div>
 
@@ -224,12 +226,12 @@ export function VerificationFlow() {
           className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft size={18} />
-          Abbrechen
+          {t.common.cancel}
         </button>
 
         <div className="text-center space-y-4">
           <h3 className="text-lg font-bold text-slate-900">
-            Stehst du vor dieser Person?
+            {t.verification.confirmQuestion}
           </h3>
 
           <div className="flex flex-col items-center gap-3 py-4">
@@ -240,7 +242,7 @@ export function VerificationFlow() {
             />
             <div>
               <p className="text-xl font-semibold text-slate-900">
-                {peerProfile?.name || peerName || 'Unbekannt'}
+                {peerProfile?.name || peerName || t.verification.unknown}
               </p>
               {peerProfile?.bio && (
                 <p className="text-sm text-slate-500 mt-1">
@@ -256,7 +258,7 @@ export function VerificationFlow() {
           </div>
 
           <p className="text-sm text-slate-600">
-            Bestätige nur, wenn du diese Person persönlich kennst und sie dir gegenüber steht.
+            {t.verification.confirmHint}
           </p>
 
           <div className="flex gap-3 pt-2">
@@ -265,7 +267,7 @@ export function VerificationFlow() {
               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
             >
               <ShieldX size={18} />
-              Abbrechen
+              {t.common.cancel}
             </button>
             <button
               onClick={handleConfirm}
@@ -277,7 +279,7 @@ export function VerificationFlow() {
               ) : (
                 <ShieldCheck size={18} />
               )}
-              Bestätigen
+              {t.verification.confirmButton}
             </button>
           </div>
         </div>
@@ -291,20 +293,20 @@ export function VerificationFlow() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Verifizierung erfolgreich!</h3>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">{t.verification.successTitle}</h3>
           <p className="text-slate-600 mb-6">
             {peerName
-              ? `${peerName} wurde verifiziert.`
+              ? fmt(t.verification.successMessageNamed, { name: peerName })
               : challenge?.fromName
-              ? `${challenge.fromName} wurde verifiziert.`
-              : 'Der Kontakt wurde verifiziert.'}
+              ? fmt(t.verification.successMessageNamed, { name: challenge.fromName })
+              : t.verification.successMessageGeneric}
           </p>
 
           <button
             onClick={handleReset}
             className="px-6 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
           >
-            Weitere Verifizierung
+            {t.verification.verifyAnother}
           </button>
         </div>
     )
@@ -316,15 +318,15 @@ export function VerificationFlow() {
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <XCircle className="w-8 h-8 text-red-600" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Fehler</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">{t.verification.errorTitle}</h3>
         <p className="text-slate-600 mb-6">
-          {error?.message || 'Die Verifizierung ist fehlgeschlagen.'}
+          {error?.message || t.verification.errorMessageGeneric}
         </p>
         <button
           onClick={handleReset}
           className="px-6 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
-          Erneut versuchen
+          {t.verification.retryButton}
         </button>
       </div>
     )

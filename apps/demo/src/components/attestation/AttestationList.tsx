@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom'
 import { useAttestations, useContacts, useProfileSync } from '../../hooks'
 import { useIdentity, useAdapters, usePendingVerification } from '../../context'
 import { AttestationCard } from './AttestationCard'
+import { useLanguage } from '../../i18n'
 
 export function AttestationList() {
+  const { t, fmt } = useLanguage()
   const { myAttestations, receivedAttestations, isLoading, setAttestationAccepted } = useAttestations()
   const { contacts } = useContacts()
   const { did: myDid } = useIdentity()
@@ -36,7 +38,7 @@ export function AttestationList() {
   }, [setAttestationAccepted, uploadVerificationsAndAttestations])
 
   const getContactName = (did: string) => {
-    if (myDid === did) return 'Ich'
+    if (myDid === did) return t.attestations.selfName
     const contact = contacts.find((c) => c.did === did)
     return contact?.name
   }
@@ -44,7 +46,7 @@ export function AttestationList() {
   if (isLoading) {
     return (
       <div className="text-center py-8 text-slate-500">
-        Lade Attestationen...
+        {t.attestations.loading}
       </div>
     )
   }
@@ -55,15 +57,15 @@ export function AttestationList() {
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Award className="w-8 h-8 text-slate-400" />
         </div>
-        <h3 className="text-lg font-medium text-slate-900 mb-2">Noch keine Attestationen</h3>
+        <h3 className="text-lg font-medium text-slate-900 mb-2">{t.attestations.emptyTitle}</h3>
         <p className="text-slate-600 mb-4">
-          Erstelle Attestationen für deine verifizierten Kontakte.
+          {t.attestations.emptyDescription}
         </p>
         <Link
           to="/contacts"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
-          Zu den Kontakten
+          {t.attestations.goToContacts}
         </Link>
       </div>
     )
@@ -74,7 +76,7 @@ export function AttestationList() {
       {myAttestations.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-            Von mir erstellt ({myAttestations.length})
+            {fmt(t.attestations.createdByMeHeading, { count: myAttestations.length })}
           </h2>
           <div className="space-y-2">
             {myAttestations.map((attestation) => (
@@ -93,10 +95,10 @@ export function AttestationList() {
       {receivedAttestations.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-            Über mich ({receivedAttestations.length})
+            {fmt(t.attestations.aboutMeHeading, { count: receivedAttestations.length })}
           </h2>
           <p className="text-xs text-slate-400 mb-3">
-            Veröffentlichte Attestationen erscheinen auf deinem öffentlichen Profil.
+            {t.attestations.publicNote}
           </p>
           <div className="space-y-2">
             {receivedAttestations.map((attestation) => (

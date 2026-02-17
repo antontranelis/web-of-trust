@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import { WotIdentity } from '@real-life/wot-core'
+import { useLanguage } from '../../i18n'
 
 interface UnlockFlowProps {
   onComplete: (identity: WotIdentity, did: string) => void
@@ -8,6 +9,7 @@ interface UnlockFlowProps {
 }
 
 export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
+  const { t } = useLanguage()
   const [passphrase, setPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -15,7 +17,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
 
   const handleUnlock = async () => {
     if (!passphrase) {
-      setError('Bitte gib dein Passwort ein')
+      setError(t.unlock.errorNoPassword)
       return
     }
 
@@ -31,14 +33,14 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
     } catch (e) {
       if (e instanceof Error) {
         if (e.message.includes('Invalid passphrase')) {
-          setError('Falsches Passwort')
+          setError(t.unlock.errorWrongPassword)
         } else if (e.message.includes('No stored seed')) {
-          setError('Keine gespeicherte Identität gefunden')
+          setError(t.unlock.errorNoIdentity)
         } else {
           setError(e.message)
         }
       } else {
-        setError('Fehler beim Entsperren')
+        setError(t.unlock.errorGeneric)
       }
     } finally {
       setIsLoading(false)
@@ -59,17 +61,17 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
             <Lock className="w-8 h-8 text-blue-600" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Willkommen zurück!
+            {t.unlock.title}
           </h1>
           <p className="text-slate-600">
-            Gib dein Passwort ein, um deine Identität zu entsperren.
+            {t.unlock.subtitle}
           </p>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Passwort
+              {t.unlock.passwordLabel}
             </label>
             <div className="relative">
               <input
@@ -78,7 +80,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
                 onChange={(e) => setPassphrase(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Dein Passwort"
+                placeholder={t.unlock.passwordPlaceholder}
                 autoFocus
               />
               <button
@@ -102,7 +104,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
             disabled={isLoading || !passphrase}
             className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Entsperre...' : 'Entsperren'}
+            {isLoading ? t.unlock.unlocking : t.unlock.unlockButton}
           </button>
 
           <div className="text-center">
@@ -110,7 +112,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
               onClick={onRecover}
               className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
             >
-              Identität mit Magischen Wörtern wiederherstellen
+              {t.unlock.recoverLink}
             </button>
           </div>
         </div>

@@ -1,3 +1,5 @@
+import { useLanguage } from '../../i18n'
+
 interface ProgressIndicatorProps {
   currentStep: number
   totalSteps: number
@@ -5,12 +7,14 @@ interface ProgressIndicatorProps {
 }
 
 export function ProgressIndicator({ currentStep, totalSteps, steps }: ProgressIndicatorProps) {
+  const { t, fmt } = useLanguage()
+
   return (
     <div className="mb-8">
       {/* Progress Bar */}
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-slate-700">
-          Schritt {currentStep} von {totalSteps}
+          {fmt(t.progress.stepOfTotal, { currentStep, totalSteps })}
         </span>
         <span className="text-sm text-slate-500">{steps[currentStep - 1]?.label}</span>
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { KeyRound, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
 import { WotIdentity } from '@real-life/wot-core'
 import { ProgressIndicator, InfoTooltip } from '../shared'
+import { useLanguage } from '../../i18n'
 
 type RecoveryStep = 'import' | 'validate' | 'protect' | 'complete'
 
@@ -10,13 +11,8 @@ interface RecoveryFlowProps {
   onCancel: () => void
 }
 
-const STEPS = [
-  { label: 'Importieren', description: 'Magische Wörter eingeben' },
-  { label: 'Validieren', description: 'Wörter prüfen' },
-  { label: 'Schützen', description: 'Neues Passwort' },
-]
-
 export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
+  const { t, fmt } = useLanguage()
   const [step, setStep] = useState<RecoveryStep>('import')
   const [mnemonic, setMnemonic] = useState('')
   const [did, setDid] = useState('')
@@ -25,6 +21,12 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
   const [showPassphrase, setShowPassphrase] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const STEPS = [
+    { label: t.recovery.stepImport, description: t.recovery.stepImportDesc },
+    { label: t.recovery.stepValidate, description: t.recovery.stepValidateDesc },
+    { label: t.recovery.stepProtect, description: t.recovery.stepProtectDesc },
+  ]
 
   const getCurrentStepNumber = () => {
     const stepMap: Record<RecoveryStep, number> = {
@@ -46,12 +48,12 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
     const words = cleanMnemonic.split(/\s+/)
 
     if (words.length !== 12) {
-      setError('Bitte gib genau 12 Wörter ein')
+      setError(t.recovery.errorExact12Words)
       return
     }
 
     if (!validateMnemonic(cleanMnemonic)) {
-      setError('Ungültige Magische Wörter. Nur Kleinbuchstaben erlaubt.')
+      setError(t.recovery.errorInvalidFormat)
       return
     }
 
@@ -69,11 +71,9 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
       setStep('protect')
     } catch (e) {
       if (e instanceof Error && e.message.includes('Invalid mnemonic')) {
-        setError(
-          'Ungültige Magische Wörter. Bitte prüfe die Wörter und die Reihenfolge.'
-        )
+        setError(t.recovery.errorInvalidMnemonic)
       } else {
-        setError('Fehler bei der Validierung')
+        setError(t.recovery.errorValidation)
       }
     } finally {
       setIsLoading(false)
@@ -82,11 +82,11 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
 
   const handleProtect = async () => {
     if (passphrase.length < 8) {
-      setError('Passwort muss mindestens 8 Zeichen lang sein')
+      setError(t.common.passwordMinLength)
       return
     }
     if (passphrase !== passphraseConfirm) {
-      setError('Passwörter stimmen nicht überein')
+      setError(t.common.passwordsMismatch)
       return
     }
 
@@ -109,7 +109,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
         onComplete(identity, recoveredDid)
       }, 2000)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler bei der Wiederherstellung')
+      setError(e instanceof Error ? e.message : t.recovery.errorRecovery)
     } finally {
       setIsLoading(false)
     }
@@ -132,11 +132,11 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
               <KeyRound className="w-8 h-8 text-blue-600" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Identität importieren
-              <InfoTooltip content="Importiere deine bestehenden 12 Magischen Wörter, um deine Identität auf diesem Gerät wiederherzustellen." />
+              {t.recovery.importTitle}
+              <InfoTooltip content={t.recovery.importTooltip} />
             </h1>
             <p className="text-slate-600">
-              Gib deine 12 Magischen Wörter ein, um deine Identität wiederherzustellen
+              {t.recovery.importSubtitle}
             </p>
           </div>
 
@@ -144,14 +144,14 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-slate-700">
-                  Magische Wörter
+                  {t.recovery.magicWordsLabel}
                 </label>
                 <span
                   className={`text-xs font-medium ${
                     isValidWordCount ? 'text-green-600' : 'text-slate-400'
                   }`}
                 >
-                  {wordCount}/12 Wörter
+                  {fmt(t.recovery.wordCount, { count: wordCount })}
                 </span>
               </div>
               <textarea
@@ -169,7 +169,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                 autoFocus
               />
               <p className="mt-1 text-xs text-slate-500">
-                Trenne die Wörter mit Leerzeichen. Nur Kleinbuchstaben.
+                {t.recovery.wordHint}
               </p>
             </div>
 
@@ -183,12 +183,12 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
               <h3 className="text-sm font-medium text-blue-900 flex items-center space-x-2">
                 <Shield className="w-4 h-4" />
-                <span>Was passiert als Nächstes:</span>
+                <span>{t.recovery.whatHappensTitle}</span>
               </h3>
               <ol className="space-y-1 text-xs text-blue-800 ml-6">
-                <li>1. Wir validieren deine Magischen Wörter</li>
-                <li>2. Du legst ein neues Passwort für dieses Gerät fest</li>
-                <li>3. Deine Identität wird wiederhergestellt</li>
+                <li>{t.recovery.whatHappens1}</li>
+                <li>{t.recovery.whatHappens2}</li>
+                <li>{t.recovery.whatHappens3}</li>
               </ol>
             </div>
 
@@ -197,14 +197,14 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                 onClick={onCancel}
                 className="flex-1 py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
               >
-                Abbrechen
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleValidate}
                 disabled={isLoading || !isValidWordCount}
                 className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {isLoading ? 'Validiere...' : 'Weiter'}
+                {isLoading ? t.recovery.validating : t.common.next}
               </button>
             </div>
           </div>
@@ -219,18 +219,18 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
               <Shield className="w-8 h-8 text-green-600" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Neues Passwort festlegen
-              <InfoTooltip content="Lege ein neues Passwort fest, um deine Identität auf diesem Gerät zu schützen." />
+              {t.recovery.protectTitle}
+              <InfoTooltip content={t.recovery.protectTooltip} />
             </h1>
             <p className="text-slate-600">
-              Wähle ein sicheres Passwort für dieses Gerät
+              {t.recovery.protectSubtitle}
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Neues Passwort
+                {t.recovery.newPasswordLabel}
               </label>
               <div className="relative">
                 <input
@@ -243,7 +243,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                     }
                   }}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Mindestens 8 Zeichen"
+                  placeholder={t.common.passwordPlaceholder}
                   autoFocus
                 />
                 <button
@@ -258,7 +258,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Passwort bestätigen
+                {t.common.passwordConfirmLabel}
               </label>
               <input
                 type={showPassphrase ? 'text' : 'password'}
@@ -270,7 +270,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
                   }
                 }}
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Passwort wiederholen"
+                placeholder={t.common.passwordConfirmPlaceholder}
               />
             </div>
 
@@ -286,7 +286,7 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
               disabled={isLoading || !passphrase || !passphraseConfirm}
               className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Stelle wieder her...' : 'Identität wiederherstellen'}
+              {isLoading ? t.recovery.recovering : t.recovery.recoverButton}
             </button>
           </div>
         </div>
@@ -298,14 +298,14 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <KeyRound className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">Wiederherstellung erfolgreich! 🎉</h1>
-          <p className="text-slate-600">Deine Identität wurde erfolgreich wiederhergestellt</p>
+          <h1 className="text-3xl font-bold text-slate-900">{t.recovery.completeTitle}</h1>
+          <p className="text-slate-600">{t.recovery.completeSubtitle}</p>
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-            <p className="text-sm text-slate-600 mb-2">Deine DID:</p>
+            <p className="text-sm text-slate-600 mb-2">{t.recovery.yourDid}</p>
             <p className="font-mono text-xs text-slate-900 break-all">{did}</p>
           </div>
           <div className="animate-pulse text-slate-500 text-sm">
-            Du wirst zur App weitergeleitet...
+            {t.recovery.redirecting}
           </div>
         </div>
       )}

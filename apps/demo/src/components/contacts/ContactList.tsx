@@ -6,6 +6,7 @@ import { useIdentity, useAdapters } from '../../context'
 import { ContactCard } from './ContactCard'
 import { Avatar } from '../shared/Avatar'
 import type { PublicProfile, Verification } from '@real-life/wot-core'
+import { useLanguage } from '../../i18n'
 
 /**
  * Card for an unreciprocated incoming verification.
@@ -16,6 +17,7 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
   onCounterVerify: (did: string, name?: string) => Promise<void>
 }) {
   const { discovery } = useAdapters()
+  const { t, formatDate } = useLanguage()
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -56,12 +58,12 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
               {name}
             </Link>
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-              Hat dich verifiziert
+              {t.contacts.verifiedYouBadge}
             </span>
           </div>
           <p className="text-xs text-slate-500 font-mono truncate">{shortDid}</p>
           <p className="text-xs text-slate-400 mt-1">
-            {new Date(verification.timestamp).toLocaleDateString('de-DE')}
+            {formatDate(new Date(verification.timestamp))}
           </p>
         </div>
 
@@ -69,10 +71,10 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
           onClick={handleConfirm}
           disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 shrink-0"
-          title="Gegen-Verifizierung senden"
+          title={t.contacts.counterVerifyTitle}
         >
           <ShieldCheck size={16} />
-          {loading ? '...' : 'Bestätigen'}
+          {loading ? '...' : t.contacts.confirmButton}
         </button>
       </div>
     </div>
@@ -86,6 +88,7 @@ export function ContactList() {
   const { did } = useIdentity()
   const { counterVerify } = useVerification()
   const { getEntry } = useGraphCache()
+  const { t, fmt } = useLanguage()
 
   const getAttestationCount = (contactDid: string) => {
     // Prefer graph cache count, fall back to local attestations
@@ -115,7 +118,7 @@ export function ContactList() {
   if (isLoading) {
     return (
       <div className="text-center py-8 text-slate-500">
-        Lade Kontakte...
+        {t.contacts.loading}
       </div>
     )
   }
@@ -126,15 +129,15 @@ export function ContactList() {
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Users className="w-8 h-8 text-slate-400" />
         </div>
-        <h3 className="text-lg font-medium text-slate-900 mb-2">Noch keine Kontakte</h3>
+        <h3 className="text-lg font-medium text-slate-900 mb-2">{t.contacts.emptyTitle}</h3>
         <p className="text-slate-600 mb-4">
-          Verifiziere Kontakte durch persönliche Treffen.
+          {t.contacts.emptyDescription}
         </p>
         <Link
           to="/verify"
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
-          Jemanden verifizieren
+          {t.contacts.verifyAction}
         </Link>
       </div>
     )
@@ -145,10 +148,10 @@ export function ContactList() {
       {unreciplocatedVerifications.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-blue-600 uppercase tracking-wider mb-3">
-            Ausstehende Gegen-Verifizierung ({unreciplocatedVerifications.length})
+            {fmt(t.contacts.pendingCounterHeading, { count: unreciplocatedVerifications.length })}
           </h2>
           <p className="text-xs text-slate-500 mb-3">
-            Diese Personen haben dich verifiziert. Bestätige, wenn du sie persönlich kennst.
+            {t.contacts.pendingCounterDescription}
           </p>
           <div className="space-y-2">
             {unreciplocatedVerifications.map((v) => (
@@ -165,7 +168,7 @@ export function ContactList() {
       {activeContacts.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-            Verifizierte Kontakte ({activeContacts.length})
+            {fmt(t.contacts.activeContactsHeading, { count: activeContacts.length })}
           </h2>
           <div className="space-y-2">
             {activeContacts.map((contact) => (
@@ -184,7 +187,7 @@ export function ContactList() {
       {pendingContacts.length > 0 && (
         <section>
           <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-            Ausstehende Kontakte ({pendingContacts.length})
+            {fmt(t.contacts.pendingContactsHeading, { count: pendingContacts.length })}
           </h2>
           <div className="space-y-2">
             {pendingContacts.map((contact) => (

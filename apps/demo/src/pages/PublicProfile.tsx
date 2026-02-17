@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { User, Shield, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff } from 'lucide-react'
 import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation, type Contact, type Identity, type Subscribable } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
+import { useLanguage, plural } from '../i18n'
 import { useIdentity, useOptionalAdapters } from '../context'
 import { useSubscribable } from '../hooks/useSubscribable'
 
@@ -34,6 +35,7 @@ function shortDidLabel(did: string): string {
 
 export function PublicProfile() {
   const { did } = useParams<{ did: string }>()
+  const { t, fmt, formatDate } = useLanguage()
   const { identity, did: myDid } = useIdentity()
   const isLoggedIn = identity !== null
   const adapters = useOptionalAdapters()
@@ -176,7 +178,7 @@ export function PublicProfile() {
   }
 
   const displayName = useCallback((targetDid: string): string => {
-    const suffix = targetDid === myDid ? ' (Du)' : ''
+    const suffix = targetDid === myDid ? t.publicProfile.youSuffix : ''
     // Check if it's one of my contacts (they have local names)
     const contact = contacts.find(c => c.did === targetDid)
     if (contact?.name) return contact.name + suffix
@@ -200,7 +202,7 @@ export function PublicProfile() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500">
         <Loader2 size={32} className="animate-spin mb-3" />
-        <p className="text-sm">Profil wird geladen...</p>
+        <p className="text-sm">{t.publicProfile.loading}</p>
       </div>
     )
   }
@@ -209,13 +211,13 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Profil</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
           <User size={48} className="mx-auto text-slate-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">Kein Profil gefunden</h2>
+          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.notFoundTitle}</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Für diese DID wurde kein öffentliches Profil hinterlegt.
+            {t.publicProfile.notFoundDescription}
           </p>
           <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
         </div>
@@ -227,13 +229,13 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Profil</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
           <WifiOff size={48} className="mx-auto text-slate-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">Du bist offline</h2>
+          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.offlineTitle}</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Das Profil kann nicht geladen werden, da keine Internetverbindung besteht.
+            {t.publicProfile.offlineDescription}
           </p>
           <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
         </div>
@@ -245,13 +247,13 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Profil</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
           <AlertCircle size={48} className="mx-auto text-red-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">Fehler beim Laden</h2>
+          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.errorTitle}</h2>
           <p className="text-sm text-slate-500">
-            Das Profil konnte nicht geladen oder verifiziert werden.
+            {t.publicProfile.errorDescription}
           </p>
         </div>
       </div>
@@ -261,7 +263,7 @@ export function PublicProfile() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Öffentliches Profil</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.publicTitle}</h1>
       </div>
 
       {/* Profile Card */}
@@ -270,7 +272,7 @@ export function PublicProfile() {
           <Avatar name={profile?.name} avatar={profile?.avatar} size="lg" />
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold text-slate-900 mb-1">
-              {profile?.name || <span className="text-slate-400 italic font-normal">Unbekannt</span>}
+              {profile?.name || <span className="text-slate-400 italic font-normal">{t.publicProfile.unknown}</span>}
             </h2>
             {profile?.bio && (
               <p className="text-sm text-slate-600 mb-2">{profile.bio}</p>
@@ -280,7 +282,7 @@ export function PublicProfile() {
               <button
                 onClick={handleCopyDid}
                 className="text-slate-400 hover:text-blue-600 transition-colors"
-                title="DID kopieren"
+                title={t.publicProfile.copyDid}
               >
                 {copiedDid ? <Check size={12} /> : <Copy size={12} />}
               </button>
@@ -295,8 +297,7 @@ export function PublicProfile() {
           <div className="flex items-start space-x-3">
             <WifiOff className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-amber-800">
-              Du bist offline. Die angezeigten Daten stammen aus dem lokalen Speicher
-              und sind möglicherweise nicht aktuell.
+              {t.publicProfile.offlineBanner}
             </div>
           </div>
         </div>
@@ -308,8 +309,7 @@ export function PublicProfile() {
           <div className="flex items-start space-x-3">
             <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-green-800">
-              Dieses Profil ist kryptographisch signiert und verifiziert.
-              Die Signatur beweist, dass es vom Inhaber der DID erstellt wurde.
+              {t.publicProfile.verifiedBanner}
             </div>
           </div>
         </div>
@@ -322,8 +322,8 @@ export function PublicProfile() {
             <Users className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-800">
               {mutualContacts.length === 1
-                ? `${displayName(mutualContacts[0])} kennt diese Person auch.`
-                : `${mutualContacts.length} deiner Kontakte kennen diese Person: ${mutualContacts.map(d => displayName(d)).join(', ')}.`
+                ? fmt(t.publicProfile.mutualContactSingular, { name: displayName(mutualContacts[0]) })
+                : fmt(t.publicProfile.mutualContactPlural, { count: mutualContacts.length, names: mutualContacts.map(d => displayName(d)).join(', ') })
               }
             </div>
           </div>
@@ -336,7 +336,7 @@ export function PublicProfile() {
           <div className="flex items-center gap-2 mb-3">
             <Users size={16} className="text-blue-600" />
             <h3 className="text-sm font-medium text-slate-900">
-              Verifiziert von {verifications.length} Person{verifications.length !== 1 ? 'en' : ''}
+              {fmt(t.publicProfile.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
             </h3>
           </div>
           <div className="space-y-2">
@@ -350,10 +350,10 @@ export function PublicProfile() {
                     className={`text-xs truncate hover:text-primary-600 transition-colors ${known ? 'text-slate-800 font-medium' : 'text-slate-600'}`}
                   >
                     {name}
-                    {known && v.from !== myDid && <span className="text-blue-500 ml-1">(Kontakt)</span>}
+                    {known && v.from !== myDid && <span className="text-blue-500 ml-1">{t.publicProfile.contactBadge}</span>}
                   </Link>
                   <span className="text-xs text-slate-400 shrink-0 ml-2">
-                    {new Date(v.timestamp).toLocaleDateString('de-DE')}
+                    {formatDate(new Date(v.timestamp))}
                   </span>
                 </div>
               )
@@ -368,7 +368,7 @@ export function PublicProfile() {
           <div className="flex items-center gap-2 mb-3">
             <Award size={16} className="text-amber-600" />
             <h3 className="text-sm font-medium text-slate-900">
-              {attestations.length} Attestation{attestations.length !== 1 ? 'en' : ''}
+              {fmt(t.publicProfile.attestationCount, { count: attestations.length, attestationLabel: plural(attestations.length, t.common.attestationOne, t.common.attestationMany) })}
             </h3>
           </div>
           <div className="space-y-3">
@@ -379,15 +379,15 @@ export function PublicProfile() {
                 <div key={a.id} className={`border-l-2 pl-3 ${known ? 'border-green-300' : 'border-amber-200'}`}>
                   <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
                   <p className="text-xs text-slate-400 mt-1">
-                    von{' '}
+                    {t.common.from}{' '}
                     <Link
                       to={`/p/${encodeURIComponent(a.from)}`}
                       className={`hover:text-primary-600 transition-colors ${known ? 'text-slate-700 font-medium' : ''}`}
                     >
                       {name}
                     </Link>
-                    {known && a.from !== myDid && <span className="text-green-600 ml-1">(dein Kontakt)</span>}
-                    {' '}&middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                    {known && a.from !== myDid && <span className="text-green-600 ml-1">{t.publicProfile.yourContactBadge}</span>}
+                    {' '}&middot; {formatDate(new Date(a.createdAt))}
                   </p>
                 </div>
               )
@@ -403,14 +403,14 @@ export function PublicProfile() {
             <div className="flex items-center gap-2">
               <LogIn size={16} className="text-primary-600" />
               <span className="text-sm text-primary-800">
-                Dem Web of Trust beitreten
+                {t.publicProfile.joinCta}
               </span>
             </div>
             <Link
               to="/"
               className="text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors"
             >
-              Jetzt starten
+              {t.publicProfile.joinButton}
             </Link>
           </div>
         </div>
@@ -421,14 +421,14 @@ export function PublicProfile() {
             <div className="flex items-center gap-2">
               <UserPlus size={16} className="text-slate-500" />
               <span className="text-sm text-slate-600">
-                Person verifizieren
+                {t.publicProfile.verifyPerson}
               </span>
             </div>
             <Link
               to="/verify"
               className="text-sm text-primary-600 hover:text-primary-800 transition-colors"
             >
-              Verifizieren
+              {t.publicProfile.verifyButton}
             </Link>
           </div>
         </div>

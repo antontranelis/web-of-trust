@@ -1,15 +1,18 @@
 import { NavLink } from 'react-router-dom'
 import { Fingerprint, Users, QrCode, Award, Home } from 'lucide-react'
-
-const navItems = [
-  { to: '/', icon: Home, label: 'Start' },
-  { to: '/identity', icon: Fingerprint, label: 'Identität' },
-  { to: '/contacts', icon: Users, label: 'Kontakte' },
-  { to: '/verify', icon: QrCode, label: 'Verifizieren' },
-  { to: '/attestations', icon: Award, label: 'Attestationen' },
-]
+import { useLanguage } from '../../i18n'
 
 export function Navigation() {
+  const { t } = useLanguage()
+
+  const navItems = [
+    { to: '/', icon: Home, label: t.nav.home },
+    { to: '/identity', icon: Fingerprint, label: t.nav.identity },
+    { to: '/contacts', icon: Users, label: t.nav.contacts },
+    { to: '/verify', icon: QrCode, label: t.nav.verify },
+    { to: '/attestations', icon: Award, label: t.nav.attestations },
+  ]
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 md:relative md:border-t-0 md:border-r md:h-screen md:w-64">
       <ul className="flex md:flex-col justify-around md:justify-start md:p-4 md:gap-2">

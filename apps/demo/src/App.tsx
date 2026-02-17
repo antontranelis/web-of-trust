@@ -10,6 +10,7 @@ import { useProfileSync, useMessaging, useContacts, useVerification, useLocalIde
 import { useVerificationStatus, getVerificationStatus } from './hooks/useVerificationStatus'
 import { VerificationHelper } from '@real-life/wot-core'
 import type { Verification, PublicProfile as PublicProfileType } from '@real-life/wot-core'
+import { LanguageProvider, useLanguage } from './i18n'
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
@@ -91,6 +92,7 @@ function MutualVerificationEffect() {
   const { did } = useIdentity()
   const { activeContacts } = useContacts()
   const { allVerifications } = useVerificationStatus()
+  const { t } = useLanguage()
 
   // Track which mutual-DIDs we already showed confetti for.
   // sessionStorage survives reloads but not new tabs/browser restarts.
@@ -106,7 +108,7 @@ function MutualVerificationEffect() {
       if (status === 'mutual' && !shownRef.current.has(contact.did)) {
         shownRef.current.add(contact.did)
         sessionStorage.setItem('mutual-confetti-shown', JSON.stringify([...shownRef.current]))
-        triggerMutualDialog({ name: contact.name || 'Kontakt', did: contact.did })
+        triggerMutualDialog({ name: contact.name || t.app.contactFallback, did: contact.did })
       }
     }
   }, [did, activeContacts, allVerifications, triggerMutualDialog])
@@ -123,6 +125,7 @@ function MutualVerificationDialog() {
   const { discovery } = useAdapters()
   const localIdentity = useLocalIdentity()
   const navigate = useNavigate()
+  const { t, fmt } = useLanguage()
   const [peerProfile, setPeerProfile] = useState<PublicProfileType | null>(null)
 
   useEffect(() => {
@@ -161,7 +164,7 @@ function MutualVerificationDialog() {
             />
           </div>
           <h3 className="text-lg font-bold text-slate-900 text-center">
-            Du und {peerName} sind Freunde!
+            {fmt(t.app.mutualFriendsTitle, { name: peerName })}
           </h3>
         </div>
 
@@ -173,7 +176,7 @@ function MutualVerificationDialog() {
             }}
             className="flex-1 px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
           >
-            Attestierung erstellen
+            {t.app.createAttestation}
           </button>
           <button
             onClick={() => {
@@ -182,7 +185,7 @@ function MutualVerificationDialog() {
             }}
             className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
           >
-            Profil ansehen
+            {t.app.viewProfile}
           </button>
         </div>
       </div>
@@ -197,6 +200,7 @@ function IncomingAttestationDialog() {
   const { incomingAttestation, dismissAttestationDialog } = usePendingVerification()
   const { attestationService } = useAdapters()
   const { uploadVerificationsAndAttestations } = useProfileSync()
+  const { t, fmt } = useLanguage()
 
   if (!incomingAttestation) return null
 
@@ -216,7 +220,7 @@ function IncomingAttestationDialog() {
           <X size={20} />
         </button>
         <h3 className="text-lg font-bold text-slate-900">
-          Neue Attestierung von {incomingAttestation.senderName}
+          {fmt(t.app.newAttestationFrom, { name: incomingAttestation.senderName })}
         </h3>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -232,13 +236,13 @@ function IncomingAttestationDialog() {
             onClick={dismissAttestationDialog}
             className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors"
           >
-            Schließen
+            {t.common.close}
           </button>
           <button
             onClick={handlePublish}
             className="flex-1 px-4 py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors"
           >
-            Veröffentlichen
+            {t.common.publish}
           </button>
         </div>
       </div>
@@ -270,6 +274,7 @@ function IncomingVerificationDialog() {
   const { pendingIncoming } = useConfetti()
   const { confirmIncoming, rejectIncoming } = useVerification()
   const { discovery } = useAdapters()
+  const { t } = useLanguage()
   const [profile, setProfile] = useState<PublicProfileType | null>(null)
   const [confirming, setConfirming] = useState(false)
 
@@ -301,7 +306,7 @@ function IncomingVerificationDialog() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
         <h3 className="text-lg font-bold text-slate-900 text-center">
-          Stehst du vor dieser Person?
+          {t.verification.confirmQuestion}
         </h3>
 
         <div className="flex flex-col items-center gap-3 py-2">
@@ -318,7 +323,7 @@ function IncomingVerificationDialog() {
         </div>
 
         <p className="text-sm text-slate-600 text-center">
-          Bestätige nur, wenn du diese Person persönlich kennst und sie dir gegenüber steht.
+          {t.verification.confirmHint}
         </p>
 
         <div className="flex gap-3 pt-2">
@@ -326,14 +331,14 @@ function IncomingVerificationDialog() {
             onClick={rejectIncoming}
             className="flex-1 px-4 py-3 border-2 border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
           >
-            Ablehnen
+            {t.app.reject}
           </button>
           <button
             onClick={handleConfirm}
             disabled={confirming}
             className="flex-1 px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
           >
-            {confirming ? 'Sende...' : 'Bestätigen'}
+            {confirming ? t.app.sending : t.common.confirm}
           </button>
         </div>
       </div>
@@ -348,13 +353,14 @@ function IncomingVerificationDialog() {
  */
 function RequireIdentity({ children }: { children: React.ReactNode }) {
   const { identity, did, hasStoredIdentity, setIdentity } = useIdentity()
+  const { t } = useLanguage()
 
   // Still checking if identity exists in storage
   if (hasStoredIdentity === null) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-gray-600">Lade...</p>
+          <p className="text-gray-600">{t.common.loading}</p>
         </div>
       </div>
     )
@@ -471,9 +477,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-      <IdentityProvider>
-        <AppRoutes />
-      </IdentityProvider>
+      <LanguageProvider>
+        <IdentityProvider>
+          <AppRoutes />
+        </IdentityProvider>
+      </LanguageProvider>
     </BrowserRouter>
   )
 }

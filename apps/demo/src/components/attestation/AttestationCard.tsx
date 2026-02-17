@@ -1,5 +1,6 @@
 import { Award, User, Calendar, Globe, GlobeLock } from 'lucide-react'
 import type { Attestation } from '@real-life/wot-core'
+import { useLanguage } from '../../i18n'
 
 interface AttestationCardProps {
   attestation: Attestation
@@ -18,6 +19,7 @@ export function AttestationCard({
   isPublic,
   onTogglePublic,
 }: AttestationCardProps) {
+  const { t, formatDate } = useLanguage()
   const shortFromDid = attestation.from.slice(0, 20) + '...'
   const shortToDid = attestation.to.slice(0, 20) + '...'
 
@@ -48,16 +50,16 @@ export function AttestationCard({
             {showFrom && (
               <span className="flex items-center gap-1">
                 <User size={12} />
-                Von: {fromName || shortFromDid}
+                {t.attestations.fromLabel}{fromName || shortFromDid}
               </span>
             )}
             <span className="flex items-center gap-1">
               <User size={12} />
-              Für: {toName || shortToDid}
+              {t.attestations.forLabel}{toName || shortToDid}
             </span>
             <span className="flex items-center gap-1">
               <Calendar size={12} />
-              {new Date(attestation.createdAt).toLocaleDateString('de-DE')}
+              {formatDate(new Date(attestation.createdAt))}
             </span>
           </div>
         </div>
@@ -71,7 +73,7 @@ export function AttestationCard({
                   ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
               }`}
-              title={isPublic ? 'Öffentlich — klicken zum Verbergen' : 'Privat — klicken zum Veröffentlichen'}
+              title={isPublic ? t.attestations.attestationPublicTitle : t.attestations.attestationPrivateTitle}
             >
               {isPublic ? <Globe size={18} /> : <GlobeLock size={18} />}
             </button>

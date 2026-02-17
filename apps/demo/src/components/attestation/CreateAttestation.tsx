@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Award } from 'lucide-react'
 import { useAttestations, useContacts } from '../../hooks'
+import { useLanguage } from '../../i18n'
 
 export function CreateAttestation() {
+  const { t, fmt } = useLanguage()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const toDid = searchParams.get('to')
@@ -20,12 +22,12 @@ export function CreateAttestation() {
     e.preventDefault()
 
     if (!selectedContact) {
-      setError('Bitte wähle einen Kontakt aus')
+      setError(t.createAttestation.errorNoContact)
       return
     }
 
     if (!claim.trim()) {
-      setError('Bitte gib einen Text ein')
+      setError(t.createAttestation.errorNoClaim)
       return
     }
 
@@ -33,13 +35,13 @@ export function CreateAttestation() {
       setError(null)
       const tagList = tags
         .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0)
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0)
 
       await createAttestation(selectedContact, claim.trim(), tagList.length > 0 ? tagList : undefined)
       navigate('/attestations')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Fehler beim Erstellen')
+      setError(e instanceof Error ? e.message : t.createAttestation.errorCreationFailed)
     }
   }
 
@@ -52,13 +54,13 @@ export function CreateAttestation() {
         className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft size={18} />
-        Zurück
+        {t.common.back}
       </button>
 
       <div>
-        <h1 className="text-xl font-bold text-slate-900 mb-2">Attestation erstellen</h1>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">{t.createAttestation.title}</h1>
         <p className="text-slate-600">
-          Erstelle eine Attestation für einen verifizierten Kontakt.
+          {t.createAttestation.subtitle}
         </p>
       </div>
 
@@ -68,21 +70,21 @@ export function CreateAttestation() {
             <Award className="w-8 h-8 text-slate-400" />
           </div>
           <p className="text-slate-600">
-            Du hast noch keine verifizierten Kontakte. Verifiziere zuerst einen Kontakt.
+            {t.createAttestation.noContactsMessage}
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Für wen?
+              {t.createAttestation.forWhomLabel}
             </label>
             <select
               value={selectedContact}
               onChange={(e) => setSelectedContact(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
             >
-              <option value="">Kontakt auswählen...</option>
+              <option value="">{t.createAttestation.selectContactPlaceholder}</option>
               {activeContacts.map((contact) => (
                 <option key={contact.did} value={contact.did}>
                   {contact.name || contact.did.slice(0, 20) + '...'}
@@ -93,28 +95,28 @@ export function CreateAttestation() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Was möchtest du über diese Person sagen?
+              {t.createAttestation.claimLabel}
             </label>
             <textarea
               value={claim}
               onChange={(e) => setClaim(e.target.value)}
-              placeholder={`Was möchtest du über ${selectedContactInfo?.name || 'diese Person'} sagen?`}
+              placeholder={fmt(t.createAttestation.claimPlaceholder, { name: selectedContactInfo?.name || t.createAttestation.thisPerson })}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none h-24"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Beispiel: "Hat mir im Garten geholfen" oder "Kann gut kochen"
+              {t.createAttestation.claimHint}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Tags (optional, kommagetrennt)
+              {t.createAttestation.tagsLabel}
             </label>
             <input
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="z.B. Garten, Handwerk, Kochen"
+              placeholder={t.createAttestation.tagsPlaceholder}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
@@ -130,7 +132,7 @@ export function CreateAttestation() {
             disabled={isLoading}
             className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Erstelle...' : 'Attestation erstellen'}
+            {isLoading ? t.createAttestation.creating : t.createAttestation.submitButton}
           </button>
         </form>
       )}

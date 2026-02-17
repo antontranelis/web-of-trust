@@ -1,5 +1,6 @@
 import { useIdentity, usePendingVerification } from '../context'
 import { useAdapters } from '../context'
+import { useLanguage, plural } from '../i18n'
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Copy, Check, Fingerprint, Shield, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock } from 'lucide-react'
@@ -9,6 +10,7 @@ import { useProfile, useProfileSync, useAttestations, useContacts } from '../hoo
 import { useSubscribable } from '../hooks/useSubscribable'
 
 export function Identity() {
+  const { t, fmt, formatDate } = useLanguage()
   const { identity, did, clearIdentity } = useIdentity()
   const { storage, reactiveStorage } = useAdapters()
   const { uploadProfile, uploadVerificationsAndAttestations } = useProfileSync()
@@ -65,7 +67,7 @@ export function Identity() {
   }
 
   const getContactName = (contactDid: string) => {
-    if (contactDid === did) return 'Ich'
+    if (contactDid === did) return t.identity.self
     return contacts.find(c => c.did === contactDid)?.name
   }
 
@@ -131,9 +133,9 @@ export function Identity() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">Deine Identität</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.identity.title}</h1>
         <p className="text-slate-600">
-          Verwalte dein Profil und deine Sicherheitseinstellungen.
+          {t.identity.subtitle}
         </p>
       </div>
 
@@ -148,7 +150,7 @@ export function Identity() {
                 onAvatarChange={setProfileAvatar}
               />
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.identity.nameLabel}</label>
                 <input
                   type="text"
                   value={profileName}
@@ -158,18 +160,18 @@ export function Identity() {
                     if (e.key === 'Escape') setIsEditingProfile(false)
                   }}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Dein Name"
+                  placeholder={t.identity.namePlaceholder}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Über mich</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.identity.aboutLabel}</label>
                 <textarea
                   value={profileBio}
                   onChange={(e) => setProfileBio(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   rows={2}
-                  placeholder="Ein kurzer Satz über dich (optional)"
+                  placeholder={t.identity.aboutPlaceholder}
                 />
               </div>
               <div className="flex items-center space-x-2">
@@ -177,13 +179,13 @@ export function Identity() {
                   onClick={handleSaveProfile}
                   className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Speichern
+                  {t.common.save}
                 </button>
                 <button
                   onClick={() => setIsEditingProfile(false)}
                   className="px-3 py-2 text-slate-500 text-sm hover:text-slate-700 transition-colors"
                 >
-                  Abbrechen
+                  {t.common.cancel}
                 </button>
               </div>
             </div>
@@ -193,7 +195,7 @@ export function Identity() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
                   <h3 className="text-lg font-semibold text-slate-900">
-                    {profileName || <span className="text-slate-400 italic font-normal">Kein Name gesetzt</span>}
+                    {profileName || <span className="text-slate-400 italic font-normal">{t.identity.noNameSet}</span>}
                   </h3>
                   {profileSaved ? (
                     <Check size={16} className="text-green-500" />
@@ -220,8 +222,7 @@ export function Identity() {
           <div className="flex items-start space-x-3">
             <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-green-800">
-              Dein privater Schlüssel ist verschlüsselt und verlässt niemals dieses Gerät.
-              Mit deinen 12 Magischen Wörtern kannst du deine Identität auf anderen Geräten wiederherstellen.
+              {t.identity.securityInfo}
             </div>
           </div>
         </div>
@@ -232,7 +233,7 @@ export function Identity() {
             <div className="flex items-center gap-2 mb-3">
               <Users size={16} className="text-blue-600" />
               <h3 className="text-sm font-medium text-slate-900">
-                Verifiziert von {verifications.length} Person{verifications.length !== 1 ? 'en' : ''}
+                {fmt(t.identity.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
               </h3>
             </div>
             <div className="space-y-2">
@@ -250,7 +251,7 @@ export function Identity() {
                       {name || <span className="font-mono text-xs">{shortDid}</span>}
                     </Link>
                     <span className="text-xs text-slate-400">
-                      {new Date(v.timestamp).toLocaleDateString('de-DE')}
+                      {formatDate(new Date(v.timestamp))}
                     </span>
                   </div>
                 )
@@ -265,11 +266,11 @@ export function Identity() {
             <div className="flex items-center gap-2 mb-1">
               <Award size={16} className="text-amber-600" />
               <h3 className="text-sm font-medium text-slate-900">
-                {receivedAttestations.length} Attestation{receivedAttestations.length !== 1 ? 'en' : ''} über mich
+                {fmt(t.identity.attestationsAboutMe, { count: receivedAttestations.length, attestationLabel: plural(receivedAttestations.length, t.common.attestationOne, t.common.attestationMany) })}
               </h3>
             </div>
             <p className="text-xs text-slate-400 mb-3 ml-6">
-              Veröffentlichte Attestationen erscheinen auf deinem öffentlichen Profil.
+              {t.identity.publishedAttestationsHint}
             </p>
             <div className="space-y-2">
               {receivedAttestations.map((a) => {
@@ -283,14 +284,14 @@ export function Identity() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        von{' '}
+                        {t.common.from}{' '}
                         <Link
                           to={`/p/${encodeURIComponent(a.from)}`}
                           className="hover:text-blue-600 transition-colors"
                         >
                           {fromName || shortFrom}
                         </Link>
-                        {' '}&middot; {new Date(a.createdAt).toLocaleDateString('de-DE')}
+                        {' '}&middot; {formatDate(new Date(a.createdAt))}
                       </p>
                     </div>
                     <button
@@ -300,7 +301,7 @@ export function Identity() {
                           ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
                           : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
                       }`}
-                      title={isPublic ? 'Öffentlich — klicken zum Verbergen' : 'Privat — klicken zum Veröffentlichen'}
+                      title={isPublic ? t.identity.attestationPublicTitle : t.identity.attestationPrivateTitle}
                     >
                       {isPublic ? <Globe size={16} /> : <GlobeLock size={16} />}
                     </button>
@@ -317,7 +318,7 @@ export function Identity() {
             onClick={() => setShowDetails(!showDetails)}
             className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors rounded-lg"
           >
-            <span>Details & Wartung</span>
+            <span>{t.identity.detailsAndMaintenance}</span>
             {showDetails ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
           {showDetails && (
@@ -333,7 +334,7 @@ export function Identity() {
                   onClick={handleCopyDid}
                   className="inline-flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700"
                 >
-                  {copiedDid ? <><Check size={14} /><span>Kopiert!</span></> : <><Copy size={14} /><span>Kopieren</span></>}
+                  {copiedDid ? <><Check size={14} /><span>{t.common.copied}</span></> : <><Copy size={14} /><span>{t.common.copy}</span></>}
                 </button>
               </div>
 
@@ -342,7 +343,7 @@ export function Identity() {
               {/* Delete Identity */}
               <div className="space-y-2">
                 <p className="text-sm text-red-700">
-                  Identität endgültig löschen. Kann nicht rückgängig gemacht werden.
+                  {t.identity.deleteWarning}
                 </p>
 
                 {!showDeleteConfirm ? (
@@ -351,16 +352,16 @@ export function Identity() {
                     className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
                   >
                     <Trash2 size={16} />
-                    <span>Identität löschen</span>
+                    <span>{t.identity.deleteButton}</span>
                   </button>
                 ) : (
                   <div className="space-y-3">
                     <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
                       <p className="text-sm text-red-900 font-medium">
-                        Bist du sicher? Alle lokalen Daten werden gelöscht.
+                        {t.identity.deleteConfirmTitle}
                       </p>
                       <p className="text-sm text-red-800 mt-1">
-                        Stelle sicher, dass du deine 12 Magischen Wörter gesichert hast!
+                        {t.identity.deleteConfirmHint}
                       </p>
                     </div>
                     <div className="flex space-x-3">
@@ -370,9 +371,9 @@ export function Identity() {
                         className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isDeleting ? (
-                          <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /><span>Lösche...</span></>
+                          <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /><span>{t.identity.deleting}</span></>
                         ) : (
-                          <><Trash2 size={16} /><span>Ja, endgültig löschen</span></>
+                          <><Trash2 size={16} /><span>{t.identity.deleteConfirmButton}</span></>
                         )}
                       </button>
                       <button
@@ -380,7 +381,7 @@ export function Identity() {
                         disabled={isDeleting}
                         className="px-4 py-2 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Abbrechen
+                        {t.common.cancel}
                       </button>
                     </div>
                   </div>

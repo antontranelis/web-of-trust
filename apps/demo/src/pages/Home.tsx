@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Users, Shield, Award, ArrowRight, Wifi, WifiOff, CloudOff, Send } from 'lucide-react'
 import { useContacts, useAttestations, useMessaging, useSyncStatus, useOutboxStatus, useLocalIdentity } from '../hooks'
 import { useIdentity } from '../context'
+import { useLanguage, plural } from '../i18n'
 
 export function Home() {
   const { did } = useIdentity()
@@ -12,25 +13,26 @@ export function Home() {
   const { hasPendingSync } = useSyncStatus()
   const { pendingCount, hasPendingMessages } = useOutboxStatus()
 
+  const { t, fmt } = useLanguage()
   const displayName = localIdentity?.profile.name || (did ? `did:...${did.slice(-8)}` : '')
 
   const stats = [
     {
-      label: 'Kontakte',
+      label: t.home.contactsLabel,
       value: activeContacts.length,
       icon: Users,
       to: '/contacts',
       color: 'bg-blue-100 text-blue-600',
     },
     {
-      label: 'Erstellt',
+      label: t.home.createdLabel,
       value: myAttestations.length,
       icon: Award,
       to: '/attestations',
       color: 'bg-green-100 text-green-600',
     },
     {
-      label: 'Erhalten',
+      label: t.home.receivedLabel,
       value: receivedAttestations.length,
       icon: Award,
       to: '/attestations',
@@ -42,40 +44,40 @@ export function Home() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          Hallo, {displayName}!
+          {fmt(t.home.greeting, { name: displayName })}
         </h1>
         <p className="text-slate-600">
-          Willkommen im Web of Trust
+          {t.home.welcomeSubtitle}
         </p>
         <div className="mt-2 flex items-center gap-2 text-sm">
           {isConnected ? (
             <>
               <Wifi size={14} className="text-green-500" />
-              <span className="text-green-600">Relay verbunden</span>
+              <span className="text-green-600">{t.home.relayConnected}</span>
             </>
           ) : relayState === 'connecting' ? (
             <>
               <Wifi size={14} className="text-amber-500 animate-pulse" />
-              <span className="text-amber-600">Verbinde...</span>
+              <span className="text-amber-600">{t.home.relayConnecting}</span>
             </>
           ) : (
             <>
               <WifiOff size={14} className="text-slate-400" />
-              <span className="text-slate-500">Relay offline</span>
+              <span className="text-slate-500">{t.home.relayOffline}</span>
             </>
           )}
           {hasPendingSync && (
             <>
               <span className="text-slate-300">|</span>
               <CloudOff size={14} className="text-amber-500" />
-              <span className="text-amber-600">Profil-Sync ausstehend</span>
+              <span className="text-amber-600">{t.home.profileSyncPending}</span>
             </>
           )}
           {hasPendingMessages && (
             <>
               <span className="text-slate-300">|</span>
               <Send size={14} className="text-amber-500" />
-              <span className="text-amber-600">{pendingCount} Nachricht{pendingCount !== 1 ? 'en' : ''} in Warteschlange</span>
+              <span className="text-amber-600">{fmt(plural(pendingCount, t.home.pendingMessagesOne, t.home.pendingMessagesMany), { count: pendingCount })}</span>
             </>
           )}
         </div>
@@ -98,7 +100,7 @@ export function Home() {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Schnellaktionen</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t.home.quickActions}</h2>
 
         <Link
           to="/verify"
@@ -109,8 +111,8 @@ export function Home() {
               <Shield className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <div className="font-medium text-slate-900">Kontakt verifizieren</div>
-              <div className="text-sm text-slate-600">Verifiziere jemanden persönlich</div>
+              <div className="font-medium text-slate-900">{t.home.verifyContact}</div>
+              <div className="text-sm text-slate-600">{t.home.verifyContactDesc}</div>
             </div>
           </div>
           <ArrowRight className="text-primary-600" />
@@ -126,8 +128,8 @@ export function Home() {
                 <Award className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <div className="font-medium text-slate-900">Attestation erstellen</div>
-                <div className="text-sm text-slate-600">Bestätige etwas über einen Kontakt</div>
+                <div className="font-medium text-slate-900">{t.home.createAttestation}</div>
+                <div className="text-sm text-slate-600">{t.home.createAttestationDesc}</div>
               </div>
             </div>
             <ArrowRight className="text-slate-400" />

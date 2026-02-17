@@ -176,14 +176,14 @@ describe('AppRoutes', () => {
   describe('during identity initialization (hasStoredIdentity === null)', () => {
     it('should show loading state on /', () => {
       renderApp('/')
-      expect(screen.getByText('Lade...')).toBeInTheDocument()
+      expect(screen.getByText(/Lade\.\.\.|Loading\.\.\./)).toBeInTheDocument()
       expect(screen.queryByTestId('app-shell')).not.toBeInTheDocument()
       expect(screen.queryByTestId('page-public-profile')).not.toBeInTheDocument()
     })
 
     it('should show loading state on /p/:did (not standalone)', () => {
       renderApp('/p/did:key:z6MkTest')
-      expect(screen.getByText('Lade...')).toBeInTheDocument()
+      expect(screen.getByText(/Lade\.\.\.|Loading\.\.\./)).toBeInTheDocument()
       expect(screen.queryByTestId('page-public-profile')).not.toBeInTheDocument()
     })
   })
