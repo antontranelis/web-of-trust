@@ -13,6 +13,7 @@
 export type ClientMessage =
   | { type: 'register'; did: string }
   | { type: 'send'; envelope: Record<string, unknown> }
+  | { type: 'ack'; messageId: string }
   | { type: 'ping' }
 
 /** Relay → Client */

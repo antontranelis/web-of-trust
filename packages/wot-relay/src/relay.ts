@@ -92,6 +92,9 @@ export class RelayServer {
       case 'send':
         this.handleSend(ws, msg.envelope)
         break
+      case 'ack':
+        this.handleAck(ws, msg.messageId)
+        break
       case 'ping':
         this.sendTo(ws, { type: 'pong' })
         break
@@ -110,7 +113,13 @@ export class RelayServer {
 
     this.sendTo(ws, { type: 'registered', did })
 
-    // Deliver queued messages (only to the newly connected device)
+    // First: get previously delivered but unACKed messages (redelivery)
+    const unacked = this.queue.getUnacked(did)
+    for (const envelope of unacked) {
+      this.sendTo(ws, { type: 'message', envelope })
+    }
+
+    // Then: deliver newly queued messages (marks them as 'delivered')
     const queued = this.queue.dequeue(did)
     for (const envelope of queued) {
       this.sendTo(ws, { type: 'message', envelope })
@@ -148,6 +157,10 @@ export class RelayServer {
         this.sendTo(recipientWs, { type: 'message', envelope })
       }
 
+      // Persist until ACK — enqueue as 'queued' then immediately mark 'delivered'
+      this.queue.enqueue(toDid, envelope)
+      this.queue.markDelivered(messageId)
+
       // Notify sender: delivered
       this.sendTo(ws, {
         type: 'receipt',
@@ -163,6 +176,12 @@ export class RelayServer {
         receipt: { messageId, status: 'accepted', timestamp: now },
       })
     }
+  }
+
+  private handleAck(ws: WebSocket, messageId: string): void {
+    const did = this.socketToDid.get(ws)
+    if (!did) return // Not registered — ignore
+    this.queue.ack(messageId)
   }
 
   private sendTo(ws: WebSocket, msg: RelayMessage): void {

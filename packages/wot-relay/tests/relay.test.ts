@@ -345,4 +345,242 @@ describe('RelayServer', () => {
       expect(server.connectedDids).not.toContain(BOB_DID)
     })
   })
+
+  describe('delivery acknowledgment', () => {
+    it('should remove message from queue after ACK', async () => {
+      const alice = await createClient(RELAY_URL)
+      const bob = await createClient(RELAY_URL)
+
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      sendMsg(bob, { type: 'register', did: BOB_DID })
+      await waitForMessage(alice)
+      await waitForMessage(bob)
+
+      const envelope = createTestEnvelope(ALICE_DID, BOB_DID)
+
+      const bobPromise = waitForMessage(bob)
+      const alicePromise = waitForMessage(alice)
+      sendMsg(alice, { type: 'send', envelope })
+
+      const bobMsg = await bobPromise
+      expect(bobMsg.type).toBe('message')
+      await alicePromise // delivered receipt
+
+      // Bob sends ACK
+      sendMsg(bob, { type: 'ack', messageId: envelope.id })
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Bob disconnects and reconnects — should NOT get the message again
+      bob.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      const bob2 = await createClient(RELAY_URL)
+      // Should only get 'registered', no redelivered messages
+      sendMsg(bob2, { type: 'register', did: BOB_DID })
+      const regMsg = await waitForMessage(bob2)
+      expect(regMsg.type).toBe('registered')
+
+      // Wait briefly to ensure no more messages arrive
+      const noMore = await Promise.race([
+        waitForMessage(bob2, 300).then(() => 'got-message').catch(() => 'timeout'),
+        new Promise((r) => setTimeout(r, 200)).then(() => 'timeout'),
+      ])
+      expect(noMore).toBe('timeout')
+
+      alice.close()
+      bob2.close()
+    })
+
+    it('should redeliver unACKed messages on reconnect', async () => {
+      const alice = await createClient(RELAY_URL)
+      const bob = await createClient(RELAY_URL)
+
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      sendMsg(bob, { type: 'register', did: BOB_DID })
+      await waitForMessage(alice)
+      await waitForMessage(bob)
+
+      const envelope = createTestEnvelope(ALICE_DID, BOB_DID)
+
+      const bobPromise = waitForMessage(bob)
+      sendMsg(alice, { type: 'send', envelope })
+      await bobPromise // Bob receives but does NOT ACK
+
+      // Bob disconnects without ACKing
+      bob.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Bob reconnects — should get redelivered message
+      const bob2 = await createClient(RELAY_URL)
+      const msgs = collectMessages(bob2, 2) // registered + redelivered message
+      sendMsg(bob2, { type: 'register', did: BOB_DID })
+
+      const received = await msgs
+      expect(received[0].type).toBe('registered')
+      expect(received[1].type).toBe('message')
+      if (received[1].type === 'message') {
+        expect(received[1].envelope.id).toBe(envelope.id)
+      }
+
+      alice.close()
+      bob2.close()
+    })
+
+    it('should persist online-delivered messages until ACK', async () => {
+      const alice = await createClient(RELAY_URL)
+      const bob = await createClient(RELAY_URL)
+
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      sendMsg(bob, { type: 'register', did: BOB_DID })
+      await waitForMessage(alice)
+      await waitForMessage(bob)
+
+      // Send message while Bob is online
+      const envelope = createTestEnvelope(ALICE_DID, BOB_DID)
+      const bobPromise = waitForMessage(bob)
+      sendMsg(alice, { type: 'send', envelope })
+
+      const bobMsg = await bobPromise
+      expect(bobMsg.type).toBe('message')
+
+      // Message is in DB (delivered but unACKed)
+      // Verify by disconnecting Bob and checking reconnect
+      bob.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      const bob2 = await createClient(RELAY_URL)
+      const msgs = collectMessages(bob2, 2) // registered + redelivered
+      sendMsg(bob2, { type: 'register', did: BOB_DID })
+
+      const received = await msgs
+      expect(received[0].type).toBe('registered')
+      expect(received[1].type).toBe('message')
+      if (received[1].type === 'message') {
+        expect(received[1].envelope.id).toBe(envelope.id)
+      }
+
+      // Now ACK and verify it's gone
+      sendMsg(bob2, { type: 'ack', messageId: envelope.id })
+      await new Promise((r) => setTimeout(r, 50))
+
+      bob2.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      const bob3 = await createClient(RELAY_URL)
+      sendMsg(bob3, { type: 'register', did: BOB_DID })
+      const regOnly = await waitForMessage(bob3)
+      expect(regOnly.type).toBe('registered')
+
+      const noMore = await Promise.race([
+        waitForMessage(bob3, 300).then(() => 'got-message').catch(() => 'timeout'),
+        new Promise((r) => setTimeout(r, 200)).then(() => 'timeout'),
+      ])
+      expect(noMore).toBe('timeout')
+
+      alice.close()
+      bob3.close()
+    })
+
+    it('should ACK messages individually', async () => {
+      const alice = await createClient(RELAY_URL)
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      await waitForMessage(alice)
+
+      // Send 2 messages while Bob is offline
+      const env1 = createTestEnvelope(ALICE_DID, BOB_DID)
+      const env2 = createTestEnvelope(ALICE_DID, BOB_DID)
+      const receipts = collectMessages(alice, 2)
+      sendMsg(alice, { type: 'send', envelope: env1 })
+      sendMsg(alice, { type: 'send', envelope: env2 })
+      await receipts
+
+      // Bob connects — receives both
+      const bob = await createClient(RELAY_URL)
+      const msgs = collectMessages(bob, 3) // registered + 2 messages
+      sendMsg(bob, { type: 'register', did: BOB_DID })
+      await msgs
+
+      // ACK only env1
+      sendMsg(bob, { type: 'ack', messageId: env1.id })
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Bob reconnects — should only get env2 (env1 was ACKed)
+      bob.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      const bob2 = await createClient(RELAY_URL)
+      const msgs2 = collectMessages(bob2, 2) // registered + env2
+      sendMsg(bob2, { type: 'register', did: BOB_DID })
+
+      const received = await msgs2
+      expect(received[0].type).toBe('registered')
+      expect(received[1].type).toBe('message')
+      if (received[1].type === 'message') {
+        expect(received[1].envelope.id).toBe(env2.id)
+      }
+
+      alice.close()
+      bob2.close()
+    })
+
+    it('should ignore ACK from unregistered client', async () => {
+      const ws = await createClient(RELAY_URL)
+      // Send ACK without registering — should not crash
+      sendMsg(ws, { type: 'ack', messageId: 'nonexistent' })
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Server should still be working
+      const alice = await createClient(RELAY_URL)
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      const msg = await waitForMessage(alice)
+      expect(msg.type).toBe('registered')
+
+      ws.close()
+      alice.close()
+    })
+
+    it('should accept ACK from any device of the same DID', async () => {
+      const alice = await createClient(RELAY_URL)
+      const bobDevice1 = await createClient(RELAY_URL)
+      const bobDevice2 = await createClient(RELAY_URL)
+
+      sendMsg(alice, { type: 'register', did: ALICE_DID })
+      sendMsg(bobDevice1, { type: 'register', did: BOB_DID })
+      sendMsg(bobDevice2, { type: 'register', did: BOB_DID })
+      await waitForMessage(alice)
+      await waitForMessage(bobDevice1)
+      await waitForMessage(bobDevice2)
+
+      const envelope = createTestEnvelope(ALICE_DID, BOB_DID)
+      const d1Promise = waitForMessage(bobDevice1)
+      const d2Promise = waitForMessage(bobDevice2)
+      sendMsg(alice, { type: 'send', envelope })
+      await d1Promise
+      await d2Promise
+      await waitForMessage(alice) // delivered receipt
+
+      // Only device2 ACKs — should be enough
+      sendMsg(bobDevice2, { type: 'ack', messageId: envelope.id })
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Both devices disconnect, reconnect — no redelivery
+      bobDevice1.close()
+      bobDevice2.close()
+      await new Promise((r) => setTimeout(r, 50))
+
+      const bob3 = await createClient(RELAY_URL)
+      sendMsg(bob3, { type: 'register', did: BOB_DID })
+      const regMsg = await waitForMessage(bob3)
+      expect(regMsg.type).toBe('registered')
+
+      const noMore = await Promise.race([
+        waitForMessage(bob3, 300).then(() => 'got-message').catch(() => 'timeout'),
+        new Promise((r) => setTimeout(r, 200)).then(() => 'timeout'),
+      ])
+      expect(noMore).toBe('timeout')
+
+      alice.close()
+      bob3.close()
+    })
+  })
 })

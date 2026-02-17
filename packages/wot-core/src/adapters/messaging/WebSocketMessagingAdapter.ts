@@ -12,7 +12,7 @@ import type {
  * The relay is blind — it only forwards envelopes without inspecting payloads.
  *
  * Protocol:
- * - Client sends: { type: 'register', did } | { type: 'send', envelope }
+ * - Client sends: { type: 'register', did } | { type: 'send', envelope } | { type: 'ack', messageId }
  * - Relay sends:  { type: 'registered', did } | { type: 'message', envelope }
  *                 | { type: 'receipt', receipt } | { type: 'error', code, message }
  */
@@ -67,11 +67,23 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
             resolve()
             break
 
-          case 'message':
+          case 'message': {
+            const envelope = msg.envelope as MessageEnvelope
+            let processed = false
             for (const cb of this.messageCallbacks) {
-              cb(msg.envelope as MessageEnvelope)
+              try {
+                cb(envelope)
+                processed = true
+              } catch (err) {
+                console.error('Message callback error:', err)
+              }
+            }
+            // ACK: tell relay we processed the message
+            if (processed && this.ws) {
+              this.ws.send(JSON.stringify({ type: 'ack', messageId: envelope.id }))
             }
             break
+          }
 
           case 'receipt': {
             const receipt = msg.receipt as DeliveryReceipt
