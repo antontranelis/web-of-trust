@@ -7,8 +7,8 @@ Dieses Dokument zeigt, was bereits implementiert ist und welche Entscheidungen g
 
 ## Letzte Aktualisierung
 
-**Datum:** 2026-02-17
-**Phase:** Week 6+ - Delivery Acknowledgment
+**Datum:** 2026-02-18
+**Phase:** Week 6++ - i18n + Offline Polish
 
 ---
 
@@ -1623,6 +1623,105 @@ Delivery Acknowledgment:
 
 ---
 
+## Week 6++: Offline Polish + i18n (2026-02-18) ✅
+
+### Übersicht
+
+Drei zusammenhängende Verbesserungen: (1) Zuverlässiges Offline-Profil-Loading in allen Browsern, (2) Deduplizierung von Verifikationen, (3) vollständige Internationalisierung der Demo-App (Deutsch + Englisch).
+
+### Implementiert
+
+#### ProfileResolveResult: `fromCache` Flag
+
+Neues Rückgabe-Format für `resolveProfile()` — die UI kann jetzt unterscheiden ob Daten frisch vom Server oder aus dem Cache kommen:
+
+- ✅ **ProfileResolveResult Type** (`adapters/interfaces/DiscoveryAdapter.ts`) — `{ profile: PublicProfile | null, fromCache: boolean }`
+- ✅ **HttpDiscoveryAdapter** — Gibt immer `fromCache: false` zurück
+- ✅ **OfflineFirstDiscoveryAdapter** — Gibt `fromCache: true` bei Cache-Fallback zurück
+- ✅ **Fetch-Timeout** — 5s `AbortController`-basierter Timeout in HttpDiscoveryAdapter (Firefox hängt sonst bei Offline-Fetch)
+- ✅ **Cache-Fallback für Verifications/Attestations** — `OfflineFirstDiscoveryAdapter` fällt auf `graphCache.getCachedVerifications/Attestations` zurück statt `[]`
+
+**Vorher:** UI konnte nicht unterscheiden ob Daten frisch oder gecached waren → Chrome zeigte kein Offline-Banner, Firefox hing endlos.
+
+**Nachher:** Ein einziger Code-Pfad in PublicProfile.tsx:
+
+```typescript
+const profileResult = await discovery.resolveProfile(did)
+setState(profileResult.fromCache ? 'loaded-offline' : 'loaded')
+```
+
+#### PublicProfile.tsx Vereinfachung
+
+- ✅ **Entfernt:** `tryCachedFallback()` Funktion (100+ Zeilen → ~20 Zeilen)
+- ✅ **Entfernt:** `navigator.onLine` Pre-Check, `useOnlineStatus` Hook
+- ✅ **Entfernt:** `isNetworkError` Detection im Catch-Block
+- ✅ **Vereinfacht:** Single-Layer-Caching — Adapter cached, UI liest `fromCache`
+
+#### Attestation Color Coding
+
+- ✅ **Eigene Attestationen grün** — `isKnownContact()` prüft jetzt auch `targetDid === myDid`
+- ✅ **(Du) Label** — `displayName()` fügt automatisch Suffix hinzu
+
+#### Verification-Deduplizierung
+
+- ✅ **UI-Dedup** (`PublicProfile.tsx`) — `deduplicateByFrom()` filtert per Sender-DID, behält neueste Verification
+- ✅ **Publish-Dedup** (`useProfileSync.ts`) — Beim Upload werden Duplikate ebenfalls gefiltert
+- ✅ **Korrekte Zählung** — "Verifiziert von X Personen" zeigt deduplizierte Anzahl
+
+#### i18n: Internationalisierung (Deutsch + Englisch)
+
+Vollständige Internationalisierung der Demo-App mit Custom React Context Pattern:
+
+- ✅ **6 i18n Infrastruktur-Dateien** — `de.ts`, `en.ts`, `types.ts`, `utils.ts`, `LanguageContext.tsx`, `index.ts`
+- ✅ **20+ Komponenten migriert** — Alle hardcoded Strings durch `useLanguage()` Hook ersetzt
+- ✅ **Browser-Spracherkennung** — Automatisch Deutsch/Englisch basierend auf `navigator.language`
+- ✅ **URL-Parameter** — `?lang=en` / `?lang=de` für explizite Sprachwahl
+- ✅ **Type-Safe** — `DeepStringify` Helper-Type für verschachtelte Translation-Objekte
+- ✅ **`formatDate()`** — Ersetzt alle hardcoded `toLocaleDateString('de-DE')` mit Locale-awarener Formatierung
+- ✅ **`plural()`** — Helper für korrekte Singular/Plural-Formen
+- ✅ **`fmt()`** — Template-Interpolation: `fmt(t.key, { name: "Alice" })`
+- ✅ **`.env.production`** — `VITE_PROFILE_SERVICE_URL` für Deployment konfiguriert
+
+### Geänderte Call-Sites für ProfileResolveResult
+
+Alle Stellen die `resolveProfile()` aufrufen wurden auf `.profile`-Zugriff aktualisiert:
+
+- `GraphCacheService.ts` — `profileResult.profile`
+- `useProfileSync.ts` — `.then(r => r.profile)`
+- `App.tsx` (2 Stellen) — `.then(r => r.profile)`
+- `ContactList.tsx` — `.then(r => r.profile)`
+- `VerificationFlow.tsx` — `.then(r => r.profile)`
+
+### Tests Week 6++
+
+**4 neue Tests + bestehende Tests aktualisiert:**
+
+#### OfflineFirstDiscoveryAdapter Tests (23 Tests, 4 neu)
+
+```text
+packages/wot-core/tests/OfflineFirstDiscoveryAdapter.test.ts
+
+ProfileResolveResult:
+✓ should return profile with fromCache=false on successful resolve
+✓ should return cached profile with fromCache=true when inner fails
+✓ should return null profile with fromCache=true when inner fails and no cache exists
+✓ should return null profile with fromCache=false when inner returns null
+```
+
+#### GraphCacheService Tests (42 Tests, aktualisiert)
+
+Alle `resolveProfile`-Mocks aktualisiert auf `{ profile, fromCache: false }`.
+
+**Gesamt: ~300 Tests** (251 wot-core + 25 wot-profiles + 24 wot-relay) — alle passing ✅
+
+### Commits
+
+33. **fix: offline profile loading + attestation color coding** — Fetch-Timeout, Cache-Fallback, isKnownContact Fix
+34. **fix: ProfileResolveResult fromCache flag + verification dedup** — Neuer Return-Type, UI-Vereinfachung, Verification-Dedup, 4 Tests
+35. **feat: add i18n support (German + English) to demo app** — 6 Infrastruktur-Dateien, 20+ Komponenten migriert
+
+---
+
 ## Unterschiede zur Spezifikation
 
 ### DID Format
@@ -1686,7 +1785,7 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
   - Verschlüsselte Sync-Funktionalität live testen
   - useSpaces Hook für React-Integration
 
-### Priorität 3: Polish + UX
+### Priorität 2: Polish + UX
 
 - **Spaces-Persistenz** — Automerge Docs in IndexedDB persistieren (aktuell nur in-memory)
 
@@ -1696,6 +1795,11 @@ const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 - **AuthorizationAdapter** — UCAN-like Capabilities (read/write)
 
 ### Erledigt
+
+- ✅ i18n (Deutsch + Englisch)
+- ✅ Offline-First Profile Loading (ProfileResolveResult)
+- ✅ Verification-Deduplizierung
+- ✅ Attestation Color Coding
 
 - ~~MessagingAdapter Interface in wot-core definieren~~ ✅
 - ~~Custom WebSocket Relay implementieren~~ ✅

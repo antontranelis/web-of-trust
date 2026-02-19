@@ -66,7 +66,7 @@ Detaillierte Prozessbeschreibungen aus Nutzer- und technischer Perspektive.
 
 | Dokument | Beschreibung |
 | -------- | ------------ |
-| [Adapter-Architektur v2](docs/protokolle/adapter-architektur-v2.md) | **6-Adapter-Spezifikation, Interaction-Flows** |
+| [Adapter-Architektur v2](docs/protokolle/adapter-architektur-v2.md) | **7-Adapter-Spezifikation, Interaction-Flows** |
 | [Framework-Evaluation v2](docs/protokolle/framework-evaluation.md) | 16 Frameworks evaluiert, Anforderungs-Matrix |
 | [Verschlüsselung](docs/protokolle/verschluesselung.md) | E2E, Protokoll-Vergleich (MLS, Keyhive, Item-Keys) |
 | [Sync-Protokoll](docs/protokolle/sync-protokoll.md) | Offline/Online, CRDTs |
@@ -105,9 +105,11 @@ Detaillierte Prozessbeschreibungen aus Nutzer- und technischer Perspektive.
 ```text
 web-of-trust/
 ├── packages/
-│   └── wot-core/          # @web-of-trust/core - npm Package
+│   ├── wot-core/          # @real-life/wot-core - npm Package
+│   ├── wot-relay/         # WebSocket Relay Server (Node.js, SQLite)
+│   └── wot-profiles/      # HTTP Profile Service (REST, SQLite, JWS)
 ├── apps/
-│   ├── demo/              # Demo-Anwendung (React 19)
+│   ├── demo/              # Demo-Anwendung (React 19, Evolu, i18n)
 │   └── landing/           # Landing Page
 └── docs/                  # Protokoll-Spezifikation
 ```
@@ -118,7 +120,7 @@ web-of-trust/
 # Dependencies installieren
 pnpm install
 
-# Demo starten
+# Demo starten (Deutsch/Englisch, Browser-Spracherkennung)
 pnpm dev:demo
 
 # Landing Page starten
@@ -126,35 +128,56 @@ pnpm dev:landing
 
 # wot-core bauen
 pnpm build:core
+
+# Tests ausführen
+pnpm --filter wot-core test
+pnpm --filter wot-relay test
+pnpm --filter wot-profiles test
 ```
 
-### @web-of-trust/core
+### Live-Infrastruktur
+
+| Service | URL | Beschreibung |
+| ------- | --- | ------------ |
+| Relay | `wss://relay.utopia-lab.org` | WebSocket Relay (Blind, ACK-Protokoll) |
+| Profiles | `https://profiles.utopia-lab.org` | HTTP Profile Service (JWS-signiert) |
+| Demo | [web-of-trust.de/demo](https://web-of-trust.de/demo) | Demo-Anwendung |
+
+### @real-life/wot-core
 
 Das Core-Package exportiert:
 
 ```typescript
 // Types
-import type { Identity, Contact, Verification, Attestation } from '@web-of-trust/core'
+import type {
+  Identity, Contact, Verification, Attestation,
+  PublicProfile, MessageEnvelope, ProfileResolveResult,
+} from '@real-life/wot-core'
 
-// Adapter Interfaces (v1 — implementiert)
-import type { StorageAdapter, CryptoAdapter, ReactiveStorageAdapter } from '@web-of-trust/core'
-
-// Crypto Utilities
-import { createDid, signJws, verifyJws } from '@web-of-trust/core'
+// Adapter Interfaces (7-Adapter v2)
+import type {
+  StorageAdapter, ReactiveStorageAdapter, CryptoAdapter,
+  DiscoveryAdapter, MessagingAdapter, ReplicationAdapter,
+  // AuthorizationAdapter (spezifiziert, noch nicht implementiert)
+} from '@real-life/wot-core'
 
 // Adapter Implementations
-import { WebCryptoAdapter, LocalStorageAdapter } from '@web-of-trust/core'
+import {
+  WebCryptoAdapter,
+  HttpDiscoveryAdapter, OfflineFirstDiscoveryAdapter,
+  InMemoryMessagingAdapter, WebSocketMessagingAdapter, OutboxMessagingAdapter,
+  AutomergeReplicationAdapter,
+} from '@real-life/wot-core'
+
+// Services
+import { ProfileService, GraphCacheService, EncryptedSyncService, GroupKeyService } from '@real-life/wot-core'
 ```
 
-> **Adapter-Architektur v2:** Zusätzlich zu den 3 bestehenden Adaptern definiert die v2-Architektur
-> 3 neue Interfaces: `MessagingAdapter`, `ReplicationAdapter`, `AuthorizationAdapter`.
-> Siehe [Adapter-Architektur v2](docs/protokolle/adapter-architektur-v2.md).
+**300 Tests** (251 wot-core + 25 wot-profiles + 24 wot-relay) — alle passing ✅
 
 ---
 
 ## Beitragen
-
-Der Forschungsprototyp ist verfügbar: [github.com/IT4Change/web-of-trust](https://github.com/IT4Change/web-of-trust)
 
 Wir suchen:
 
