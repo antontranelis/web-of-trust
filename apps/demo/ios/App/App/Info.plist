@@ -47,7 +47,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>NFCReaderUsageDescription</key>
-	<string>NFC wird zur Verifizierung von Kontakten verwendet.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Die Kamera wird zum Scannen von QR-Codes bei der Verifizierung verwendet.</string>
 </dict>
 </plist>
