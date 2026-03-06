@@ -161,7 +161,7 @@ export function PublicProfile() {
 
   // Resolve DID names and mutual contacts after data loads
   useEffect(() => {
-    if (!adapters?.graphCacheStore || (verifications.length === 0 && attestations.length === 0)) return
+    if (verifications.length === 0 && attestations.length === 0) return
 
     let cancelled = false
 
@@ -169,16 +169,38 @@ export function PublicProfile() {
       const allDids = new Set<string>()
       for (const v of verifications) allDids.add(v.from)
       for (const a of attestations) allDids.add(a.from)
+      // Remove DIDs we already know names for (contacts, own identity)
+      if (myDid) allDids.delete(myDid)
+      for (const c of contacts) allDids.delete(c.did)
 
-      if (allDids.size > 0) {
-        const names = await adapters!.graphCacheStore.resolveNames([...allDids])
-        if (!cancelled) setResolvedNames(names)
+      if (allDids.size === 0 && !adapters?.graphCacheStore) return
+
+      const names = new Map<string, string>()
+
+      // 1. Try local graph cache first
+      if (adapters?.graphCacheStore && allDids.size > 0) {
+        const cached = await adapters.graphCacheStore.resolveNames([...allDids])
+        for (const [did, name] of cached) names.set(did, name)
       }
 
-      if (decodedDid && !isMyProfile) {
+      // 2. For remaining unknown DIDs, fetch from profile service
+      const unknownDids = [...allDids].filter(d => !names.has(d))
+      if (unknownDids.length > 0) {
+        const resolveOne = async (did: string) => {
+          try {
+            const result = await discovery.resolveProfile(did)
+            if (result.profile?.name) names.set(did, result.profile.name)
+          } catch { /* ignore */ }
+        }
+        await Promise.all(unknownDids.map(resolveOne))
+      }
+
+      if (!cancelled && names.size > 0) setResolvedNames(names)
+
+      if (adapters?.graphCacheStore && decodedDid && !isMyProfile) {
         const contactDids = contacts.filter(c => c.status === 'active').map(c => c.did)
         if (contactDids.length > 0) {
-          const mutual = await adapters!.graphCacheStore.findMutualContacts(decodedDid, contactDids)
+          const mutual = await adapters.graphCacheStore.findMutualContacts(decodedDid, contactDids)
           if (!cancelled) setMutualContacts(mutual)
         }
       }
@@ -186,7 +208,7 @@ export function PublicProfile() {
 
     resolveGraph()
     return () => { cancelled = true }
-  }, [verifications, attestations, adapters?.graphCacheStore, decodedDid, isMyProfile, contacts])
+  }, [verifications, attestations, adapters?.graphCacheStore, decodedDid, isMyProfile, contacts, myDid, discovery])
 
   const handleCopyDid = async () => {
     await navigator.clipboard.writeText(decodedDid)
