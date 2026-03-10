@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { User, ShieldCheck, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff, Share2, Link as LinkIcon } from 'lucide-react'
 import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation, type Contact, type Identity, type Subscribable } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
+import { Tooltip } from '../components/ui/Tooltip'
 import { useLanguage, plural } from '../i18n'
 import { useIdentity, useOptionalAdapters } from '../context'
 import { useSubscribable } from '../hooks/useSubscribable'
@@ -46,8 +47,6 @@ export function PublicProfile() {
   const [state, setState] = useState<LoadState>('loading')
   const [copiedDid, setCopiedDid] = useState(false)
   const [shared, setShared] = useState(false)
-  const [showVerifiedHint, setShowVerifiedHint] = useState(false)
-  const verifiedHintRef = useRef<HTMLDivElement>(null)
   const [resolvedNames, setResolvedNames] = useState<Map<string, string>>(new Map())
   const [mutualContacts, setMutualContacts] = useState<string[]>([])
 
@@ -61,6 +60,14 @@ export function PublicProfile() {
   const localIdentity = useSubscribable(identitySubscribable)
 
   const isContact = useMemo(() => contacts.some(c => c.did === decodedDid), [contacts, decodedDid])
+
+  // Local received verifications (they verified me)
+  const EMPTY_VERIFICATIONS: Subscribable<Verification[]> = { subscribe: () => () => {}, getValue: () => [] }
+  const receivedVerificationsSubscribable = useMemo(
+    () => adapters?.reactiveStorage.watchReceivedVerifications() ?? EMPTY_VERIFICATIONS,
+    [adapters],
+  )
+  const receivedVerifications = useSubscribable(receivedVerificationsSubscribable)
 
   const tryLocalFallback = useCallback((): boolean => {
     // Try own profile
@@ -95,17 +102,6 @@ export function PublicProfile() {
     return false
   }, [decodedDid, myDid, localIdentity, contacts])
 
-  // Close verified tooltip on outside click
-  useEffect(() => {
-    if (!showVerifiedHint) return
-    const handler = (e: MouseEvent) => {
-      if (verifiedHintRef.current && !verifiedHintRef.current.contains(e.target as Node)) {
-        setShowVerifiedHint(false)
-      }
-    }
-    document.addEventListener('click', handler, true)
-    return () => document.removeEventListener('click', handler, true)
-  }, [showVerifiedHint])
 
   // Ref to access tryLocalFallback inside useEffect without it being a dependency.
   // This prevents reactive data changes (contacts, localIdentity) from re-triggering fetchAll.
@@ -256,6 +252,19 @@ export function PublicProfile() {
     return contacts.some(c => c.did === targetDid && c.status === 'active')
   }, [contacts, myDid])
 
+  // Verification status between me and profile owner
+  const verificationStatus = useMemo(() => {
+    if (!myDid || isMyProfile) return null
+    // Public verifications of profile owner — contains from=myDid if I verified them
+    const iVerifiedThem = verifications.some(v => v.from === myDid)
+    // Local received verifications — contains from=decodedDid if they verified me
+    const theyVerifiedMe = receivedVerifications.some(v => v.from === decodedDid)
+    if (iVerifiedThem && theyVerifiedMe) return 'mutual' as const
+    if (theyVerifiedMe) return 'incoming' as const
+    if (iVerifiedThem) return 'outgoing' as const
+    return null
+  }, [myDid, isMyProfile, verifications, receivedVerifications, decodedDid])
+
   const shortDid = decodedDid.length > 30
     ? `${decodedDid.slice(0, 16)}...${decodedDid.slice(-8)}`
     : decodedDid
@@ -335,27 +344,33 @@ export function PublicProfile() {
           <div className="flex items-start gap-4">
             <Avatar name={profile?.name} avatar={profile?.avatar} size="lg" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-slate-900 truncate">
-                  {profile?.name || <span className="text-slate-400 italic font-normal">{t.publicProfile.unknown}</span>}
-                </h2>
-                {state === 'loaded' && (
-                  <div ref={verifiedHintRef} className="relative flex-shrink-0 translate-y-0.5">
-                    <button
-                      onClick={() => setShowVerifiedHint(!showVerifiedHint)}
-                      className="text-green-500 hover:text-green-600 transition-colors peer"
-                    >
-                      <ShieldCheck size={16} />
-                    </button>
-                    <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-50 transition-opacity duration-150 ${showVerifiedHint ? 'opacity-100' : 'opacity-0 pointer-events-none'} peer-hover:opacity-100 peer-hover:pointer-events-auto`}>
-                      {t.publicProfile.verifiedBanner}
-                      <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-800 rotate-45" />
-                    </div>
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-slate-900 truncate">
+                      {profile?.name || <span className="text-slate-400 italic font-normal">{t.publicProfile.unknown}</span>}
+                    </h2>
+                    {state === 'loaded' && (
+                      <Tooltip content={t.publicProfile.verifiedBanner}>
+                        <ShieldCheck size={16} className="text-green-500" />
+                      </Tooltip>
+                    )}
                   </div>
-                )}
+                  {verificationStatus && (
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full whitespace-nowrap mt-1 ${
+                      verificationStatus === 'mutual' ? 'bg-green-100 text-green-700' :
+                      verificationStatus === 'incoming' ? 'bg-blue-100 text-blue-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {verificationStatus === 'mutual' ? t.contacts.statusMutual :
+                       verificationStatus === 'incoming' ? t.contacts.statusIncoming :
+                       t.contacts.statusOutgoing}
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={handleShareProfile}
-                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors ml-auto flex-shrink-0"
+                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
                   title="Profil teilen"
                 >
                   {shared ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}

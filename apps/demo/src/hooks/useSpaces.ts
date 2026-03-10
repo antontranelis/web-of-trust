@@ -39,7 +39,7 @@ export function useSpaces() {
   }, [messaging, refresh])
 
   const createSpace = useCallback(async (name: string) => {
-    const space = await replication.createSpace('shared', {}, { name })
+    const space = await replication.createSpace('shared', { notes: '' }, { name })
     await refresh()
     return space
   }, [replication, refresh])

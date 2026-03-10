@@ -48,7 +48,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
             <Link to={`/p/${encodeURIComponent(contact.did)}`} className="font-medium text-slate-900 truncate hover:text-primary-600 transition-colors">
               {displayName}
             </Link>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${statusColors[contact.status]}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${statusColors[contact.status]}`}>
               {statusLabels[contact.status]}
             </span>
           </div>

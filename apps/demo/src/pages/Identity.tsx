@@ -1,10 +1,11 @@
 import { useIdentity, usePendingVerification } from '../context'
 import { useAdapters } from '../context'
 import { useLanguage, plural } from '../i18n'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Copy, Check, Fingerprint, ShieldCheck, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock, Share2, Link as LinkIcon } from 'lucide-react'
 import { Avatar, AvatarUpload, TagInput } from '../components/shared'
+import { Tooltip } from '../components/ui/Tooltip'
 import { resetEvolu } from '../db'
 import { useProfile, useProfileSync, useAttestations, useContacts } from '../hooks'
 import { useSubscribable } from '../hooks/useSubscribable'
@@ -38,20 +39,6 @@ export function Identity() {
   const [showDetails, setShowDetails] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
   const [shared, setShared] = useState(false)
-  const [showSecurityHint, setShowSecurityHint] = useState(false)
-  const securityHintRef = useRef<HTMLDivElement>(null)
-
-  // Close security tooltip on outside click
-  useEffect(() => {
-    if (!showSecurityHint) return
-    const handler = (e: MouseEvent) => {
-      if (securityHintRef.current && !securityHintRef.current.contains(e.target as Node)) {
-        setShowSecurityHint(false)
-      }
-    }
-    document.addEventListener('click', handler, true)
-    return () => document.removeEventListener('click', handler, true)
-  }, [showSecurityHint])
 
   // Sync profile from Evolu (reactive — updates when synced from other device)
   // Skip when justSaved is true to avoid overwriting with stale Evolu snapshot
@@ -262,18 +249,9 @@ export function Identity() {
                     <h3 className="text-lg font-semibold text-slate-900 truncate">
                       {profileName || <span className="text-slate-400 italic font-normal">{t.identity.noNameSet}</span>}
                     </h3>
-                    <div ref={securityHintRef} className="relative flex-shrink-0 translate-y-0.5">
-                      <button
-                        onClick={() => setShowSecurityHint(!showSecurityHint)}
-                        className="text-green-500 hover:text-green-600 transition-colors peer"
-                      >
-                        <ShieldCheck size={16} />
-                      </button>
-                      <div className={`absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg z-50 transition-opacity duration-150 ${showSecurityHint ? 'opacity-100' : 'opacity-0 pointer-events-none'} peer-hover:opacity-100 peer-hover:pointer-events-auto`}>
-                        {t.identity.securityInfo}
-                        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-slate-800 rotate-45" />
-                      </div>
-                    </div>
+                    <Tooltip content={t.identity.securityInfo}>
+                      <ShieldCheck size={16} className="text-green-500" />
+                    </Tooltip>
                     {profileSaved && <Check size={16} className="text-green-500 flex-shrink-0" />}
                     <div className="flex items-center gap-1 ml-auto flex-shrink-0">
                       <button

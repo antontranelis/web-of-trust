@@ -378,6 +378,8 @@ export const de = {
     unnamed: 'Unbenannter Space',
     notFound: 'Space nicht gefunden',
     encryptedBadge: 'Ende-zu-Ende verschlüsselt (AES-256-GCM)',
+    notesHeading: 'Gemeinsame Notizen',
+    notesPlaceholder: 'Schreibe hier Notizen, die alle Mitglieder sehen...',
     membersHeading: 'Mitglieder ({count})',
     inviteButton: 'Einladen',
     removeButton: 'Entfernen',

@@ -380,6 +380,8 @@ export const en: Translations = {
     unnamed: 'Unnamed space',
     notFound: 'Space not found',
     encryptedBadge: 'End-to-end encrypted (AES-256-GCM)',
+    notesHeading: 'Shared Notes',
+    notesPlaceholder: 'Write notes visible to all members...',
     membersHeading: 'Members ({count})',
     inviteButton: 'Invite',
     removeButton: 'Remove',
