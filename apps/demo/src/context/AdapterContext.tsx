@@ -274,6 +274,21 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           if (needsInitialSync && !cancelled) {
             setTimeout(() => { syncDiscovery() }, 500)
           }
+
+          // Ensure encryptionPublicKey is published (older profiles may lack it).
+          // Check the published profile and re-publish if the key is missing.
+          if (!needsInitialSync && !cancelled) {
+            setTimeout(async () => {
+              if (cancelled) return
+              try {
+                const result = await httpDiscovery.resolveProfile(did)
+                if (result.profile && !result.profile.encryptionPublicKey) {
+                  await publishStateStore.markDirty(did, 'profile')
+                  await syncDiscovery()
+                }
+              } catch { /* offline — will retry next session */ }
+            }, 2000)
+          }
         }
       } catch (error) {
         console.error('Failed to initialize adapters:', error)

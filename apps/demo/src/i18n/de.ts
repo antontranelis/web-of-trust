@@ -306,7 +306,7 @@ export const de = {
   },
 
   scanCode: {
-    scanButton: 'Code der anderen Person scannen',
+    scanButton: 'Code scannen',
     showManualEntry: 'Code manuell eingeben',
     hideManualEntry: 'Manuelle Eingabe ausblenden',
     placeholder: 'Code hier einfügen...',

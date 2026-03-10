@@ -308,7 +308,7 @@ export const en: Translations = {
   },
 
   scanCode: {
-    scanButton: "Scan the other person's code",
+    scanButton: 'Scan code',
     showManualEntry: 'Enter code manually',
     hideManualEntry: 'Hide manual entry',
     placeholder: 'Paste code here...',
