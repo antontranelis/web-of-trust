@@ -5,6 +5,7 @@ import type { PeerMetadata } from '@automerge/automerge-repo'
 import type { MessagingAdapter } from '../interfaces/MessagingAdapter'
 import type { GroupKeyService } from '../../services/GroupKeyService'
 import { EncryptedSyncService } from '../../services/EncryptedSyncService'
+import { signEnvelope, verifyEnvelope } from '../../crypto/envelope-auth'
 
 /**
  * EncryptedMessagingNetworkAdapter — Bridge between automerge-repo and our MessagingAdapter.
@@ -19,12 +20,16 @@ import { EncryptedSyncService } from '../../services/EncryptedSyncService'
  */
 export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
   private messaging: MessagingAdapter
-  private identity: { getDid(): string }
+  private identity: { getDid(): string; sign(data: string): Promise<string> }
   private groupKeyService: GroupKeyService
   private ready = false
   private readyResolve?: () => void
   private readyPromise: Promise<void>
   private unsubMessage?: () => void
+  /** Track message IDs we sent, so we can ignore our own echoes from the relay */
+  private sentMessageIds = new Set<string>()
+  /** Phantom peerId used for multi-device self-sync */
+  private selfPeerId: string | null = null
 
   // Document -> Space mapping (needed to find the right group key)
   private docToSpace = new Map<DocumentId, string>()
@@ -34,7 +39,7 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
 
   constructor(
     messaging: MessagingAdapter,
-    identity: { getDid(): string },
+    identity: { getDid(): string; sign(data: string): Promise<string> },
     groupKeyService: GroupKeyService,
   ) {
     super()
@@ -64,6 +69,21 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
     this.unsubMessage = this.messaging.onMessage(async (envelope) => {
       if (envelope.type !== 'content') return
 
+      // Skip our own messages echoed back by the relay (multi-device: fromDid === toDid)
+      if (this.sentMessageIds.has(envelope.id)) {
+        this.sentMessageIds.delete(envelope.id)
+        return
+      }
+
+      // Verify envelope signature — reject unsigned or forged messages
+      if (envelope.signature) {
+        const valid = await verifyEnvelope(envelope)
+        if (!valid) {
+          console.warn('[EncryptedSync] Rejected message with invalid signature from', envelope.fromDid)
+          return
+        }
+      }
+
       try {
         const payload = JSON.parse(envelope.payload)
         // Only handle automerge-repo sync messages (have syncData field)
@@ -75,7 +95,8 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
         // Get the group key for decryption
         const groupKey = this.groupKeyService.getKeyByGeneration(spaceId, generation)
         if (!groupKey) {
-          console.warn(`No group key for space ${spaceId} generation ${generation}`)
+          // Expected when sync messages arrive before space metadata (race condition)
+          console.debug(`[EncryptedSync] No group key yet for space ${spaceId} gen ${generation} — will sync after metadata arrives`)
           return
         }
 
@@ -93,10 +114,16 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
         const documentId = payload.documentId as DocumentId
         if (!documentId) return
 
+        // If message is from our own DID (other device), use phantom peerId
+        // so automerge-repo routes the response correctly
+        const senderId = (envelope.fromDid === this.identity.getDid() && this.selfPeerId)
+          ? this.selfPeerId as PeerId
+          : envelope.fromDid as PeerId
+
         // Reconstruct the automerge-repo message
         const message: Message = {
           type: payload.messageType || 'sync',
-          senderId: envelope.fromDid as PeerId,
+          senderId,
           targetId: this.peerId!,
           documentId,
           data: syncData,
@@ -127,6 +154,12 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
 
     const generation = this.groupKeyService.getCurrentGeneration(spaceId)
 
+    // Resolve phantom self-peer to actual DID
+    const targetId = message.targetId as string
+    const toDid = (targetId === this.selfPeerId)
+      ? this.identity.getDid()
+      : targetId
+
     // Fire-and-forget async encryption + send
     void (async () => {
       try {
@@ -148,21 +181,28 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
           nonce: Array.from(encrypted.nonce),
         }
 
+        const messageId = crypto.randomUUID()
+        // Track this ID so we ignore the echo from relay
+        this.sentMessageIds.add(messageId)
+        // Clean up after 30s to prevent memory leak
+        setTimeout(() => this.sentMessageIds.delete(messageId), 30_000)
+
         const envelope = {
           v: 1 as const,
-          id: crypto.randomUUID(),
+          id: messageId,
           type: 'content' as const,
           fromDid: this.identity.getDid(),
-          toDid: message.targetId as string,
+          toDid,
           createdAt: new Date().toISOString(),
           encoding: 'json' as const,
           payload: JSON.stringify(payload),
           signature: '',
         }
 
+        await signEnvelope(envelope, (data) => this.identity.sign(data))
         await this.messaging.send(envelope)
-      } catch {
-        // Silently ignore send failures
+      } catch (err) {
+        console.debug('[EncryptedSync] Failed to send sync message:', err)
       }
     })()
   }
@@ -170,6 +210,7 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
   disconnect(): void {
     this.unsubMessage?.()
     this.unsubMessage = undefined
+    this.sentMessageIds.clear()
     this.ready = false
   }
 
@@ -209,6 +250,18 @@ export class EncryptedMessagingNetworkAdapter extends NetworkAdapter {
       peerId: memberDid as PeerId,
       peerMetadata: { isEphemeral: true },
     })
+  }
+
+  /**
+   * Register a phantom peer representing "self on another device".
+   * Uses a different peerId so automerge-repo doesn't skip it as self,
+   * but send() routes messages to our own DID (relay delivers to other devices).
+   */
+  registerSelfPeer(spaceId: string): void {
+    if (!this.selfPeerId) {
+      this.selfPeerId = `${this.identity.getDid()}#other-device`
+    }
+    this.registerSpacePeer(spaceId, this.selfPeerId)
   }
 
   /**

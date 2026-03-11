@@ -12,6 +12,7 @@ export type MessageType =
   | 'ack'
   | 'content'
   | 'member-update'
+  | 'personal-sync'
 
 /**
  * Standardized envelope format for all cross-user messages.

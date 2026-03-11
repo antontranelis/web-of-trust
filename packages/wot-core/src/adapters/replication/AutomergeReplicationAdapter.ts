@@ -11,9 +11,10 @@ import { EncryptedSyncService } from '../../services/EncryptedSyncService'
 import type { SpaceMetadataStorage } from '../interfaces/SpaceMetadataStorage'
 import type { WotIdentity } from '../../identity/WotIdentity'
 import { EncryptedMessagingNetworkAdapter } from './EncryptedMessagingNetworkAdapter'
+import { VaultClient, base64ToUint8 } from '../../services/VaultClient'
+import { signEnvelope, verifyEnvelope } from '../../crypto/envelope-auth'
 
 // Keep old import for backwards compatibility
-import type { SpaceStorageAdapter } from '../interfaces/SpaceStorageAdapter'
 
 interface SpaceState {
   info: SpaceInfo
@@ -29,10 +30,10 @@ export interface AutomergeReplicationAdapterConfig {
   groupKeyService: GroupKeyService
   /** New: automerge-repo metadata storage (no docBinary) */
   metadataStorage?: SpaceMetadataStorage
-  /** @deprecated Use metadataStorage instead */
-  storage?: SpaceStorageAdapter
   /** Optional: automerge-repo StorageAdapter for doc persistence (e.g. IndexedDB) */
   repoStorage?: StorageAdapterInterface
+  /** Optional: vault URL for persistent encrypted doc storage */
+  vaultUrl?: string
 }
 
 class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
@@ -104,11 +105,18 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
   private groupKeyService: GroupKeyService
   private metadataStorage: SpaceMetadataStorage | null
   private repoStorage: StorageAdapterInterface | undefined
+  private vault: VaultClient | null = null
   private spaces = new Map<string, SpaceState>()
   private state: ReplicationState = 'idle'
   private memberChangeCallbacks = new Set<(change: SpaceMemberChange) => void>()
   private spacesSubscribers = new Set<(value: SpaceInfo[]) => void>()
   private unsubscribeMessaging: (() => void) | null = null
+  /** Debounce timers for vault snapshot pushes per space */
+  private vaultPushTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  /** Local seq counter per doc — avoids a getDocInfo HTTP call (and its 404) on first push */
+  private vaultSeqs = new Map<string, number>()
+  /** Change listeners for vault sync on open spaces */
+  private vaultChangeListeners = new Map<string, () => void>()
 
   private repo!: Repo
   private networkAdapter!: EncryptedMessagingNetworkAdapter
@@ -119,6 +127,15 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     this.groupKeyService = config.groupKeyService
     this.metadataStorage = config.metadataStorage ?? null
     this.repoStorage = config.repoStorage
+    if (config.vaultUrl) {
+      this.vault = new VaultClient(config.vaultUrl, config.identity)
+    }
+  }
+
+  /** Sign an envelope with our identity and send it */
+  private async _signAndSend(envelope: MessageEnvelope): Promise<void> {
+    await signEnvelope(envelope, (data) => this.identity.sign(data))
+    await this.messaging.send(envelope)
   }
 
   async start(): Promise<void> {
@@ -139,65 +156,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     })
 
     // Restore persisted space metadata and group keys
-    if (this.metadataStorage) {
-      const persisted = await this.metadataStorage.loadAllSpaceMetadata()
-      for (const meta of persisted) {
-        const memberKeys = new Map<string, Uint8Array>()
-        for (const [did, key] of Object.entries(meta.memberEncryptionKeys)) {
-          memberKeys.set(did, key)
-        }
-
-        const spaceState: SpaceState = {
-          info: meta.info,
-          documentId: meta.documentId as DocumentId,
-          documentUrl: meta.documentUrl as AutomergeUrl,
-          handles: new Set(),
-          memberEncryptionKeys: memberKeys,
-        }
-        this.spaces.set(meta.info.id, spaceState)
-
-        // Register document with NetworkAdapter
-        this.networkAdapter.registerDocument(spaceState.documentId, meta.info.id)
-
-        // Register peers for this space
-        for (const memberDid of meta.info.members) {
-          if (memberDid !== this.identity.getDid()) {
-            this.networkAdapter.registerSpacePeer(meta.info.id, memberDid)
-          }
-        }
-
-        // Find the doc handle (triggers loading from storage)
-        // Use AbortSignal timeout to avoid hanging on docs that were never persisted
-        try {
-          const controller = new AbortController()
-          const timer = setTimeout(() => controller.abort(), 5000)
-          const handle = await this.repo.find(spaceState.documentUrl, {
-            allowableStates: ['ready', 'unavailable'],
-            signal: controller.signal,
-          })
-          clearTimeout(timer)
-          if (!handle.isReady()) {
-            console.warn('[ReplicationAdapter] Doc unavailable for space:', meta.info.name, '- removing stale entry')
-            this.spaces.delete(meta.info.id)
-            this.metadataStorage.deleteSpaceMetadata(meta.info.id)
-            this.metadataStorage.deleteGroupKeys(meta.info.id)
-            continue
-          }
-        } catch {
-          console.warn('[ReplicationAdapter] Failed to load doc for space:', meta.info.name, '- removing stale entry')
-          this.spaces.delete(meta.info.id)
-          this.metadataStorage.deleteSpaceMetadata(meta.info.id)
-          this.metadataStorage.deleteGroupKeys(meta.info.id)
-          continue
-        }
-
-        // Restore group keys
-        const keys = await this.metadataStorage.loadGroupKeys(meta.info.id)
-        for (const k of keys) {
-          this.groupKeyService.importKey(k.spaceId, k.key, k.generation)
-        }
-      }
-    }
+    await this.restoreSpacesFromMetadata()
 
     this.state = 'idle'
     this._notifySpacesSubscribers()
@@ -208,11 +167,281 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     )
   }
 
+  /**
+   * Restore spaces from metadata storage.
+   * Called on start() and can be called again after remote sync
+   * delivers new space metadata (e.g. multi-device sync).
+   * Only loads spaces that aren't already known.
+   */
+  async restoreSpacesFromMetadata(): Promise<void> {
+    if (!this.metadataStorage || !this.repo) return
+
+    const persisted = await this.metadataStorage.loadAllSpaceMetadata()
+    let changed = false
+    for (const meta of persisted) {
+      // Skip spaces we already know about
+      if (this.spaces.has(meta.info.id)) continue
+
+      const memberKeys = new Map<string, Uint8Array>()
+      for (const [did, key] of Object.entries(meta.memberEncryptionKeys)) {
+        memberKeys.set(did, key)
+      }
+
+      const spaceState: SpaceState = {
+        info: meta.info,
+        documentId: meta.documentId as DocumentId,
+        documentUrl: meta.documentUrl as AutomergeUrl,
+        handles: new Set(),
+        memberEncryptionKeys: memberKeys,
+      }
+      this.spaces.set(meta.info.id, spaceState)
+
+      // Register document with NetworkAdapter
+      this.networkAdapter.registerDocument(spaceState.documentId, meta.info.id)
+
+      // Register peers for this space
+      for (const memberDid of meta.info.members) {
+        if (memberDid !== this.identity.getDid()) {
+          this.networkAdapter.registerSpacePeer(meta.info.id, memberDid)
+        }
+      }
+      // Register self-as-other-device for multi-device sync
+      this.networkAdapter.registerSelfPeer(meta.info.id)
+
+      // Restore group keys first (needed for decrypting sync messages)
+      const keys = await this.metadataStorage.loadGroupKeys(meta.info.id)
+      for (const k of keys) {
+        this.groupKeyService.importKey(k.spaceId, k.key, k.generation)
+      }
+
+      // Try vault first (avoids repo.find() putting doc in 'unavailable' state)
+      if (this.vault) {
+        const restoredFromVault = await this._restoreFromVault(spaceState)
+        if (restoredFromVault) {
+          changed = true
+          console.log('[ReplicationAdapter] Restored space from vault:', meta.info.name || meta.info.id)
+          continue
+        }
+      }
+
+      // Find the doc handle (triggers loading from storage or sync from peers)
+      let docReady = false
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 5000)
+        const handle = await this.repo.find(spaceState.documentUrl, {
+          allowableStates: ['ready', 'unavailable'],
+          signal: controller.signal,
+        })
+        clearTimeout(timer)
+        docReady = handle.isReady()
+      } catch {
+        // Timeout — doc not available yet
+      }
+
+      if (docReady) {
+        changed = true
+        console.log('[ReplicationAdapter] Restored space from metadata:', meta.info.name || meta.info.id)
+      } else {
+        // No vault, vault empty, and doc not locally available — wait for live sync
+        console.log('[ReplicationAdapter] Space registered, waiting for doc sync:', meta.info.name || meta.info.id)
+        changed = true
+        this._waitForDoc(spaceState)
+      }
+    }
+
+    if (changed) {
+      this._notifySpacesSubscribers()
+    }
+  }
+
+  /**
+   * Try to restore a space doc from the vault.
+   * Returns true if doc was successfully imported from vault.
+   */
+  private async _restoreFromVault(spaceState: SpaceState): Promise<boolean> {
+    if (!this.vault) return false
+
+    const groupKey = this.groupKeyService.getCurrentKey(spaceState.info.id)
+    if (!groupKey) return false
+
+    try {
+      const vaultData = await this.vault.getChanges(spaceState.info.id)
+
+      // Try snapshot first
+      if (vaultData.snapshot?.data) {
+        const packed = base64ToUint8(vaultData.snapshot.data)
+        const nonceLen = packed[0]
+        const nonce = packed.slice(1, 1 + nonceLen)
+        const ciphertext = packed.slice(1 + nonceLen)
+
+        const generation = this.groupKeyService.getCurrentGeneration(spaceState.info.id)
+        const docBinary = await EncryptedSyncService.decryptChange(
+          { ciphertext, nonce, spaceId: spaceState.info.id, generation, fromDid: '' },
+          groupKey,
+        )
+
+        const docHandle = this.repo.import<any>(docBinary, {
+          docId: spaceState.documentId,
+        })
+        if (!docHandle.isReady()) docHandle.doneLoading()
+
+        // Apply incremental changes after snapshot
+        for (const change of vaultData.changes) {
+          const changePacked = base64ToUint8(change.data)
+          const changeNonceLen = changePacked[0]
+          const changeNonce = changePacked.slice(1, 1 + changeNonceLen)
+          const changeCiphertext = changePacked.slice(1 + changeNonceLen)
+
+          const changeBinary = await EncryptedSyncService.decryptChange(
+            { ciphertext: changeCiphertext, nonce: changeNonce, spaceId: spaceState.info.id, generation, fromDid: change.authorDid },
+            groupKey,
+          )
+
+          docHandle.merge(this.repo.import<any>(changeBinary, undefined as any) as any)
+        }
+
+        await this.repo.flush([spaceState.documentId])
+        // Seed local seq counter from vault data
+        const maxSeq = Math.max(
+          vaultData.snapshot?.upToSeq ?? 0,
+          ...vaultData.changes.map((c: any) => c.seq ?? 0),
+        )
+        if (maxSeq > 0) this.vaultSeqs.set(spaceState.info.id, maxSeq)
+        return true
+      }
+
+      // No snapshot — try applying changes directly
+      if (vaultData.changes.length > 0) {
+        const generation = this.groupKeyService.getCurrentGeneration(spaceState.info.id)
+
+        // First change becomes the doc
+        const firstPacked = base64ToUint8(vaultData.changes[0].data)
+        const firstNonceLen = firstPacked[0]
+        const firstNonce = firstPacked.slice(1, 1 + firstNonceLen)
+        const firstCiphertext = firstPacked.slice(1 + firstNonceLen)
+
+        const firstBinary = await EncryptedSyncService.decryptChange(
+          { ciphertext: firstCiphertext, nonce: firstNonce, spaceId: spaceState.info.id, generation, fromDid: vaultData.changes[0].authorDid },
+          groupKey,
+        )
+
+        const docHandle = this.repo.import<any>(firstBinary, {
+          docId: spaceState.documentId,
+        })
+        if (!docHandle.isReady()) docHandle.doneLoading()
+
+        // Apply remaining changes
+        for (let i = 1; i < vaultData.changes.length; i++) {
+          const changePacked = base64ToUint8(vaultData.changes[i].data)
+          const changeNonceLen = changePacked[0]
+          const changeNonce = changePacked.slice(1, 1 + changeNonceLen)
+          const changeCiphertext = changePacked.slice(1 + changeNonceLen)
+
+          const changeBinary = await EncryptedSyncService.decryptChange(
+            { ciphertext: changeCiphertext, nonce: changeNonce, spaceId: spaceState.info.id, generation, fromDid: vaultData.changes[i].authorDid },
+            groupKey,
+          )
+
+          docHandle.merge(this.repo.import<any>(changeBinary, undefined as any) as any)
+        }
+
+        await this.repo.flush([spaceState.documentId])
+        // Seed local seq counter from vault data
+        const maxChangeSeq = Math.max(...vaultData.changes.map((c: any) => c.seq ?? 0))
+        if (maxChangeSeq > 0) this.vaultSeqs.set(spaceState.info.id, maxChangeSeq)
+        return true
+      }
+    } catch (err) {
+      console.debug('[ReplicationAdapter] Vault restore failed:', err)
+    }
+
+    return false
+  }
+
+  /**
+   * Push the current doc snapshot to the vault (encrypted).
+   */
+  /**
+   * Debounced vault push — waits 5s after last change before pushing.
+   */
+  private _debouncedVaultPush(spaceState: SpaceState): void {
+    const existing = this.vaultPushTimers.get(spaceState.info.id)
+    if (existing) clearTimeout(existing)
+    this.vaultPushTimers.set(
+      spaceState.info.id,
+      setTimeout(() => {
+        this.vaultPushTimers.delete(spaceState.info.id)
+        this._pushSnapshotToVault(spaceState).catch(() => {})
+      }, 5000),
+    )
+  }
+
+  private async _pushSnapshotToVault(spaceState: SpaceState): Promise<void> {
+    if (!this.vault) return
+
+    const groupKey = this.groupKeyService.getCurrentKey(spaceState.info.id)
+    if (!groupKey) return
+
+    const docBinary = await this.repo.export(spaceState.documentUrl)
+    if (!docBinary) return
+
+    const generation = this.groupKeyService.getCurrentGeneration(spaceState.info.id)
+    const encrypted = await EncryptedSyncService.encryptChange(
+      docBinary,
+      groupKey,
+      spaceState.info.id,
+      generation,
+      this.identity.getDid(),
+    )
+
+    // Use local seq counter (avoids getDocInfo HTTP call + browser 404 log on first push)
+    const currentSeq = this.vaultSeqs.get(spaceState.info.id) ?? 0
+    const nextSeq = currentSeq + 1
+
+    await this.vault.putSnapshot(
+      spaceState.info.id,
+      encrypted.ciphertext,
+      encrypted.nonce,
+      nextSeq,
+    )
+    this.vaultSeqs.set(spaceState.info.id, nextSeq)
+  }
+
+  /**
+   * Background wait for a space doc that isn't locally available yet.
+   * The doc may arrive via sync from another device.
+   */
+  private _waitForDoc(spaceState: SpaceState): void {
+    void (async () => {
+      try {
+        // Wait up to 30s for the doc to arrive via sync
+        const handle = await this.repo.find(spaceState.documentUrl, {
+          allowableStates: ['ready'],
+          signal: AbortSignal.timeout(30_000),
+        })
+        if (handle.isReady() && this.spaces.has(spaceState.info.id)) {
+          console.log('[ReplicationAdapter] Doc arrived via sync for space:', spaceState.info.name || spaceState.info.id)
+          this._notifySpacesSubscribers()
+        }
+      } catch {
+        // Doc didn't arrive in time — that's ok, will retry on next restoreSpacesFromMetadata()
+        console.log('[ReplicationAdapter] Doc did not arrive within timeout for space:', spaceState.info.name || spaceState.info.id)
+      }
+    })()
+  }
+
   async stop(): Promise<void> {
     if (this.unsubscribeMessaging) {
       this.unsubscribeMessaging()
       this.unsubscribeMessaging = null
     }
+    // Clear vault timers and change listeners
+    for (const timer of this.vaultPushTimers.values()) clearTimeout(timer)
+    this.vaultPushTimers.clear()
+    this.vaultSeqs.clear()
+    for (const unsub of this.vaultChangeListeners.values()) unsub()
+    this.vaultChangeListeners.clear()
     // Close all handles
     for (const space of this.spaces.values()) {
       for (const handle of space.handles) {
@@ -244,6 +473,10 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     // Register document -> space mapping
     this.networkAdapter.registerDocument(docHandle.documentId, spaceId)
 
+    // Register self-as-other-device as peer for multi-device sync
+    // Use a different peerId suffix so automerge-repo doesn't think it's talking to itself
+    this.networkAdapter.registerSelfPeer(spaceId)
+
     const info: SpaceInfo = {
       id: spaceId,
       type,
@@ -266,6 +499,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     await this._persistSpaceMetadata(spaceState)
     // Flush repo so the doc is persisted to IndexedDB
     await this.repo.flush([docHandle.documentId])
+
+    // Push initial snapshot to vault (fire-and-forget)
+    this._pushSnapshotToVault(spaceState).catch(() => {})
 
     return { ...info }
   }
@@ -307,11 +543,32 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       throw new Error(`Unknown space: ${spaceId}`)
     }
 
-    const docHandle = await this.repo.find<T>(space.documentUrl)
-    await docHandle.whenReady()
+    // Use Promise.race to enforce our own timeout (automerge-repo's internal
+    // withTimeout is 60s and ignores the signal for cached handles)
+    const docHandle = await Promise.race([
+      this.repo.find<T>(space.documentUrl, {
+        allowableStates: ['ready', 'unavailable'],
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Space document timeout: ${spaceId}`)), 10_000)
+      ),
+    ])
+    if (!docHandle.isReady()) {
+      throw new Error(`Space document not ready: ${spaceId}`)
+    }
 
     const handle = new AutomergeSpaceHandle<T>(space, docHandle)
     space.handles.add(handle)
+
+    // Register debounced vault push on doc changes (once per space)
+    if (this.vault && !this.vaultChangeListeners.has(spaceId)) {
+      const listener = () => {
+        this._debouncedVaultPush(space)
+      }
+      docHandle.on('change', listener)
+      this.vaultChangeListeners.set(spaceId, () => docHandle.off('change', listener))
+    }
+
     return handle
   }
 
@@ -389,7 +646,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       signature: '',
     }
 
-    await this.messaging.send(envelope)
+    await this._signAndSend(envelope)
 
     // Notify existing members about the new member (member-update)
     for (const existingDid of space.info.members) {
@@ -415,10 +672,13 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         signature: '',
       }
 
-      await this.messaging.send(updateEnvelope)
+      await this._signAndSend(updateEnvelope)
     }
 
     await this._persistSpaceMetadata(space)
+
+    // Push updated snapshot to vault (fire-and-forget)
+    this._pushSnapshotToVault(space).catch(() => {})
 
     // Notify member change listeners
     for (const cb of this.memberChangeCallbacks) {
@@ -470,12 +730,13 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         signature: '',
       }
 
-      await this.messaging.send(envelope)
+      await this._signAndSend(envelope)
     }
 
-    // Notify remaining members about the removal (member-update)
-    for (const existingDid of space.info.members) {
-      if (existingDid === this.identity.getDid()) continue
+    // Notify remaining members AND the removed member about the removal
+    const notifyDids = [...space.info.members, memberDid]
+    for (const did of notifyDids) {
+      if (did === this.identity.getDid()) continue
 
       const updatePayload = {
         spaceId,
@@ -489,14 +750,14 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         id: crypto.randomUUID(),
         type: 'member-update',
         fromDid: this.identity.getDid(),
-        toDid: existingDid,
+        toDid: did,
         createdAt: new Date().toISOString(),
         encoding: 'json',
         payload: JSON.stringify(updatePayload),
         signature: '',
       }
 
-      await this.messaging.send(updateEnvelope)
+      await this._signAndSend(updateEnvelope)
     }
 
     await this._persistSpaceMetadata(space)
@@ -548,6 +809,15 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
   }
 
   private async handleMessage(envelope: MessageEnvelope): Promise<void> {
+    // Verify envelope signature — reject unsigned or forged messages
+    if (envelope.signature) {
+      const valid = await verifyEnvelope(envelope)
+      if (!valid) {
+        console.warn('[ReplicationAdapter] Rejected message with invalid signature from', envelope.fromDid)
+        return
+      }
+    }
+
     switch (envelope.type) {
       case 'space-invite':
         await this.handleSpaceInvite(envelope)
@@ -607,6 +877,8 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         this.networkAdapter.registerSpacePeer(payload.spaceId, memberDid)
       }
     }
+    // Register self-as-other-device for multi-device sync
+    this.networkAdapter.registerSelfPeer(payload.spaceId)
 
     const info: SpaceInfo = {
       id: payload.spaceId,
@@ -630,6 +902,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     // Flush repo so the doc is persisted to IndexedDB
     await this.repo.flush([docHandle.documentId])
 
+    // Push to vault for multi-device persistence (fire-and-forget)
+    this._pushSnapshotToVault(spaceState).catch(() => {})
+
     // Notify listeners so UI updates when invited to a space
     for (const cb of this.memberChangeCallbacks) {
       cb({ spaceId: payload.spaceId, did: this.identity.getDid(), action: 'added' })
@@ -638,6 +913,13 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
 
   private async handleKeyRotation(envelope: MessageEnvelope): Promise<void> {
     const payload = JSON.parse(envelope.payload)
+
+    // Sender must be a member of the space to distribute keys
+    const space = this.spaces.get(payload.spaceId)
+    if (space && !space.info.members.includes(envelope.fromDid)) {
+      console.warn('[ReplicationAdapter] Rejected key-rotation from non-member:', envelope.fromDid)
+      return
+    }
 
     const encryptedKey = {
       ciphertext: new Uint8Array(payload.encryptedGroupKey.ciphertext),
@@ -648,7 +930,6 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
 
     this.groupKeyService.importKey(payload.spaceId, newKey, payload.generation)
 
-    const space = this.spaces.get(payload.spaceId)
     if (space) {
       await this._persistSpaceMetadata(space)
     }
@@ -659,13 +940,66 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     const space = this.spaces.get(payload.spaceId)
     if (!space) return
 
+    // Sender must be the space creator (first member) to modify membership
+    if (envelope.fromDid !== space.info.members[0]) {
+      console.warn('[ReplicationAdapter] Rejected member-update from non-creator:', envelope.fromDid)
+      return
+    }
+
+    const myDid = this.identity.getDid()
+    const wasRemoved = payload.action === 'removed' &&
+      payload.memberDid === myDid &&
+      !payload.members.includes(myDid)
+
+    if (wasRemoved) {
+      // I was removed from this space — clean up locally
+      console.log('[ReplicationAdapter] Removed from space:', space.info.name || space.info.id)
+
+      // Close all open handles
+      for (const handle of space.handles) {
+        handle.close()
+      }
+
+      // Unregister all peers for this space
+      for (const did of space.info.members) {
+        if (did !== myDid) {
+          this.networkAdapter.unregisterSpacePeer(payload.spaceId, did)
+        }
+      }
+      this.networkAdapter.unregisterDocument(space.documentId)
+
+      // Remove from local state
+      this.spaces.delete(payload.spaceId)
+
+      // Remove persisted metadata
+      if (this.metadataStorage) {
+        await this.metadataStorage.deleteSpaceMetadata(payload.spaceId)
+        await this.metadataStorage.deleteGroupKeys(payload.spaceId)
+      }
+
+      // Clear vault push timer if any
+      const timer = this.vaultPushTimers.get(payload.spaceId)
+      if (timer) {
+        clearTimeout(timer)
+        this.vaultPushTimers.delete(payload.spaceId)
+      }
+      this.vaultSeqs.delete(payload.spaceId)
+
+      // Notify UI
+      this._notifySpacesSubscribers()
+      for (const cb of this.memberChangeCallbacks) {
+        cb({ spaceId: payload.spaceId, did: myDid, action: 'removed' })
+      }
+      return
+    }
+
     const oldMembers = new Set(space.info.members)
     space.info.members = payload.members
     this._notifySpacesSubscribers()
 
     // Register/unregister peers based on member changes
     for (const did of payload.members) {
-      if (did !== this.identity.getDid() && !oldMembers.has(did)) {
+      if (did !== myDid && !oldMembers.has(did)) {
         this.networkAdapter.registerSpacePeer(payload.spaceId, did)
       }
     }

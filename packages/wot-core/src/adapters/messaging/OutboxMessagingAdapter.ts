@@ -26,6 +26,7 @@ export class OutboxMessagingAdapter implements MessagingAdapter {
   private skipTypes: Set<MessageType>
   private sendTimeoutMs: number
   private reconnectIntervalMs: number
+  private maxRetries: number
   private isOnline: () => boolean
   private reconnectTimer: ReturnType<typeof setInterval> | null = null
   private myDid: string | null = null
@@ -39,6 +40,8 @@ export class OutboxMessagingAdapter implements MessagingAdapter {
       sendTimeoutMs?: number
       /** Auto-reconnect interval in ms. Set to 0 to disable. Default: 10000 (10s). */
       reconnectIntervalMs?: number
+      /** Max retries before dropping a message. Default: 50. */
+      maxRetries?: number
       /** Optional online check. Default: always true. */
       isOnline?: () => boolean
     },
@@ -46,6 +49,7 @@ export class OutboxMessagingAdapter implements MessagingAdapter {
     this.skipTypes = new Set(options?.skipTypes ?? ['profile-update'])
     this.sendTimeoutMs = options?.sendTimeoutMs ?? 15_000
     this.reconnectIntervalMs = options?.reconnectIntervalMs ?? 10_000
+    this.maxRetries = options?.maxRetries ?? 50
     this.isOnline = options?.isOnline ?? (() => true)
   }
 
@@ -146,6 +150,13 @@ export class OutboxMessagingAdapter implements MessagingAdapter {
       const pending = await this.outbox.getPending()
       for (const entry of pending) {
         if (this.inner.getState() !== 'connected') break
+
+        // Drop messages that exceeded max retries
+        if (entry.retryCount >= this.maxRetries) {
+          console.warn('[Outbox] Dropping message after', entry.retryCount, 'retries:', entry.envelope.type, entry.envelope.id)
+          await this.outbox.dequeue(entry.envelope.id)
+          continue
+        }
 
         try {
           await this.sendWithTimeout(entry.envelope)

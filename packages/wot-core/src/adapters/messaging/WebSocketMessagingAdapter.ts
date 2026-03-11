@@ -46,7 +46,13 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
     return () => { this.stateCallbacks.delete(callback) }
   }
 
+  private connectedDid: string | null = null
+
   async connect(myDid: string): Promise<void> {
+    // Idempotent: if already connected with the same DID, skip reconnect
+    if (this.state === 'connected' && this.connectedDid === myDid) {
+      return
+    }
     if (this.state === 'connected') {
       await this.disconnect()
     }
@@ -61,10 +67,17 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
       }
 
       this.ws.onmessage = (event) => {
-        const msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString())
+        let msg: any
+        try {
+          msg = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString())
+        } catch {
+          console.warn('[WebSocket] Received malformed JSON, ignoring')
+          return
+        }
 
         switch (msg.type) {
           case 'registered':
+            this.connectedDid = myDid
             this.setState('connected')
             this.startHeartbeat()
             resolve()
@@ -117,6 +130,7 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
 
   async disconnect(): Promise<void> {
     this.stopHeartbeat()
+    this.connectedDid = null
     if (this.ws) {
       this.ws.close()
       this.ws = null

@@ -69,3 +69,8 @@ export function decodeBase64Url(str: string): Uint8Array {
   const binary = atob(base64)
   return Uint8Array.from(binary, (c) => c.charCodeAt(0))
 }
+
+/** Convert Uint8Array to ArrayBuffer slice (workaround for TypeScript strict mode with Web Crypto). */
+export function toBuffer(arr: Uint8Array): ArrayBuffer {
+  return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength) as ArrayBuffer
+}

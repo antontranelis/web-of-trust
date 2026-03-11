@@ -69,6 +69,7 @@ export type { ReplicationAdapter, SpaceHandle } from './adapters/interfaces/Repl
 export type { PublishStateStore, PublishStateField } from './adapters/interfaces/PublishStateStore'
 export type { GraphCacheStore, CachedGraphEntry } from './adapters/interfaces/GraphCacheStore'
 export type { OutboxStore, OutboxEntry } from './adapters/interfaces/OutboxStore'
+export type { AuthorizationAdapter } from './adapters/interfaces/AuthorizationAdapter'
 
 // Crypto Utilities
 export {
@@ -76,6 +77,7 @@ export {
   decodeBase58,
   encodeBase64Url,
   decodeBase64Url,
+  toBuffer,
 } from './crypto/encoding'
 
 export {
@@ -91,6 +93,28 @@ export {
   extractJwsPayload,
 } from './crypto/jws'
 
+export {
+  createCapability,
+  verifyCapability,
+  delegateCapability,
+  extractCapability,
+} from './crypto/capabilities'
+
+export {
+  signEnvelope,
+  verifyEnvelope,
+} from './crypto/envelope-auth'
+
+export type {
+  Capability,
+  CapabilityJws,
+  Permission,
+  SignFn,
+  VerifiedCapability,
+  CapabilityError,
+  CapabilityVerificationResult,
+} from './crypto/capabilities'
+
 // Identity
 export { WotIdentity } from './identity'
 
@@ -105,6 +129,7 @@ export { GraphCacheService } from './services/GraphCacheService'
 export type { GraphCacheOptions } from './services/GraphCacheService'
 export { AttestationDeliveryService } from './services/AttestationDeliveryService'
 export type { DeliveryStatus } from './services/AttestationDeliveryService'
+export { VaultClient, base64ToUint8 } from './services/VaultClient'
 
 // Adapter Implementations
 export { WebCryptoAdapter } from './adapters/crypto/WebCryptoAdapter'
@@ -118,9 +143,8 @@ export { InMemoryPublishStateStore } from './adapters/discovery/InMemoryPublishS
 export { InMemoryGraphCacheStore } from './adapters/discovery/InMemoryGraphCacheStore'
 export { OutboxMessagingAdapter } from './adapters/messaging/OutboxMessagingAdapter'
 export { InMemoryOutboxStore } from './adapters/messaging/InMemoryOutboxStore'
-export { InMemorySpaceStorageAdapter } from './adapters/storage/InMemorySpaceStorageAdapter'
-export type { SpaceStorageAdapter } from './adapters/interfaces/SpaceStorageAdapter'
 export { InMemorySpaceMetadataStorage } from './adapters/storage/InMemorySpaceMetadataStorage'
 export { IndexedDBSpaceMetadataStorage } from './adapters/storage/IndexedDBSpaceMetadataStorage'
-export type { SpaceMetadataStorage } from './adapters/interfaces/SpaceMetadataStorage'
+export type { SpaceMetadataStorage, PersistedSpaceMetadata, PersistedGroupKey } from './adapters/interfaces/SpaceMetadataStorage'
 export { EncryptedMessagingNetworkAdapter } from './adapters/replication/EncryptedMessagingNetworkAdapter'
+export { InMemoryAuthorizationAdapter } from './adapters/authorization/InMemoryAuthorizationAdapter'
