@@ -25,13 +25,12 @@ export default defineConfig(({ mode }) => {
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
-  optimizeDeps: {
-    exclude: ['@evolu/sqlite-wasm', '@evolu/web', '@evolu/react-web'],
-  },
+  optimizeDeps: {},
   test: {
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    exclude: ['e2e/**', 'node_modules/**'],
   },
   }
 })
