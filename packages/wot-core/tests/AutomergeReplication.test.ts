@@ -567,17 +567,18 @@ describe('AutomergeReplicationAdapter', () => {
       const carolEncPub = await carol.getEncryptionPublicKeyBytes()
       await aliceAdapter.addMember(space.id, bob.getDid(), bobEncPub)
       await aliceAdapter.addMember(space.id, carol.getDid(), carolEncPub)
-      await new Promise(r => setTimeout(r, 50))
+      await new Promise(r => setTimeout(r, 100))
+
+      // Open handles first so they're ready to receive sync messages
+      const aliceHandle = await aliceAdapter.openSpace<TestDoc>(space.id)
+      const bobHandle = await bobAdapter.openSpace<TestDoc>(space.id)
+      const carolHandle = await carolAdapter.openSpace<TestDoc>(space.id)
 
       // Alice writes — should reach both Bob and Carol
-      const aliceHandle = await aliceAdapter.openSpace<TestDoc>(space.id)
       aliceHandle.transact(doc => {
         doc.items.push('from-alice')
       })
-      await new Promise(r => setTimeout(r, 100))
-
-      const bobHandle = await bobAdapter.openSpace<TestDoc>(space.id)
-      const carolHandle = await carolAdapter.openSpace<TestDoc>(space.id)
+      await new Promise(r => setTimeout(r, 300))
 
       expect(bobHandle.getDoc().items).toContain('from-alice')
       expect(carolHandle.getDoc().items).toContain('from-alice')
