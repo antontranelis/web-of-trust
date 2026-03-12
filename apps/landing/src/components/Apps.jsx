@@ -56,7 +56,7 @@ export default function Apps() {
   ]
 
   return (
-    <section id="apps" className="py-16 md:py-24 bg-background">
+    <section id="apps" className="py-16 md:py-24 bg-muted">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">

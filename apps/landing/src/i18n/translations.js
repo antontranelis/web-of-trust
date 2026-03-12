@@ -28,7 +28,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Ein anderer Ansatz',
+      title: 'Lokale Verbindungen',
       subtitle: 'Wir setzen auf lokale Gemeinschaften statt globaler Plattformen. Statt Algorithmen bauen wir auf echte Begegnungen.',
       today: 'Heute',
       better: 'Besser',
@@ -42,57 +42,57 @@ export const translations = {
       pillarsTitle: 'Die drei Säulen',
       pillars: [
         {
-          title: 'Verifizieren',
-          description: 'Identität durch persönliches Treffen bestätigen',
+          title: 'Verbinden',
+          description: 'Menschen persönlich kennenlernen',
           detail: 'Jede Beziehung beginnt mit einer echten Begegnung. Durch QR-Code-Scan bestätigst du: "Das ist wirklich diese Person."',
         },
         {
           title: 'Kooperieren',
-          description: 'Verschlüsselte Inhalte teilen',
+          description: 'Gemeinsam planen und handeln',
           detail: 'Teile Kalender, Orte und Projekte mit deinem Netzwerk. Alles Ende-zu-Ende verschlüsselt.',
         },
         {
-          title: 'Attestieren',
-          description: 'Reputation durch echte Taten aufbauen',
-          detail: 'Bestätige was andere getan haben. Diese Attestationen bauen über Zeit sichtbares Vertrauen auf.',
+          title: 'Bestätigen',
+          description: 'Anerkennen was andere getan haben',
+          detail: 'Bestätige echte Taten und Hilfe. Diese Bestätigungen bauen über Zeit sichtbares Vertrauen auf.',
         },
       ],
       note: {
-        title: 'Verifizieren ≠ Vertrauen',
-        text: 'Die Verifizierung bestätigt nur: "Das ist wirklich diese Person." Das eigentliche Vertrauen entsteht durch Attestationen über Zeit.',
+        title: 'Verbinden ≠ Vertrauen',
+        text: 'Die Verbindung bestätigt nur: "Das ist wirklich diese Person." Das eigentliche Vertrauen entsteht durch Bestätigungen über Zeit.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: "So funktioniert's",
-      subtitle: 'Vom ersten Treffen bis zur ersten Attestation - der Weg ins Netzwerk.',
+      subtitle: 'Vom ersten Treffen bis zur ersten Bestätigung — der Weg ins Netzwerk.',
       step: 'Schritt',
       steps: [
         {
-          title: 'QR-Code scannen',
+          title: 'Treffen & verbinden',
           description: 'Anna und Ben treffen sich. Ben scannt Annas QR-Code mit der App.',
-          detail: 'Der QR-Code enthält Annas öffentlichen Schlüssel. Bens App erstellt automatisch seine eigene Identität.',
+          detail: 'Der QR-Code enthält Annas digitale Identität. Bens App erstellt automatisch seine eigene.',
         },
         {
           title: 'Identität bestätigen',
           description: 'Ben bestätigt: "Ich habe Anna persönlich getroffen."',
-          detail: 'Diese Verifizierung wird kryptographisch signiert und gleichzeitig werden Schlüssel getauscht.',
+          detail: 'Diese Bestätigung wird digital signiert und sicher gespeichert.',
         },
         {
-          title: 'Content sehen',
-          description: 'Ben kann jetzt Annas geteilte Inhalte sehen.',
-          detail: 'Kalender, Karten-Markierungen, Projekte - alles was Anna mit ihren Kontakten teilt, wird für Ben entschlüsselbar.',
+          title: 'Zusammen aktiv werden',
+          description: 'Anna und Ben können jetzt sicher zusammenarbeiten.',
+          detail: 'Kalender, Karten-Markierungen, Projekte — verschlüsselt nur für sie und die Menschen, denen sie vertrauen.',
         },
         {
-          title: 'Attestation erstellen',
-          description: 'Nach gemeinsamer Arbeit: Anna attestiert Bens Hilfe.',
-          detail: '"Ben hat 3 Stunden im Garten geholfen" - diese signierte Aussage wird Teil von Bens Profil.',
+          title: 'Bestätigung geben',
+          description: 'Nach gemeinsamer Arbeit: Anna bestätigt Bens Beitrag und Qualitäten.',
+          detail: '"Ben hat 3 Stunden im Garten geholfen" — diese Bestätigung wird Teil von Bens Profil.',
         },
       ],
       result: {
         title: 'Das Ergebnis',
-        text: 'Ein wachsendes Netzwerk aus echten Beziehungen. Jede Verbindung basiert auf einer persönlichen Begegnung. Jede Attestation auf einer echten Tat.',
+        text: 'Ein wachsendes Netzwerk aus echten Beziehungen. Jede Verbindung basiert auf einer persönlichen Begegnung. Jede Bestätigung auf einer echten Tat.',
       },
     },
 
@@ -592,7 +592,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'A different approach',
+      title: 'Local Connections',
       subtitle: 'We focus on local communities instead of global platforms. Instead of algorithms, we build on real encounters.',
       today: 'Today',
       better: 'Better',
@@ -606,57 +606,57 @@ export const translations = {
       pillarsTitle: 'The three pillars',
       pillars: [
         {
-          title: 'Verify',
-          description: 'Confirm identity through personal meeting',
+          title: 'Connect',
+          description: 'Meet people personally',
           detail: 'Every relationship starts with a real encounter. By scanning a QR code you confirm: "This is really this person."',
         },
         {
           title: 'Cooperate',
-          description: 'Share encrypted content',
+          description: 'Plan and act together',
           detail: 'Share calendars, locations and projects with your network. Everything end-to-end encrypted.',
         },
         {
-          title: 'Attest',
-          description: 'Build reputation through real actions',
-          detail: 'Confirm what others have done. These attestations build visible trust over time.',
+          title: 'Confirm',
+          description: 'Acknowledge what others have done',
+          detail: 'Confirm real deeds and help. These confirmations build visible trust over time.',
         },
       ],
       note: {
-        title: 'Verify ≠ Trust',
-        text: 'Verification only confirms: "This is really this person." Actual trust develops through attestations over time.',
+        title: 'Connect ≠ Trust',
+        text: 'The connection only confirms: "This is really this person." Real trust develops through confirmations over time.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'How it works',
-      subtitle: 'From first meeting to first attestation - the path into the network.',
+      subtitle: 'From first meeting to first confirmation — the path into the network.',
       step: 'Step',
       steps: [
         {
-          title: 'Scan QR code',
+          title: 'Meet & connect',
           description: 'Anna and Ben meet. Ben scans Anna\'s QR code with the app.',
-          detail: 'The QR code contains Anna\'s public key. Ben\'s app automatically creates his own identity.',
+          detail: 'The QR code contains Anna\'s digital identity. Ben\'s app automatically creates his own.',
         },
         {
           title: 'Confirm identity',
           description: 'Ben confirms: "I have personally met Anna."',
-          detail: 'This verification is cryptographically signed and keys are exchanged simultaneously.',
+          detail: 'This verification is digitally signed and securely stored.',
         },
         {
-          title: 'See content',
+          title: 'Get active together',
           description: 'Ben can now see Anna\'s shared content.',
-          detail: 'Calendar, map markers, projects - everything Anna shares with her contacts becomes decryptable for Ben.',
+          detail: 'Calendar, map markers, projects — everything Anna shares with her contacts becomes visible for Ben.',
         },
         {
-          title: 'Create attestation',
-          description: 'After working together: Anna attests Ben\'s help.',
-          detail: '"Ben helped 3 hours in the garden" - this signed statement becomes part of Ben\'s profile.',
+          title: 'Give confirmation',
+          description: 'After working together: Anna confirms Ben\'s help.',
+          detail: '"Ben helped 3 hours in the garden" — this confirmation becomes part of Ben\'s profile.',
         },
       ],
       result: {
         title: 'The result',
-        text: 'A growing network of real relationships. Every connection is based on a personal encounter. Every attestation on a real action.',
+        text: 'A growing network of real relationships. Every connection is based on a personal encounter. Every confirmation on a real action.',
       },
     },
 
@@ -1149,7 +1149,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Un enfoque diferente',
+      title: 'Conexiones locales',
       subtitle: 'Nos enfocamos en comunidades locales en lugar de plataformas globales. En lugar de algoritmos, construimos sobre encuentros reales.',
       today: 'Hoy',
       better: 'Mejor',
@@ -1163,57 +1163,57 @@ export const translations = {
       pillarsTitle: 'Los tres pilares',
       pillars: [
         {
-          title: 'Verificar',
-          description: 'Confirmar identidad mediante encuentro personal',
+          title: 'Conectar',
+          description: 'Conocer personas personalmente',
           detail: 'Cada relación comienza con un encuentro real. Al escanear un código QR confirmas: "Esta es realmente esta persona."',
         },
         {
           title: 'Cooperar',
-          description: 'Compartir contenido cifrado',
+          description: 'Planificar y actuar juntos',
           detail: 'Comparte calendarios, ubicaciones y proyectos con tu red. Todo cifrado de extremo a extremo.',
         },
         {
-          title: 'Atestiguar',
-          description: 'Construir reputación a través de acciones reales',
-          detail: 'Confirma lo que otros han hecho. Estas atestaciones construyen confianza visible con el tiempo.',
+          title: 'Confirmar',
+          description: 'Reconocer lo que otros han hecho',
+          detail: 'Confirma hechos reales y ayuda. Estas confirmaciones construyen confianza visible con el tiempo.',
         },
       ],
       note: {
-        title: 'Verificar ≠ Confiar',
-        text: 'La verificación solo confirma: "Esta es realmente esta persona." La confianza real se desarrolla a través de atestaciones con el tiempo.',
+        title: 'Conectar ≠ Confiar',
+        text: 'La conexión solo confirma: "Esta es realmente esta persona." La confianza real se desarrolla a través de confirmaciones con el tiempo.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'Cómo funciona',
-      subtitle: 'Desde el primer encuentro hasta la primera atestación - el camino hacia la red.',
+      subtitle: 'Desde el primer encuentro hasta la primera confirmación — el camino hacia la red.',
       step: 'Paso',
       steps: [
         {
-          title: 'Escanear código QR',
+          title: 'Conocerse & conectar',
           description: 'Anna y Ben se encuentran. Ben escanea el código QR de Anna con la app.',
-          detail: 'El código QR contiene la clave pública de Anna. La app de Ben crea automáticamente su propia identidad.',
+          detail: 'El código QR contiene la identidad digital de Anna. La app de Ben crea automáticamente la suya.',
         },
         {
           title: 'Confirmar identidad',
           description: 'Ben confirma: "He conocido personalmente a Anna."',
-          detail: 'Esta verificación se firma criptográficamente y se intercambian claves simultáneamente.',
+          detail: 'Esta verificación se firma digitalmente y se almacena de forma segura.',
         },
         {
-          title: 'Ver contenido',
+          title: 'Actuar juntos',
           description: 'Ben ahora puede ver el contenido compartido de Anna.',
-          detail: 'Calendario, marcadores de mapa, proyectos - todo lo que Anna comparte con sus contactos se vuelve descifrable para Ben.',
+          detail: 'Calendario, marcadores de mapa, proyectos — todo lo que Anna comparte con sus contactos se vuelve visible para Ben.',
         },
         {
-          title: 'Crear atestación',
-          description: 'Después de trabajar juntos: Anna atestigua la ayuda de Ben.',
-          detail: '"Ben ayudó 3 horas en el jardín" - esta declaración firmada se convierte en parte del perfil de Ben.',
+          title: 'Dar confirmación',
+          description: 'Después de trabajar juntos: Anna confirma la ayuda de Ben.',
+          detail: '"Ben ayudó 3 horas en el jardín" — esta confirmación se convierte en parte del perfil de Ben.',
         },
       ],
       result: {
         title: 'El resultado',
-        text: 'Una red creciente de relaciones reales. Cada conexión se basa en un encuentro personal. Cada atestación en una acción real.',
+        text: 'Una red creciente de relaciones reales. Cada conexión se basa en un encuentro personal. Cada confirmación en una acción real.',
       },
     },
 
@@ -1482,7 +1482,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Uma abordagem diferente',
+      title: 'Conexões locais',
       subtitle: 'Focamos em comunidades locais em vez de plataformas globais. Em vez de algoritmos, construímos sobre encontros reais.',
       today: 'Hoje',
       better: 'Melhor',
@@ -1496,57 +1496,57 @@ export const translations = {
       pillarsTitle: 'Os três pilares',
       pillars: [
         {
-          title: 'Verificar',
-          description: 'Confirmar identidade através de encontro pessoal',
+          title: 'Conectar',
+          description: 'Conhecer pessoas pessoalmente',
           detail: 'Cada relação começa com um encontro real. Ao escanear um código QR você confirma: "Esta é realmente esta pessoa."',
         },
         {
           title: 'Cooperar',
-          description: 'Compartilhar conteúdo criptografado',
+          description: 'Planejar e agir juntos',
           detail: 'Compartilhe calendários, localizações e projetos com sua rede. Tudo criptografado ponta a ponta.',
         },
         {
-          title: 'Atestar',
-          description: 'Construir reputação através de ações reais',
-          detail: 'Confirme o que outros fizeram. Essas atestações constroem confiança visível ao longo do tempo.',
+          title: 'Confirmar',
+          description: 'Reconhecer o que outros fizeram',
+          detail: 'Confirme feitos reais e ajuda. Essas confirmações constroem confiança visível ao longo do tempo.',
         },
       ],
       note: {
-        title: 'Verificar ≠ Confiar',
-        text: 'A verificação apenas confirma: "Esta é realmente esta pessoa." A confiança real se desenvolve através de atestações ao longo do tempo.',
+        title: 'Conectar ≠ Confiar',
+        text: 'A conexão apenas confirma: "Esta é realmente esta pessoa." A confiança real se desenvolve através de confirmações ao longo do tempo.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'Como funciona',
-      subtitle: 'Do primeiro encontro à primeira atestação - o caminho para a rede.',
+      subtitle: 'Do primeiro encontro à primeira confirmação — o caminho para a rede.',
       step: 'Passo',
       steps: [
         {
-          title: 'Escanear código QR',
+          title: 'Conhecer & conectar',
           description: 'Anna e Ben se encontram. Ben escaneia o código QR de Anna com o app.',
-          detail: 'O código QR contém a chave pública de Anna. O app de Ben cria automaticamente sua própria identidade.',
+          detail: 'O código QR contém a identidade digital de Anna. O app de Ben cria automaticamente a sua.',
         },
         {
           title: 'Confirmar identidade',
           description: 'Ben confirma: "Conheci Anna pessoalmente."',
-          detail: 'Esta verificação é assinada criptograficamente e as chaves são trocadas simultaneamente.',
+          detail: 'Esta verificação é assinada digitalmente e armazenada com segurança.',
         },
         {
-          title: 'Ver conteúdo',
+          title: 'Agir juntos',
           description: 'Ben agora pode ver o conteúdo compartilhado de Anna.',
-          detail: 'Calendário, marcadores de mapa, projetos - tudo que Anna compartilha com seus contatos se torna descriptografável para Ben.',
+          detail: 'Calendário, marcadores de mapa, projetos — tudo que Anna compartilha com seus contatos se torna visível para Ben.',
         },
         {
-          title: 'Criar atestação',
-          description: 'Depois de trabalhar juntos: Anna atesta a ajuda de Ben.',
-          detail: '"Ben ajudou 3 horas no jardim" - esta declaração assinada se torna parte do perfil de Ben.',
+          title: 'Dar confirmação',
+          description: 'Depois de trabalhar juntos: Anna confirma a ajuda de Ben.',
+          detail: '"Ben ajudou 3 horas no jardim" — esta confirmação se torna parte do perfil de Ben.',
         },
       ],
       result: {
         title: 'O resultado',
-        text: 'Uma rede crescente de relacionamentos reais. Cada conexão é baseada em um encontro pessoal. Cada atestação em uma ação real.',
+        text: 'Uma rede crescente de relacionamentos reais. Cada conexão é baseada em um encontro pessoal. Cada confirmação em uma ação real.',
       },
     },
 
@@ -1814,7 +1814,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'نهج مختلف',
+      title: 'روابط محلية',
       subtitle: 'نركز على المجتمعات المحلية بدلاً من المنصات العالمية. بدلاً من الخوارزميات، نبني على اللقاءات الحقيقية.',
       today: 'اليوم',
       better: 'أفضل',
@@ -1828,57 +1828,57 @@ export const translations = {
       pillarsTitle: 'الركائز الثلاث',
       pillars: [
         {
-          title: 'التحقق',
-          description: 'تأكيد الهوية من خلال اللقاء الشخصي',
+          title: 'التواصل',
+          description: 'التعرف على الأشخاص شخصياً',
           detail: 'كل علاقة تبدأ بلقاء حقيقي. بمسح رمز QR تؤكد: "هذا هو فعلاً هذا الشخص."',
         },
         {
           title: 'التعاون',
-          description: 'مشاركة محتوى مشفر',
+          description: 'التخطيط والعمل معاً',
           detail: 'شارك التقويمات والمواقع والمشاريع مع شبكتك. كل شيء مشفر من طرف إلى طرف.',
         },
         {
-          title: 'الشهادة',
-          description: 'بناء السمعة من خلال أفعال حقيقية',
-          detail: 'أكد ما فعله الآخرون. هذه الشهادات تبني ثقة مرئية مع مرور الوقت.',
+          title: 'التأكيد',
+          description: 'الاعتراف بما فعله الآخرون',
+          detail: 'أكد الأفعال الحقيقية والمساعدة. هذه التأكيدات تبني ثقة مرئية مع مرور الوقت.',
         },
       ],
       note: {
-        title: 'التحقق ≠ الثقة',
-        text: 'التحقق يؤكد فقط: "هذا هو فعلاً هذا الشخص." الثقة الفعلية تتطور من خلال الشهادات مع مرور الوقت.',
+        title: 'التواصل ≠ الثقة',
+        text: 'التواصل يؤكد فقط: "هذا هو فعلاً هذا الشخص." الثقة الفعلية تتطور من خلال التأكيدات مع مرور الوقت.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'كيف يعمل',
-      subtitle: 'من اللقاء الأول إلى الشهادة الأولى - الطريق إلى الشبكة.',
+      subtitle: 'من اللقاء الأول إلى التأكيد الأول — الطريق إلى الشبكة.',
       step: 'الخطوة',
       steps: [
         {
-          title: 'مسح رمز QR',
+          title: 'التعارف والتواصل',
           description: 'آنا وبن يلتقيان. بن يمسح رمز QR الخاص بآنا بالتطبيق.',
-          detail: 'رمز QR يحتوي على المفتاح العام لآنا. تطبيق بن ينشئ تلقائياً هويته الخاصة.',
+          detail: 'رمز QR يحتوي على الهوية الرقمية لآنا. تطبيق بن ينشئ تلقائياً هويته الخاصة.',
         },
         {
           title: 'تأكيد الهوية',
           description: 'بن يؤكد: "لقد قابلت آنا شخصياً."',
-          detail: 'هذا التحقق يتم توقيعه تشفيرياً ويتم تبادل المفاتيح في نفس الوقت.',
+          detail: 'هذا التحقق يتم توقيعه رقمياً وتخزينه بشكل آمن.',
         },
         {
-          title: 'رؤية المحتوى',
+          title: 'النشاط معاً',
           description: 'بن يمكنه الآن رؤية محتوى آنا المشارك.',
-          detail: 'التقويم، علامات الخريطة، المشاريع - كل ما تشاركه آنا مع جهات اتصالها يصبح قابلاً للفك لبن.',
+          detail: 'التقويم، علامات الخريطة، المشاريع — كل ما تشاركه آنا مع جهات اتصالها يصبح مرئياً لبن.',
         },
         {
-          title: 'إنشاء شهادة',
-          description: 'بعد العمل معاً: آنا تشهد على مساعدة بن.',
-          detail: '"بن ساعد 3 ساعات في الحديقة" - هذا البيان الموقع يصبح جزءاً من ملف بن.',
+          title: 'تقديم تأكيد',
+          description: 'بعد العمل معاً: آنا تؤكد مساعدة بن.',
+          detail: '"بن ساعد 3 ساعات في الحديقة" — هذا التأكيد يصبح جزءاً من ملف بن.',
         },
       ],
       result: {
         title: 'النتيجة',
-        text: 'شبكة متنامية من العلاقات الحقيقية. كل اتصال يستند إلى لقاء شخصي. كل شهادة إلى عمل حقيقي.',
+        text: 'شبكة متنامية من العلاقات الحقيقية. كل اتصال يستند إلى لقاء شخصي. كل تأكيد إلى عمل حقيقي.',
       },
     },
 
@@ -2146,7 +2146,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: '不同的方法',
+      title: '本地连接',
       subtitle: '我们专注于本地社区而非全球平台。我们建立在真实相遇之上，而非算法。',
       today: '现在',
       better: '更好',
@@ -2160,57 +2160,57 @@ export const translations = {
       pillarsTitle: '三大支柱',
       pillars: [
         {
-          title: '验证',
-          description: '通过亲自见面确认身份',
+          title: '连接',
+          description: '亲自认识他人',
           detail: '每段关系都始于真实相遇。通过扫描二维码确认："这确实是这个人。"',
         },
         {
           title: '协作',
-          description: '共享加密内容',
+          description: '共同规划和行动',
           detail: '与你的网络共享日历、位置和项目。全部端到端加密。',
         },
         {
-          title: '证明',
-          description: '通过真实行动建立声誉',
-          detail: '确认他人所做的事。这些证明随时间建立可见的信任。',
+          title: '确认',
+          description: '认可他人所做的事',
+          detail: '确认真实的行为和帮助。这些确认随时间建立可见的信任。',
         },
       ],
       note: {
-        title: '验证 ≠ 信任',
-        text: '验证仅确认："这确实是这个人。"真正的信任通过长期的证明来发展。',
+        title: '连接 ≠ 信任',
+        text: '连接仅确认："这确实是这个人。"真正的信任通过长期的确认来发展。',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: '工作原理',
-      subtitle: '从第一次见面到第一次证明——进入网络的路径。',
+      subtitle: '从第一次见面到第一次确认——进入网络的路径。',
       step: '步骤',
       steps: [
         {
-          title: '扫描二维码',
+          title: '相识与连接',
           description: 'Anna和Ben见面。Ben用应用扫描Anna的二维码。',
-          detail: '二维码包含Anna的公钥。Ben的应用自动创建他自己的身份。',
+          detail: '二维码包含Anna的数字身份。Ben的应用自动创建他自己的。',
         },
         {
           title: '确认身份',
           description: 'Ben确认："我亲自见过Anna。"',
-          detail: '这个验证被加密签名，同时交换密钥。',
+          detail: '这个验证被数字签名并安全存储。',
         },
         {
-          title: '查看内容',
+          title: '一起行动',
           description: 'Ben现在可以看到Anna分享的内容。',
-          detail: '日历、地图标记、项目——Anna与联系人分享的一切对Ben变得可解密。',
+          detail: '日历、地图标记、项目——Anna与联系人分享的一切对Ben变得可见。',
         },
         {
-          title: '创建证明',
-          description: '一起工作后：Anna证明Ben的帮助。',
-          detail: '"Ben在花园帮忙了3小时"——这个签名声明成为Ben个人资料的一部分。',
+          title: '给予确认',
+          description: '一起工作后：Anna确认Ben的帮助。',
+          detail: '"Ben在花园帮忙了3小时"——这个确认成为Ben个人资料的一部分。',
         },
       ],
       result: {
         title: '结果',
-        text: '一个不断增长的真实关系网络。每个连接都基于亲自相遇。每个证明都基于真实行动。',
+        text: '一个不断增长的真实关系网络。每个连接都基于亲自相遇。每个确认都基于真实行动。',
       },
     },
 
@@ -2479,7 +2479,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Другой подход',
+      title: 'Локальные связи',
       subtitle: 'Мы фокусируемся на местных сообществах вместо глобальных платформ. Вместо алгоритмов мы строим на реальных встречах.',
       today: 'Сегодня',
       better: 'Лучше',
@@ -2493,24 +2493,24 @@ export const translations = {
       pillarsTitle: 'Три столпа',
       pillars: [
         {
-          title: 'Верифицировать',
-          description: 'Подтвердить личность при личной встрече',
+          title: 'Связать',
+          description: 'Познакомиться с людьми лично',
           detail: 'Каждые отношения начинаются с реальной встречи. Сканируя QR-код, вы подтверждаете: "Это действительно этот человек."',
         },
         {
           title: 'Сотрудничать',
-          description: 'Делиться зашифрованным контентом',
+          description: 'Планировать и действовать вместе',
           detail: 'Делитесь календарями, местоположениями и проектами с вашей сетью. Всё зашифровано сквозным шифрованием.',
         },
         {
-          title: 'Подтверждать',
-          description: 'Строить репутацию через реальные действия',
-          detail: 'Подтверждайте, что сделали другие. Эти подтверждения создают видимое доверие со временем.',
+          title: 'Подтвердить',
+          description: 'Признать то, что сделали другие',
+          detail: 'Подтверждайте реальные дела и помощь. Эти подтверждения создают видимое доверие со временем.',
         },
       ],
       note: {
-        title: 'Верификация ≠ Доверие',
-        text: 'Верификация только подтверждает: "Это действительно этот человек." Настоящее доверие развивается через подтверждения со временем.',
+        title: 'Связь ≠ Доверие',
+        text: 'Связь лишь подтверждает: "Это действительно этот человек." Настоящее доверие развивается через подтверждения со временем.',
       },
     },
 
@@ -2521,24 +2521,24 @@ export const translations = {
       step: 'Шаг',
       steps: [
         {
-          title: 'Сканировать QR-код',
+          title: 'Познакомиться и связаться',
           description: 'Анна и Бен встречаются. Бен сканирует QR-код Анны приложением.',
-          detail: 'QR-код содержит публичный ключ Анны. Приложение Бена автоматически создаёт его собственную личность.',
+          detail: 'QR-код содержит цифровую идентичность Анны. Приложение Бена автоматически создаёт его собственную.',
         },
         {
           title: 'Подтвердить личность',
           description: 'Бен подтверждает: "Я лично встретил Анну."',
-          detail: 'Эта верификация криптографически подписана, и ключи обмениваются одновременно.',
+          detail: 'Эта верификация подписана цифровой подписью и надёжно сохранена.',
         },
         {
-          title: 'Видеть контент',
+          title: 'Действовать вместе',
           description: 'Бен теперь может видеть контент Анны.',
-          detail: 'Календарь, метки на карте, проекты — всё, чем Анна делится с контактами, становится расшифровываемым для Бена.',
+          detail: 'Календарь, метки на карте, проекты — всё, чем Анна делится с контактами, становится видимым для Бена.',
         },
         {
-          title: 'Создать подтверждение',
+          title: 'Дать подтверждение',
           description: 'После совместной работы: Анна подтверждает помощь Бена.',
-          detail: '"Бен помог 3 часа в саду" — это подписанное заявление становится частью профиля Бена.',
+          detail: '"Бен помог 3 часа в саду" — это подтверждение становится частью профиля Бена.',
         },
       ],
       result: {
@@ -2812,7 +2812,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Інший підхід',
+      title: 'Локальні зв\'язки',
       subtitle: 'Ми фокусуємося на місцевих спільнотах замість глобальних платформ. Замість алгоритмів ми будуємо на реальних зустрічах.',
       today: 'Сьогодні',
       better: 'Краще',
@@ -2826,24 +2826,24 @@ export const translations = {
       pillarsTitle: 'Три стовпи',
       pillars: [
         {
-          title: 'Верифікувати',
-          description: 'Підтвердити особу при особистій зустрічі',
+          title: "З'єднати",
+          description: 'Познайомитися з людьми особисто',
           detail: 'Кожні стосунки починаються з реальної зустрічі. Скануючи QR-код, ви підтверджуєте: "Це дійсно ця людина."',
         },
         {
           title: 'Співпрацювати',
-          description: 'Ділитися зашифрованим контентом',
+          description: 'Планувати і діяти разом',
           detail: 'Діліться календарями, місцями та проєктами зі своєю мережею. Все зашифровано наскрізним шифруванням.',
         },
         {
-          title: 'Підтверджувати',
-          description: 'Будувати репутацію через реальні дії',
-          detail: 'Підтверджуйте, що зробили інші. Ці підтвердження створюють видиму довіру з часом.',
+          title: 'Підтвердити',
+          description: 'Визнати те, що зробили інші',
+          detail: 'Підтверджуйте реальні справи та допомогу. Ці підтвердження створюють видиму довіру з часом.',
         },
       ],
       note: {
-        title: 'Верифікація ≠ Довіра',
-        text: 'Верифікація лише підтверджує: "Це дійсно ця людина." Справжня довіра розвивається через підтвердження з часом.',
+        title: "З'єднання ≠ Довіра",
+        text: "З'єднання лише підтверджує: \"Це дійсно ця людина.\" Справжня довіра розвивається через підтвердження з часом.",
       },
     },
 
@@ -2854,24 +2854,24 @@ export const translations = {
       step: 'Крок',
       steps: [
         {
-          title: 'Сканувати QR-код',
+          title: 'Познайомитися й з\'єднатися',
           description: 'Анна і Бен зустрічаються. Бен сканує QR-код Анни додатком.',
-          detail: 'QR-код містить публічний ключ Анни. Додаток Бена автоматично створює його власну особистість.',
+          detail: 'QR-код містить цифрову ідентичність Анни. Додаток Бена автоматично створює його власну.',
         },
         {
           title: 'Підтвердити особу',
           description: 'Бен підтверджує: "Я особисто зустрів Анну."',
-          detail: 'Ця верифікація криптографічно підписана, і ключі обмінюються одночасно.',
+          detail: 'Ця верифікація підписана цифровим підписом і надійно збережена.',
         },
         {
-          title: 'Бачити контент',
+          title: 'Діяти разом',
           description: 'Бен тепер може бачити контент Анни.',
-          detail: 'Календар, мітки на карті, проєкти — все, чим Анна ділиться з контактами, стає розшифровуваним для Бена.',
+          detail: 'Календар, мітки на карті, проєкти — все, чим Анна ділиться з контактами, стає видимим для Бена.',
         },
         {
-          title: 'Створити підтвердження',
+          title: 'Дати підтвердження',
           description: 'Після спільної роботи: Анна підтверджує допомогу Бена.',
-          detail: '"Бен допоміг 3 години в саду" — ця підписана заява стає частиною профілю Бена.',
+          detail: '"Бен допоміг 3 години в саду" — це підтвердження стає частиною профілю Бена.',
         },
       ],
       result: {
@@ -3144,7 +3144,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'גישה שונה',
+      title: 'קשרים מקומיים',
       subtitle: 'אנחנו מתמקדים בקהילות מקומיות במקום פלטפורמות גלובליות. במקום אלגוריתמים, אנחנו בונים על מפגשים אמיתיים.',
       today: 'היום',
       better: 'יותר טוב',
@@ -3158,57 +3158,57 @@ export const translations = {
       pillarsTitle: 'שלושת העמודים',
       pillars: [
         {
-          title: 'לאמת',
-          description: 'לאשר זהות במפגש אישי',
+          title: 'להתחבר',
+          description: 'להכיר אנשים באופן אישי',
           detail: 'כל יחס מתחיל במפגש אמיתי. בסריקת קוד QR אתה מאשר: "זה באמת האדם הזה."',
         },
         {
           title: 'לשתף פעולה',
-          description: 'לשתף תוכן מוצפן',
+          description: 'לתכנן ולפעול יחד',
           detail: 'שתף לוחות שנה, מיקומים ופרויקטים עם הרשת שלך. הכל מוצפן מקצה לקצה.',
         },
         {
-          title: 'להעיד',
-          description: 'לבנות מוניטין דרך מעשים אמיתיים',
-          detail: 'אשר מה שאחרים עשו. העדויות האלה בונות אמון נראה עם הזמן.',
+          title: 'לאשר',
+          description: 'להכיר במה שאחרים עשו',
+          detail: 'אשר מעשים אמיתיים ועזרה. האישורים האלה בונים אמון נראה עם הזמן.',
         },
       ],
       note: {
-        title: 'אימות ≠ אמון',
-        text: 'אימות רק מאשר: "זה באמת האדם הזה." אמון אמיתי מתפתח דרך עדויות עם הזמן.',
+        title: 'חיבור ≠ אמון',
+        text: 'החיבור רק מאשר: "זה באמת האדם הזה." אמון אמיתי מתפתח דרך אישורים עם הזמן.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'איך זה עובד',
-      subtitle: 'מהמפגש הראשון לעדות הראשונה - הדרך לרשת.',
+      subtitle: 'מהמפגש הראשון לאישור הראשון — הדרך לרשת.',
       step: 'שלב',
       steps: [
         {
-          title: 'סרוק קוד QR',
+          title: 'להיפגש ולהתחבר',
           description: 'אנה ובן נפגשים. בן סורק את קוד ה-QR של אנה עם האפליקציה.',
-          detail: 'קוד ה-QR מכיל את המפתח הציבורי של אנה. האפליקציה של בן יוצרת אוטומטית את הזהות שלו.',
+          detail: 'קוד ה-QR מכיל את הזהות הדיגיטלית של אנה. האפליקציה של בן יוצרת אוטומטית את שלו.',
         },
         {
           title: 'אשר זהות',
           description: 'בן מאשר: "פגשתי את אנה באופן אישי."',
-          detail: 'האימות הזה נחתם קריפטוגרפית ומפתחות מוחלפים בו-זמנית.',
+          detail: 'האימות הזה נחתם דיגיטלית ונשמר בצורה מאובטחת.',
         },
         {
-          title: 'צפה בתוכן',
+          title: 'לפעול יחד',
           description: 'בן יכול עכשיו לראות את התוכן שאנה משתפת.',
-          detail: 'לוח שנה, סמנים במפה, פרויקטים - כל מה שאנה משתפת עם אנשי הקשר שלה הופך לניתן לפענוח עבור בן.',
+          detail: 'לוח שנה, סמנים במפה, פרויקטים — כל מה שאנה משתפת עם אנשי הקשר שלה הופך לנראה עבור בן.',
         },
         {
-          title: 'צור עדות',
-          description: 'אחרי עבודה משותפת: אנה מעידה על העזרה של בן.',
-          detail: '"בן עזר 3 שעות בגינה" - ההצהרה החתומה הזו הופכת לחלק מהפרופיל של בן.',
+          title: 'לתת אישור',
+          description: 'אחרי עבודה משותפת: אנה מאשרת את העזרה של בן.',
+          detail: '"בן עזר 3 שעות בגינה" — האישור הזה הופך לחלק מהפרופיל של בן.',
         },
       ],
       result: {
         title: 'התוצאה',
-        text: 'רשת גדלה של יחסים אמיתיים. כל חיבור מבוסס על מפגש אישי. כל עדות על מעשה אמיתי.',
+        text: 'רשת גדלה של יחסים אמיתיים. כל חיבור מבוסס על מפגש אישי. כל אישור על מעשה אמיתי.',
       },
     },
 
@@ -3477,7 +3477,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Un approccio diverso',
+      title: 'Connessioni locali',
       subtitle: 'Ci concentriamo sulle comunità locali invece delle piattaforme globali. Invece di algoritmi, costruiamo su incontri reali.',
       today: 'Oggi',
       better: 'Meglio',
@@ -3491,57 +3491,57 @@ export const translations = {
       pillarsTitle: 'I tre pilastri',
       pillars: [
         {
-          title: 'Verificare',
-          description: 'Confermare l\'identità attraverso un incontro personale',
+          title: 'Connettere',
+          description: 'Conoscere le persone di persona',
           detail: 'Ogni relazione inizia con un incontro reale. Scansionando un codice QR confermi: "Questa è davvero questa persona."',
         },
         {
           title: 'Cooperare',
-          description: 'Condividere contenuti crittografati',
+          description: 'Pianificare e agire insieme',
           detail: 'Condividi calendari, posizioni e progetti con la tua rete. Tutto crittografato end-to-end.',
         },
         {
-          title: 'Attestare',
-          description: 'Costruire reputazione attraverso azioni reali',
-          detail: 'Conferma ciò che altri hanno fatto. Queste attestazioni costruiscono fiducia visibile nel tempo.',
+          title: 'Confermare',
+          description: 'Riconoscere ciò che altri hanno fatto',
+          detail: 'Conferma azioni reali e aiuto. Queste conferme costruiscono fiducia visibile nel tempo.',
         },
       ],
       note: {
-        title: 'Verificare ≠ Fidarsi',
-        text: 'La verifica conferma solo: "Questa è davvero questa persona." La vera fiducia si sviluppa attraverso le attestazioni nel tempo.',
+        title: 'Connessione ≠ Fiducia',
+        text: 'La connessione conferma solo: "Questa è davvero questa persona." La vera fiducia si sviluppa attraverso le conferme nel tempo.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'Come funziona',
-      subtitle: 'Dal primo incontro alla prima attestazione - il percorso nella rete.',
+      subtitle: 'Dal primo incontro alla prima conferma — il percorso nella rete.',
       step: 'Passo',
       steps: [
         {
-          title: 'Scansiona il codice QR',
+          title: 'Incontrarsi e connettersi',
           description: 'Anna e Ben si incontrano. Ben scansiona il codice QR di Anna con l\'app.',
-          detail: 'Il codice QR contiene la chiave pubblica di Anna. L\'app di Ben crea automaticamente la sua identità.',
+          detail: 'Il codice QR contiene l\'identità digitale di Anna. L\'app di Ben crea automaticamente la sua.',
         },
         {
           title: 'Conferma l\'identità',
           description: 'Ben conferma: "Ho incontrato Anna di persona."',
-          detail: 'Questa verifica viene firmata crittograficamente e le chiavi vengono scambiate simultaneamente.',
+          detail: 'Questa verifica viene firmata digitalmente e conservata in modo sicuro.',
         },
         {
-          title: 'Vedi i contenuti',
+          title: 'Agire insieme',
           description: 'Ben ora può vedere i contenuti condivisi di Anna.',
-          detail: 'Calendario, marcatori sulla mappa, progetti - tutto ciò che Anna condivide con i suoi contatti diventa decifrabile per Ben.',
+          detail: 'Calendario, marcatori sulla mappa, progetti — tutto ciò che Anna condivide con i suoi contatti diventa visibile per Ben.',
         },
         {
-          title: 'Crea un\'attestazione',
-          description: 'Dopo aver lavorato insieme: Anna attesta l\'aiuto di Ben.',
-          detail: '"Ben ha aiutato 3 ore in giardino" - questa dichiarazione firmata diventa parte del profilo di Ben.',
+          title: 'Dare una conferma',
+          description: 'Dopo aver lavorato insieme: Anna conferma l\'aiuto di Ben.',
+          detail: '"Ben ha aiutato 3 ore in giardino" — questa conferma diventa parte del profilo di Ben.',
         },
       ],
       result: {
         title: 'Il risultato',
-        text: 'Una rete crescente di relazioni reali. Ogni connessione è basata su un incontro personale. Ogni attestazione su un\'azione reale.',
+        text: 'Una rete crescente di relazioni reali. Ogni connessione è basata su un incontro personale. Ogni conferma su un\'azione reale.',
       },
     },
 
@@ -3809,7 +3809,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Farklı bir yaklaşım',
+      title: 'Yerel Bağlantılar',
       subtitle: 'Global platformlar yerine yerel topluluklara odaklanıyoruz. Algoritmalar yerine gerçek karşılaşmalar üzerine inşa ediyoruz.',
       today: 'Bugün',
       better: 'Daha iyi',
@@ -3823,57 +3823,57 @@ export const translations = {
       pillarsTitle: 'Üç sütun',
       pillars: [
         {
-          title: 'Doğrula',
-          description: 'Kişisel karşılaşma ile kimliği onayla',
+          title: 'Bağlan',
+          description: 'İnsanlarla şahsen tanış',
           detail: 'Her ilişki gerçek bir karşılaşmayla başlar. QR kod tarayarak onaylarsın: "Bu gerçekten bu kişi."',
         },
         {
           title: 'İşbirliği yap',
-          description: 'Şifreli içerik paylaş',
+          description: 'Birlikte planla ve harekete geç',
           detail: 'Takvimler, konumlar ve projeleri ağınla paylaş. Her şey uçtan uca şifreli.',
         },
         {
-          title: 'Tanıklık et',
-          description: 'Gerçek eylemlerle itibar oluştur',
-          detail: 'Başkalarının ne yaptığını onayla. Bu tanıklıklar zamanla görünür güven oluşturur.',
+          title: 'Onayla',
+          description: 'Başkalarının ne yaptığını takdir et',
+          detail: 'Gerçek eylemleri ve yardımları onayla. Bu onaylar zamanla görünür güven oluşturur.',
         },
       ],
       note: {
-        title: 'Doğrulama ≠ Güven',
-        text: 'Doğrulama sadece şunu onaylar: "Bu gerçekten bu kişi." Gerçek güven zamanla tanıklıklarla gelişir.',
+        title: 'Bağlantı ≠ Güven',
+        text: 'Bağlantı sadece şunu onaylar: "Bu gerçekten bu kişi." Gerçek güven zamanla onaylarla gelişir.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'Nasıl çalışır',
-      subtitle: 'İlk karşılaşmadan ilk tanıklığa - ağa giden yol.',
+      subtitle: 'İlk karşılaşmadan ilk onaya — ağa giden yol.',
       step: 'Adım',
       steps: [
         {
-          title: 'QR kodu tara',
+          title: 'Tanışmak ve bağlanmak',
           description: 'Anna ve Ben buluşur. Ben, uygulama ile Anna\'nın QR kodunu tarar.',
-          detail: 'QR kod Anna\'nın açık anahtarını içerir. Ben\'in uygulaması otomatik olarak kendi kimliğini oluşturur.',
+          detail: 'QR kod Anna\'nın dijital kimliğini içerir. Ben\'in uygulaması otomatik olarak kendisininkini oluşturur.',
         },
         {
           title: 'Kimliği onayla',
           description: 'Ben onaylar: "Anna ile şahsen tanıştım."',
-          detail: 'Bu doğrulama kriptografik olarak imzalanır ve anahtarlar eş zamanlı olarak değiştirilir.',
+          detail: 'Bu doğrulama dijital olarak imzalanır ve güvenli bir şekilde saklanır.',
         },
         {
-          title: 'İçeriği gör',
+          title: 'Birlikte harekete geçmek',
           description: 'Ben artık Anna\'nın paylaştığı içeriği görebilir.',
-          detail: 'Takvim, harita işaretleri, projeler - Anna\'nın kişileriyle paylaştığı her şey Ben için çözülebilir hale gelir.',
+          detail: 'Takvim, harita işaretleri, projeler — Anna\'nın kişileriyle paylaştığı her şey Ben için görünür hale gelir.',
         },
         {
-          title: 'Tanıklık oluştur',
-          description: 'Birlikte çalıştıktan sonra: Anna, Ben\'in yardımını tanıklar.',
-          detail: '"Ben bahçede 3 saat yardım etti" - bu imzalı ifade Ben\'in profilinin bir parçası olur.',
+          title: 'Onay vermek',
+          description: 'Birlikte çalıştıktan sonra: Anna, Ben\'in yardımını onaylar.',
+          detail: '"Ben bahçede 3 saat yardım etti" — bu onay Ben\'in profilinin bir parçası olur.',
         },
       ],
       result: {
         title: 'Sonuç',
-        text: 'Gerçek ilişkilerden oluşan büyüyen bir ağ. Her bağlantı kişisel bir karşılaşmaya dayanır. Her tanıklık gerçek bir eyleme.',
+        text: 'Gerçek ilişkilerden oluşan büyüyen bir ağ. Her bağlantı kişisel bir karşılaşmaya dayanır. Her onay gerçek bir eyleme.',
       },
     },
 
@@ -4142,7 +4142,7 @@ export const translations = {
 
     // ProblemSolution
     problemSolution: {
-      title: 'Une approche différente',
+      title: 'Connexions locales',
       subtitle: 'Nous nous concentrons sur les communautés locales plutôt que sur les plateformes mondiales. Au lieu d\'algorithmes, nous misons sur de vraies rencontres.',
       today: 'Aujourd\'hui',
       better: 'Mieux',
@@ -4156,57 +4156,57 @@ export const translations = {
       pillarsTitle: 'Les trois piliers',
       pillars: [
         {
-          title: 'Vérifier',
-          description: 'Confirmer l\'identité par une rencontre en personne',
+          title: 'Relier',
+          description: 'Rencontrer les gens en personne',
           detail: 'Chaque relation commence par une vraie rencontre. En scannant un QR code, vous confirmez : « C\'est bien cette personne. »',
         },
         {
           title: 'Coopérer',
-          description: 'Partager du contenu chiffré',
+          description: 'Planifier et agir ensemble',
           detail: 'Partagez calendriers, localisations et projets avec votre réseau. Le tout chiffré de bout en bout.',
         },
         {
-          title: 'Attester',
-          description: 'Construire la réputation par des actions réelles',
-          detail: 'Confirmez ce que les autres ont fait. Ces attestations construisent une confiance visible au fil du temps.',
+          title: 'Confirmer',
+          description: 'Reconnaître ce que les autres ont fait',
+          detail: 'Confirmez des actions réelles et de l\'aide. Ces confirmations construisent une confiance visible au fil du temps.',
         },
       ],
       note: {
-        title: 'Vérifier ≠ Faire confiance',
-        text: 'La vérification confirme uniquement : « C\'est bien cette personne. » La confiance réelle se développe par les attestations au fil du temps.',
+        title: 'Relier ≠ Faire confiance',
+        text: 'La connexion confirme uniquement : « C\'est bien cette personne. » La confiance réelle se développe par les confirmations au fil du temps.',
       },
     },
 
     // HowItWorks
     howItWorks: {
       title: 'Comment ça fonctionne',
-      subtitle: 'De la première rencontre à la première attestation – le chemin vers le réseau.',
+      subtitle: 'De la première rencontre à la première confirmation — le chemin vers le réseau.',
       step: 'Étape',
       steps: [
         {
-          title: 'Scanner le QR code',
+          title: 'Se rencontrer & se connecter',
           description: 'Anna et Ben se rencontrent. Ben scanne le QR code d\'Anna avec l\'application.',
-          detail: 'Le QR code contient la clé publique d\'Anna. L\'application de Ben crée automatiquement sa propre identité.',
+          detail: 'Le QR code contient l\'identité numérique d\'Anna. L\'application de Ben crée automatiquement la sienne.',
         },
         {
           title: 'Confirmer l\'identité',
           description: 'Ben confirme : « J\'ai rencontré Anna en personne. »',
-          detail: 'Cette vérification est signée cryptographiquement et les clés sont échangées simultanément.',
+          detail: 'Cette vérification est signée numériquement et stockée en toute sécurité.',
         },
         {
-          title: 'Voir le contenu',
+          title: 'Agir ensemble',
           description: 'Ben peut maintenant voir le contenu partagé par Anna.',
-          detail: 'Calendrier, marqueurs sur la carte, projets – tout ce qu\'Anna partage avec ses contacts devient déchiffrable pour Ben.',
+          detail: 'Calendrier, marqueurs sur la carte, projets — tout ce qu\'Anna partage avec ses contacts devient visible pour Ben.',
         },
         {
-          title: 'Créer une attestation',
-          description: 'Après avoir travaillé ensemble : Anna atteste l\'aide de Ben.',
-          detail: '« Ben a aidé 3 heures au jardin » – cette déclaration signée fait partie du profil de Ben.',
+          title: 'Donner une confirmation',
+          description: 'Après avoir travaillé ensemble : Anna confirme l\'aide de Ben.',
+          detail: '« Ben a aidé 3 heures au jardin » — cette confirmation fait partie du profil de Ben.',
         },
       ],
       result: {
         title: 'Le résultat',
-        text: 'Un réseau croissant de relations réelles. Chaque connexion repose sur une rencontre en personne. Chaque attestation sur une action réelle.',
+        text: 'Un réseau croissant de relations réelles. Chaque connexion repose sur une rencontre en personne. Chaque confirmation sur une action réelle.',
       },
     },
 

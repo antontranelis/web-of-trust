@@ -1,6 +1,5 @@
-import { ArrowDown, Users, Shield, Sparkles } from 'lucide-react'
+import { ArrowDown, Users, Shield, Heart } from 'lucide-react'
 import { Button } from '@real-life-stack/toolkit'
-import GitHubIcon from './icons/GitHubIcon'
 import { useLanguage } from '../i18n/LanguageContext'
 import { useAudience } from '../audience'
 
@@ -19,7 +18,7 @@ export default function Hero() {
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge - Audience-aware */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-8">
-            <Sparkles size={16} />
+            <Users size={16} />
             <span>{audienceHero?.tagline || t.hero.badge}</span>
           </div>
 
@@ -61,23 +60,13 @@ export default function Hero() {
                 {t.hero.demo}
               </a>
             </Button>
-            <Button asChild variant="outline" size="lg">
-              <a
-                href="https://github.com/antontranelis/web-of-trust-concept"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <GitHubIcon />
-                {t.hero.github}
-              </a>
-            </Button>
           </div>
 
           {/* Key Points */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             <div className="flex items-center justify-center gap-3 text-muted-foreground">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users size={20} className="text-primary" />
+                <Heart size={20} className="text-primary" />
               </div>
               <span className="font-medium">{t.hero.features.verification}</span>
             </div>
