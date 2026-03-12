@@ -169,6 +169,9 @@ importers:
       '@automerge/automerge-repo':
         specifier: ^2.5.3
         version: 2.5.3
+      '@automerge/automerge-repo-storage-indexeddb':
+        specifier: ^2.5.3
+        version: 2.5.3
       '@noble/ed25519':
         specifier: ^3.0.0
         version: 3.0.0

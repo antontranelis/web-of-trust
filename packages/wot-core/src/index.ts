@@ -148,3 +148,33 @@ export { IndexedDBSpaceMetadataStorage } from './adapters/storage/IndexedDBSpace
 export type { SpaceMetadataStorage, PersistedSpaceMetadata, PersistedGroupKey } from './adapters/interfaces/SpaceMetadataStorage'
 export { EncryptedMessagingNetworkAdapter } from './adapters/replication/EncryptedMessagingNetworkAdapter'
 export { InMemoryAuthorizationAdapter } from './adapters/authorization/InMemoryAuthorizationAdapter'
+
+// Personal Document (multi-device sync, space metadata, outbox)
+export {
+  initPersonalDoc,
+  getPersonalDoc,
+  isPersonalDocInitialized,
+  changePersonalDoc,
+  onPersonalDocChange,
+  flushPersonalDoc,
+  resetPersonalDoc,
+  deletePersonalDocDB,
+} from './storage/PersonalDocManager'
+export type {
+  PersonalDoc,
+  ProfileDoc,
+  ContactDoc,
+  VerificationDoc,
+  AttestationDoc,
+  AttestationMetadataDoc,
+  PublishStateDoc,
+  OutboxEntryDoc,
+  SpaceMetadataDoc,
+  GroupKeyDoc,
+  CachedGraphEntryDoc,
+  CachedGraphVerificationDoc,
+  CachedGraphAttestationDoc,
+} from './storage/PersonalDocManager'
+export { PersonalNetworkAdapter } from './adapters/replication/PersonalNetworkAdapter'
+export { AutomergeSpaceMetadataStorage } from './adapters/storage/AutomergeSpaceMetadataStorage'
+export { AutomergeOutboxStore } from './adapters/messaging/AutomergeOutboxStore'
