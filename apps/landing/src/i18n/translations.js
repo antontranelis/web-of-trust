@@ -630,7 +630,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'For Communities',
+      badge: 'An app for local connection and cooperation',
       titleStart: 'Trust through',
       titleHighlight: 'real encounters',
       subtitle: 'A digital infrastructure for real communities. Decentralized, encrypted, self-sovereign.',
@@ -1238,7 +1238,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Para comunidades',
+      badge: 'Una app para conexión y cooperación local',
       titleStart: 'Confianza a través de',
       titleHighlight: 'encuentros reales',
       subtitle: 'Una infraestructura digital para comunidades reales. Descentralizada, cifrada, autodeterminada.',
@@ -1571,7 +1571,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Para comunidades',
+      badge: 'Um app para conexão e cooperação local',
       titleStart: 'Confiança através de',
       titleHighlight: 'encontros reais',
       subtitle: 'Uma infraestrutura digital para comunidades reais. Descentralizada, criptografada, autodeterminada.',
@@ -1903,7 +1903,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'للمجتمعات',
+      badge: 'تطبيق للتواصل والتعاون المحلي',
       titleStart: 'الثقة من خلال',
       titleHighlight: 'اللقاءات الحقيقية',
       subtitle: 'بنية تحتية رقمية لمجتمعات حقيقية. لامركزية، مشفرة، ذاتية السيادة.',
@@ -2235,7 +2235,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: '为社区而生',
+      badge: '一款用于本地连接与合作的应用',
       titleStart: '通过',
       titleHighlight: '真实相遇建立信任',
       subtitle: '为真实社区打造的数字基础设施。去中心化、加密、自主自决。',
@@ -2568,7 +2568,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Для сообществ',
+      badge: 'Приложение для местных связей и сотрудничества',
       titleStart: 'Доверие через',
       titleHighlight: 'реальные встречи',
       subtitle: 'Цифровая инфраструктура для настоящих сообществ. Децентрализованная, зашифрованная, суверенная.',
@@ -2901,7 +2901,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Для спільнот',
+      badge: 'Додаток для місцевого зв\'язку та співпраці',
       titleStart: 'Довіра через',
       titleHighlight: 'реальні зустрічі',
       subtitle: 'Цифрова інфраструктура для справжніх спільнот. Децентралізована, зашифрована, суверенна.',
@@ -3233,7 +3233,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'לקהילות',
+      badge: 'אפליקציה לחיבור ושיתוף פעולה מקומי',
       titleStart: 'אמון דרך',
       titleHighlight: 'מפגשים אמיתיים',
       subtitle: 'תשתית דיגיטלית לקהילות אמיתיות. מבוזרת, מוצפנת, ריבונית.',
@@ -3566,7 +3566,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Per le comunità',
+      badge: 'Un\'app per connessione e cooperazione locale',
       titleStart: 'Fiducia attraverso',
       titleHighlight: 'incontri reali',
       subtitle: 'Un\'infrastruttura digitale per comunità reali. Decentralizzata, crittografata, autodeterminata.',
@@ -3898,7 +3898,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Topluluklar için',
+      badge: 'Yerel bağlantı ve işbirliği için bir uygulama',
       titleStart: 'Güven',
       titleHighlight: 'gerçek karşılaşmalarla',
       subtitle: 'Gerçek topluluklar için dijital bir altyapı. Merkeziyetsiz, şifreli, özerk.',
@@ -4231,7 +4231,7 @@ export const translations = {
 
     // Hero
     hero: {
-      badge: 'Pour les communautés',
+      badge: 'Une app pour la connexion et la coopération locale',
       titleStart: 'La confiance par',
       titleHighlight: 'de vraies rencontres',
       subtitle: 'Une infrastructure numérique pour de vraies communautés. Décentralisée, chiffrée, souveraine.',
