@@ -49,7 +49,7 @@ export const translations = {
         {
           title: 'Kooperieren',
           description: 'Gemeinsam planen und handeln',
-          detail: 'Teile Kalender, Orte und Projekte mit deinem Netzwerk. Alles Ende-zu-Ende verschlüsselt.',
+          detail: 'Nutzt gemeinsam Werkzeuge wie Kalender, Karte, Aufgaben und Marktplatz — alles Ende-zu-Ende verschlüsselt.',
         },
         {
           title: 'Bestätigen',
@@ -667,7 +667,7 @@ export const translations = {
         {
           title: 'Cooperate',
           description: 'Plan and act together',
-          detail: 'Share calendars, locations and projects with your network. Everything end-to-end encrypted.',
+          detail: 'Use tools like calendar, map, tasks and marketplace together — all end-to-end encrypted.',
         },
         {
           title: 'Confirm',
@@ -1275,7 +1275,7 @@ export const translations = {
         {
           title: 'Cooperar',
           description: 'Planificar y actuar juntos',
-          detail: 'Comparte calendarios, ubicaciones y proyectos con tu red. Todo cifrado de extremo a extremo.',
+          detail: 'Usad juntos herramientas como calendario, mapa, tareas y mercado — todo cifrado de extremo a extremo.',
         },
         {
           title: 'Confirmar',
@@ -1608,7 +1608,7 @@ export const translations = {
         {
           title: 'Cooperar',
           description: 'Planejar e agir juntos',
-          detail: 'Compartilhe calendários, localizações e projetos com sua rede. Tudo criptografado ponta a ponta.',
+          detail: 'Usem juntos ferramentas como calendário, mapa, tarefas e mercado — tudo criptografado ponta a ponta.',
         },
         {
           title: 'Confirmar',
@@ -1940,7 +1940,7 @@ export const translations = {
         {
           title: 'التعاون',
           description: 'التخطيط والعمل معاً',
-          detail: 'شارك التقويمات والمواقع والمشاريع مع شبكتك. كل شيء مشفر من طرف إلى طرف.',
+          detail: 'استخدموا معاً أدوات مثل التقويم والخريطة والمهام والسوق — كل شيء مشفر من طرف إلى طرف.',
         },
         {
           title: 'التأكيد',
@@ -2272,7 +2272,7 @@ export const translations = {
         {
           title: '协作',
           description: '共同规划和行动',
-          detail: '与你的网络共享日历、位置和项目。全部端到端加密。',
+          detail: '共同使用日历、地图、任务和市场等工具——全部端到端加密。',
         },
         {
           title: '确认',
@@ -2605,7 +2605,7 @@ export const translations = {
         {
           title: 'Сотрудничать',
           description: 'Планировать и действовать вместе',
-          detail: 'Делитесь календарями, местоположениями и проектами с вашей сетью. Всё зашифровано сквозным шифрованием.',
+          detail: 'Используйте вместе инструменты: календарь, карту, задачи и маркетплейс — всё со сквозным шифрованием.',
         },
         {
           title: 'Подтвердить',
@@ -2938,7 +2938,7 @@ export const translations = {
         {
           title: 'Співпрацювати',
           description: 'Планувати і діяти разом',
-          detail: 'Діліться календарями, місцями та проєктами зі своєю мережею. Все зашифровано наскрізним шифруванням.',
+          detail: 'Використовуйте разом інструменти: календар, карту, завдання та маркетплейс — все з наскрізним шифруванням.',
         },
         {
           title: 'Підтвердити',
@@ -3270,7 +3270,7 @@ export const translations = {
         {
           title: 'לשתף פעולה',
           description: 'לתכנן ולפעול יחד',
-          detail: 'שתף לוחות שנה, מיקומים ופרויקטים עם הרשת שלך. הכל מוצפן מקצה לקצה.',
+          detail: 'השתמשו יחד בכלים כמו לוח שנה, מפה, משימות ושוק — הכל מוצפן מקצה לקצה.',
         },
         {
           title: 'לאשר',
@@ -3603,7 +3603,7 @@ export const translations = {
         {
           title: 'Cooperare',
           description: 'Pianificare e agire insieme',
-          detail: 'Condividi calendari, posizioni e progetti con la tua rete. Tutto crittografato end-to-end.',
+          detail: 'Usate insieme strumenti come calendario, mappa, attività e mercato — tutto crittografato end-to-end.',
         },
         {
           title: 'Confermare',
@@ -3935,7 +3935,7 @@ export const translations = {
         {
           title: 'İşbirliği yap',
           description: 'Birlikte planla ve harekete geç',
-          detail: 'Takvimler, konumlar ve projeleri ağınla paylaş. Her şey uçtan uca şifreli.',
+          detail: 'Takvim, harita, görevler ve pazar yeri gibi araçları birlikte kullanın — hepsi uçtan uca şifreli.',
         },
         {
           title: 'Onayla',
@@ -4268,7 +4268,7 @@ export const translations = {
         {
           title: 'Coopérer',
           description: 'Planifier et agir ensemble',
-          detail: 'Partagez calendriers, localisations et projets avec votre réseau. Le tout chiffré de bout en bout.',
+          detail: 'Utilisez ensemble des outils comme le calendrier, la carte, les tâches et le marché — le tout chiffré de bout en bout.',
         },
         {
           title: 'Confirmer',
