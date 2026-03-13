@@ -54,9 +54,9 @@ export default function Hero() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Button asChild size="lg">
-              <Link to="/demo">
+              <a href="/demo/">
                 {t.hero.demo}
-              </Link>
+              </a>
             </Button>
             <Button asChild size="lg" variant="outline">
               <Link to="/architecture">
