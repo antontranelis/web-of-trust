@@ -72,6 +72,7 @@ export interface SpaceMetadataDoc {
     type: string
     name: string | null
     description: string | null
+    appTag?: string
     members: string[]
     createdAt: string
   }

@@ -30,6 +30,7 @@ export class AutomergeSpaceMetadataStorage implements SpaceMetadataStorage {
           description: meta.info.description ?? null,
           members: [...meta.info.members],
           createdAt: meta.info.createdAt,
+          appTag: meta.info.appTag ?? undefined,
         },
         documentId: meta.documentId,
         documentUrl: meta.documentUrl,
@@ -102,7 +103,7 @@ export class AutomergeSpaceMetadataStorage implements SpaceMetadataStorage {
   }
 
   private deserialize(stored: {
-    info: { id: string; type: string; name: string | null; description: string | null; members: string[]; createdAt: string }
+    info: { id: string; type: string; name: string | null; description: string | null; appTag?: string; members: string[]; createdAt: string }
     documentId: string
     documentUrl: string
     memberEncryptionKeys: Record<string, number[]>
@@ -113,6 +114,7 @@ export class AutomergeSpaceMetadataStorage implements SpaceMetadataStorage {
         type: stored.info.type as 'personal' | 'shared',
         ...(stored.info.name != null ? { name: stored.info.name } : {}),
         ...(stored.info.description != null ? { description: stored.info.description } : {}),
+        ...(stored.info.appTag != null ? { appTag: stored.info.appTag } : {}),
         members: [...stored.info.members],
         createdAt: stored.info.createdAt,
       },

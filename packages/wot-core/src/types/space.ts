@@ -5,6 +5,8 @@ export interface SpaceInfo {
   type: 'personal' | 'shared'
   name?: string
   description?: string
+  /** App identifier for cross-app space isolation (e.g. 'rls', 'wot-demo') */
+  appTag?: string
   members: string[] // DIDs
   createdAt: string
 }

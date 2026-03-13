@@ -34,6 +34,8 @@ export interface AutomergeReplicationAdapterConfig {
   repoStorage?: StorageAdapterInterface
   /** Optional: vault URL for persistent encrypted doc storage */
   vaultUrl?: string
+  /** Optional: only restore spaces matching this filter (e.g. by appTag) */
+  spaceFilter?: (info: SpaceInfo) => boolean
 }
 
 class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
@@ -117,6 +119,8 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
   private vaultSeqs = new Map<string, number>()
   /** Change listeners for vault sync on open spaces */
   private vaultChangeListeners = new Map<string, () => void>()
+  /** Optional filter to restrict which spaces are restored (e.g. by appTag) */
+  private spaceFilter: ((info: SpaceInfo) => boolean) | null
 
   private repo!: Repo
   private networkAdapter!: EncryptedMessagingNetworkAdapter
@@ -127,6 +131,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     this.groupKeyService = config.groupKeyService
     this.metadataStorage = config.metadataStorage ?? null
     this.repoStorage = config.repoStorage
+    this.spaceFilter = config.spaceFilter ?? null
     if (config.vaultUrl) {
       this.vault = new VaultClient(config.vaultUrl, config.identity)
     }
@@ -181,6 +186,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     for (const meta of persisted) {
       // Skip spaces we already know about
       if (this.spaces.has(meta.info.id)) continue
+
+      // Skip spaces that don't match the filter (cross-app isolation)
+      if (this.spaceFilter && !this.spaceFilter(meta.info as SpaceInfo)) continue
 
       const memberKeys = new Map<string, Uint8Array>()
       for (const [did, key] of Object.entries(meta.memberEncryptionKeys)) {
@@ -263,7 +271,10 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     if (!this.vault) return false
 
     const groupKey = this.groupKeyService.getCurrentKey(spaceState.info.id)
-    if (!groupKey) return false
+    if (!groupKey) {
+      console.warn('[ReplicationAdapter] No group key for vault restore:', spaceState.info.name || spaceState.info.id)
+      return false
+    }
 
     try {
       const vaultData = await this.vault.getChanges(spaceState.info.id)
@@ -353,7 +364,12 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         return true
       }
     } catch (err) {
-      console.debug('[ReplicationAdapter] Vault restore failed:', err)
+      const spaceName = spaceState.info.name || spaceState.info.id
+      if (err instanceof DOMException && err.name === 'OperationError') {
+        console.warn(`[ReplicationAdapter] Vault decryption failed for "${spaceName}" — likely removed from space or key rotated`)
+      } else {
+        console.warn('[ReplicationAdapter] Vault restore failed for', spaceName, ':', err)
+      }
     }
 
     return false
@@ -460,7 +476,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     return this.state
   }
 
-  async createSpace<T>(type: 'personal' | 'shared', initialDoc: T, meta?: { name?: string; description?: string }): Promise<SpaceInfo> {
+  async createSpace<T>(type: 'personal' | 'shared', initialDoc: T, meta?: { name?: string; description?: string; appTag?: string }): Promise<SpaceInfo> {
     const spaceId = crypto.randomUUID()
 
     // Create doc in automerge-repo
@@ -482,6 +498,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       type,
       name: meta?.name,
       description: meta?.description,
+      appTag: meta?.appTag,
       members: [this.identity.getDid()],
       createdAt: new Date().toISOString(),
     }
@@ -619,6 +636,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       spaceId,
       spaceType: space.info.type,
       spaceName: space.info.name,
+      appTag: space.info.appTag,
       members: space.info.members,
       createdAt: space.info.createdAt,
       generation,
@@ -884,6 +902,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       id: payload.spaceId,
       type: payload.spaceType,
       name: payload.spaceName,
+      appTag: payload.appTag,
       members,
       createdAt: payload.createdAt,
     }
