@@ -98,8 +98,8 @@ export function SpaceDetail() {
     setSpace(s)
   }
 
-  if (loading) return <div className="text-stone-500">{t.common.loading}</div>
-  if (!space) return <div className="text-stone-500">{t.spaces.notFound}</div>
+  if (loading) return <div className="text-muted-foreground">{t.common.loading}</div>
+  if (!space) return <div className="text-muted-foreground">{t.spaces.notFound}</div>
 
   const isCreator = space.members[0] === did
   const invitableContacts = activeContacts.filter(c => !space.members.includes(c.did))
@@ -159,10 +159,10 @@ export function SpaceDetail() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/spaces')} className="p-2 hover:bg-stone-100 rounded-lg transition-colors" aria-label={t.aria.goBack}>
+          <button onClick={() => navigate('/spaces')} className="p-2 hover:bg-muted rounded-lg transition-colors" aria-label={t.aria.goBack}>
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl font-bold text-stone-900">{space.name || t.spaces.unnamed}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{space.name || t.spaces.unnamed}</h1>
           <Tooltip content={t.spaces.encryptedBadge}>
             <ShieldCheck size={16} className="text-primary-500" />
           </Tooltip>
@@ -171,20 +171,20 @@ export function SpaceDetail() {
 
       {/* Shared Notes */}
       <div>
-        <h2 className="text-lg font-semibold text-stone-900 mb-2">{t.spaces.notesHeading}</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-2">{t.spaces.notesHeading}</h2>
         <textarea
           ref={textareaRef}
           value={notes}
           onChange={handleNotesChange}
           placeholder={t.spaces.notesPlaceholder}
-          className="w-full min-h-[200px] p-4 bg-white border border-stone-200 rounded-xl text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+          className="w-full min-h-[200px] p-4 bg-card border border-border rounded-xl text-sm text-foreground placeholder-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
         />
       </div>
 
       {/* Members */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-stone-900">
+          <h2 className="text-lg font-semibold text-foreground">
             {fmt(t.spaces.membersHeading, { count: String(space.members.length) })}
           </h2>
           {isCreator && invitableContacts.length > 0 && (
@@ -198,21 +198,21 @@ export function SpaceDetail() {
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600 mb-3 whitespace-pre-line">{error}</p>}
+        {error && <p className="text-sm text-destructive mb-3 whitespace-pre-line">{error}</p>}
 
         <div className="space-y-2">
           {space.members.map(memberDid => {
             const member = getMemberInfo(memberDid)
             return (
-            <div key={memberDid} className="flex items-center justify-between bg-white border border-stone-200 rounded-xl px-4 py-3">
+            <div key={memberDid} className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
               <div className="flex items-center gap-3 min-w-0">
                 <Avatar name={member.name} avatar={member.avatar} size="xs" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-stone-900">{member.name}</p>
-                    {member.isSelf && <span className="text-xs text-stone-400">{t.publicProfile.youSuffix}</span>}
+                    <p className="font-medium text-foreground">{member.name}</p>
+                    {member.isSelf && <span className="text-xs text-muted-foreground/70">{t.publicProfile.youSuffix}</span>}
                   </div>
-                  <p className="text-xs text-stone-400 font-mono truncate max-w-[200px]">{memberDid}</p>
+                  <p className="text-xs text-muted-foreground/70 font-mono truncate max-w-[200px]">{memberDid}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -220,7 +220,7 @@ export function SpaceDetail() {
                 {isCreator && memberDid !== did && (
                   <button
                     onClick={() => handleRemove(memberDid)}
-                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                     aria-label={t.aria.removeMember}
                   >
                     <UserMinus size={16} />
@@ -236,11 +236,11 @@ export function SpaceDetail() {
       {/* Invite Dialog */}
       {showInviteDialog && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="invite-dialog-title" onClick={() => !inviting && setShowInviteDialog(false)}>
-          <div className="bg-stone-50 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-background w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
-              <h3 id="invite-dialog-title" className="text-lg font-semibold text-stone-900">{t.spaces.inviteDialogTitle}</h3>
-              <button onClick={() => !inviting && setShowInviteDialog(false)} className="p-2 text-stone-400 hover:text-stone-600 rounded-lg transition-colors" aria-label={t.aria.closeDialog}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 id="invite-dialog-title" className="text-lg font-semibold text-foreground">{t.spaces.inviteDialogTitle}</h3>
+              <button onClick={() => !inviting && setShowInviteDialog(false)} className="p-2 text-muted-foreground/70 hover:text-muted-foreground rounded-lg transition-colors" aria-label={t.aria.closeDialog}>
                 <X size={20} />
               </button>
             </div>
@@ -248,7 +248,7 @@ export function SpaceDetail() {
             {/* Contact list */}
             <div className="flex-1 overflow-y-auto px-5 py-3">
               {invitableContacts.length === 0 ? (
-                <p className="text-sm text-stone-500 py-4 text-center">{t.spaces.noContactsToInvite}</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">{t.spaces.noContactsToInvite}</p>
               ) : (
                 <div className="space-y-1">
                   {invitableContacts.map(contact => {
@@ -259,15 +259,15 @@ export function SpaceDetail() {
                         onClick={() => toggleSelected(contact.did)}
                         disabled={inviting}
                         className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
-                          selected ? 'bg-primary-50 ring-1 ring-primary-200' : 'hover:bg-stone-50'
+                          selected ? 'bg-primary-50 ring-1 ring-primary-200' : 'hover:bg-muted'
                         } disabled:opacity-50`}
                       >
                         <Avatar name={contact.name} avatar={contact.avatar} size="xs" />
-                        <span className="font-medium text-stone-900 truncate flex-1 text-left">
+                        <span className="font-medium text-foreground truncate flex-1 text-left">
                           {contact.name || contact.did.slice(-12)}
                         </span>
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                          selected ? 'bg-primary-600 border-primary-600' : 'border-stone-300'
+                          selected ? 'bg-primary-600 border-primary-600' : 'border-border'
                         }`}>
                           {selected && <Check size={14} className="text-white" />}
                         </div>
@@ -280,7 +280,7 @@ export function SpaceDetail() {
 
             {/* Footer */}
             {invitableContacts.length > 0 && (
-              <div className="px-5 py-4 border-t border-stone-200">
+              <div className="px-5 py-4 border-t border-border">
                 <button
                   onClick={handleInviteSelected}
                   disabled={selectedDids.size === 0 || inviting}
@@ -304,7 +304,7 @@ export function SpaceDetail() {
         </div>
       )}
 
-      <div className="text-xs text-stone-400 space-y-1">
+      <div className="text-xs text-muted-foreground/70 space-y-1">
         <p>{t.spaces.createdAt}: {new Date(space.createdAt).toLocaleDateString()}</p>
         <p>ID: {space.id.slice(0, 8)}...</p>
       </div>

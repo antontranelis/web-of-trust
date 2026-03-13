@@ -158,7 +158,7 @@ export function Identity() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-stone-900">{t.identity.title}</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t.identity.title}</h1>
         {!isEditingProfile && (
           <button
             onClick={() => setIsEditingProfile(true)}
@@ -172,7 +172,7 @@ export function Identity() {
 
       <div className="space-y-4">
         {/* Profile Card */}
-        <div className="bg-white border border-stone-200 rounded-lg p-6">
+        <div className="bg-card border border-border rounded-lg p-6">
           {isEditingProfile ? (
             <div>
               {/* Header: Avatar + Name/Bio fields */}
@@ -184,7 +184,7 @@ export function Identity() {
                 />
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-stone-500 mb-1">{t.identity.nameLabel}</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t.identity.nameLabel}</label>
                     <input
                       type="text"
                       value={profileName}
@@ -192,17 +192,17 @@ export function Identity() {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setIsEditingProfile(false)
                       }}
-                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                       placeholder={t.identity.namePlaceholder}
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-stone-500 mb-1">{t.identity.aboutLabel}</label>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">{t.identity.aboutLabel}</label>
                     <textarea
                       value={profileBio}
                       onChange={(e) => setProfileBio(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                       rows={2}
                       placeholder={t.identity.aboutPlaceholder}
                     />
@@ -211,9 +211,9 @@ export function Identity() {
               </div>
 
               {/* Offers & Needs fields */}
-              <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-3">
+              <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 mb-1.5">Angebote</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Angebote</label>
                   <TagInput
                     tags={profileOffers}
                     onChange={setProfileOffers}
@@ -222,7 +222,7 @@ export function Identity() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 mb-1.5">Bedürfnisse</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Bedürfnisse</label>
                   <TagInput
                     tags={profileNeeds}
                     onChange={setProfileNeeds}
@@ -233,7 +233,7 @@ export function Identity() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-stone-100">
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
                 <button
                   onClick={handleSaveProfile}
                   className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
@@ -242,7 +242,7 @@ export function Identity() {
                 </button>
                 <button
                   onClick={() => setIsEditingProfile(false)}
-                  className="px-4 py-2 text-stone-500 text-sm hover:text-stone-700 transition-colors"
+                  className="px-4 py-2 text-muted-foreground text-sm hover:text-foreground transition-colors"
                 >
                   {t.common.cancel}
                 </button>
@@ -255,29 +255,29 @@ export function Identity() {
                 <Avatar name={profileName} avatar={profileAvatar} size="lg" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-lg font-semibold text-stone-900 truncate">
-                      {profileName || <span className="text-stone-400 italic font-normal">{t.identity.noNameSet}</span>}
+                    <h3 className="text-lg font-semibold text-foreground truncate">
+                      {profileName || <span className="text-muted-foreground/70 italic font-normal">{t.identity.noNameSet}</span>}
                     </h3>
                     <Tooltip content={t.identity.securityInfo}>
-                      <ShieldCheck size={16} className="text-green-500" />
+                      <ShieldCheck size={16} className="text-success" />
                     </Tooltip>
-                    {profileSaved && <Check size={16} className="text-green-500 flex-shrink-0" />}
+                    {profileSaved && <Check size={16} className="text-success flex-shrink-0" />}
                     <button
                       onClick={handleShareProfile}
-                      className="p-2 text-stone-400 hover:text-primary-600 hover:bg-stone-100 rounded-lg transition-colors ml-auto flex-shrink-0"
+                      className="p-2 text-muted-foreground/70 hover:text-primary-600 hover:bg-muted rounded-lg transition-colors ml-auto flex-shrink-0"
                       aria-label={t.aria.shareProfile}
                     >
-                      {shared ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
+                      {shared ? <Check size={15} className="text-success" /> : <Share2 size={15} />}
                     </button>
                   </div>
                   {profileBio && (
-                    <p className="text-sm text-stone-600 leading-relaxed">{profileBio}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{profileBio}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-stone-400 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{did}</p>
+                    <p className="text-xs text-muted-foreground/70 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{did}</p>
                     <button
                       onClick={handleCopyDid}
-                      className="text-stone-400 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
+                      className="text-muted-foreground/70 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
                       aria-label={t.aria.copyDid}
                     >
                       {copiedDid ? <Check size={12} /> : <Copy size={12} />}
@@ -288,20 +288,20 @@ export function Identity() {
 
               {/* Offers & Needs */}
               {(profileOffers.length > 0 || profileNeeds.length > 0) && (
-                <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-3">
+                <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-3">
                   {profileOffers.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-stone-500 mb-1.5">Angebote</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Angebote</p>
                       <div className="flex flex-wrap gap-1.5">
                         {profileOffers.map((tag) => (
-                          <span key={tag} className="inline-block px-2.5 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">{tag}</span>
+                          <span key={tag} className="inline-block px-2.5 py-1 bg-success/10 text-success text-xs rounded-full border border-success/30">{tag}</span>
                         ))}
                       </div>
                     </div>
                   )}
                   {profileNeeds.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-stone-500 mb-1.5">Bedürfnisse</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Bedürfnisse</p>
                       <div className="flex flex-wrap gap-1.5">
                         {profileNeeds.map((tag) => (
                           <span key={tag} className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">{tag}</span>
@@ -317,10 +317,10 @@ export function Identity() {
 
         {/* Verifications */}
         {verifications.length > 0 && (
-          <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
               <Users size={16} className="text-primary-600" />
-              <h3 className="text-sm font-medium text-stone-900">
+              <h3 className="text-sm font-medium text-foreground">
                 {fmt(t.identity.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
               </h3>
             </div>
@@ -334,11 +334,11 @@ export function Identity() {
                   <div key={v.id} className="flex items-center justify-between text-sm">
                     <Link
                       to={`/p/${encodeURIComponent(v.from)}`}
-                      className="text-stone-700 hover:text-primary-600 transition-colors"
+                      className="text-foreground/80 hover:text-primary-600 transition-colors"
                     >
                       {name || <span className="font-mono text-xs">{shortDid}</span>}
                     </Link>
-                    <span className="text-xs text-stone-400">
+                    <span className="text-xs text-muted-foreground/70">
                       {formatDate(new Date(v.timestamp))}
                     </span>
                   </div>
@@ -350,14 +350,14 @@ export function Identity() {
 
         {/* Received Attestations */}
         {receivedAttestations.length > 0 && (
-          <div className="bg-white border border-stone-200 rounded-lg p-4">
+          <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
               <Award size={16} className="text-amber-600" />
-              <h3 className="text-sm font-medium text-stone-900">
+              <h3 className="text-sm font-medium text-foreground">
                 {fmt(t.identity.attestationsAboutMe, { count: receivedAttestations.length, attestationLabel: plural(receivedAttestations.length, t.common.attestationOne, t.common.attestationMany) })}
               </h3>
             </div>
-            <p className="text-xs text-stone-400 mb-3 ml-6">
+            <p className="text-xs text-muted-foreground/70 mb-3 ml-6">
               {t.identity.publishedAttestationsHint}
             </p>
             <div className="space-y-2">
@@ -368,10 +368,10 @@ export function Identity() {
                   : a.from
                 const isPublic = acceptedMap[a.id] ?? false
                 return (
-                  <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-green-300' : 'border-amber-200'}`}>
+                  <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-success/30' : 'border-amber-200'}`}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-stone-700">&ldquo;{a.claim}&rdquo;</p>
-                      <p className="text-xs text-stone-400 mt-0.5">
+                      <p className="text-sm text-foreground/80">&ldquo;{a.claim}&rdquo;</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">
                         {t.common.from}{' '}
                         <Link
                           to={`/p/${encodeURIComponent(a.from)}`}
@@ -386,8 +386,8 @@ export function Identity() {
                       onClick={() => handleToggleAttestation(a.id, !isPublic)}
                       className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
                         isPublic
-                          ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                          : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+                          ? 'text-success hover:text-success hover:bg-success/10'
+                          : 'text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted'
                       }`}
                       title={isPublic ? t.identity.attestationPublicTitle : t.identity.attestationPrivateTitle}
                     >
@@ -401,37 +401,37 @@ export function Identity() {
         )}
 
         {/* Details (collapsible) — DID + Maintenance + Danger Zone */}
-        <div className="bg-white border border-stone-200 rounded-lg">
+        <div className="bg-card border border-border rounded-lg">
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between p-4 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors rounded-lg"
+            className="w-full flex items-center justify-between p-4 text-sm font-medium text-foreground/80 hover:bg-muted transition-colors rounded-lg"
           >
             <span>{t.identity.detailsAndMaintenance}</span>
             {showDetails ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
           {showDetails && (
-            <div className="px-4 pb-4 space-y-5 border-t border-stone-100 pt-4">
+            <div className="px-4 pb-4 space-y-5 border-t border-border pt-4">
               {/* Delete Identity */}
               <div className="space-y-2">
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-destructive">
                   {t.identity.deleteWarning}
                 </p>
 
                 {!showDeleteConfirm ? (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 bg-destructive text-white text-sm rounded-lg hover:bg-destructive/90 transition-colors"
                   >
                     <Trash2 size={16} />
                     <span>{t.identity.deleteButton}</span>
                   </button>
                 ) : (
                   <div className="space-y-3">
-                    <div className="p-3 bg-red-100 border border-red-300 rounded-lg">
-                      <p className="text-sm text-red-900 font-medium">
+                    <div className="p-3 bg-destructive/15 border border-destructive/40 rounded-lg">
+                      <p className="text-sm text-destructive font-medium">
                         {t.identity.deleteConfirmTitle}
                       </p>
-                      <p className="text-sm text-red-800 mt-1">
+                      <p className="text-sm text-destructive mt-1">
                         {t.identity.deleteConfirmHint}
                       </p>
                     </div>
@@ -439,7 +439,7 @@ export function Identity() {
                       <button
                         onClick={handleDeleteIdentity}
                         disabled={isDeleting}
-                        className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center space-x-2 px-4 py-2 bg-destructive text-white text-sm rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isDeleting ? (
                           <><div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /><span>{t.identity.deleting}</span></>
@@ -450,7 +450,7 @@ export function Identity() {
                       <button
                         onClick={() => setShowDeleteConfirm(false)}
                         disabled={isDeleting}
-                        className="px-4 py-2 bg-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-muted text-foreground/80 text-sm rounded-lg hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {t.common.cancel}
                       </button>
@@ -466,7 +466,7 @@ export function Identity() {
       {/* Share toast */}
       {shared && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-toast-in">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-stone-800 text-white text-sm rounded-lg shadow-lg">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-foreground text-white text-sm rounded-lg shadow-lg">
             <LinkIcon size={14} />
             <span>Link kopiert</span>
           </div>

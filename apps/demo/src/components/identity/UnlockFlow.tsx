@@ -60,17 +60,17 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="w-8 h-8 text-primary-600" />
           </div>
-          <h1 className="text-3xl font-bold text-stone-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             {t.unlock.title}
           </h1>
-          <p className="text-stone-600">
+          <p className="text-muted-foreground">
             {t.unlock.subtitle}
           </p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-sm font-medium text-foreground/80 mb-1">
               {t.unlock.passwordLabel}
             </label>
             <div className="relative">
@@ -79,14 +79,14 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-4 py-3 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder={t.unlock.passwordPlaceholder}
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => setShowPassphrase(!showPassphrase)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
               >
                 {showPassphrase ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -94,7 +94,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
               {error}
             </div>
           )}

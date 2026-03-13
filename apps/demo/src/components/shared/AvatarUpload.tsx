@@ -86,7 +86,7 @@ export function AvatarUpload({ name, avatar, onAvatarChange }: AvatarUploadProps
           <button
             type="button"
             onClick={() => onAvatarChange(undefined)}
-            className="absolute -top-1 -right-1 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+            className="absolute -top-1 -right-1 w-7 h-7 bg-destructive text-white rounded-full flex items-center justify-center hover:bg-destructive transition-colors"
             aria-label={t.avatarUpload.removeImage}
           >
             <X size={14} />

@@ -449,10 +449,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
           <div className="text-4xl">&#9888;&#65039;</div>
-          <h2 className="text-xl font-semibold text-stone-800">
+          <h2 className="text-xl font-semibold text-foreground">
             {isStorageBlocked ? 'Speicherzugriff blockiert' : 'Initialisierung fehlgeschlagen'}
           </h2>
-          <p className="text-stone-600">
+          <p className="text-muted-foreground">
             {isStorageBlocked
               ? 'Die App benötigt Zugriff auf den lokalen Speicher, um deine Identität und Daten sicher auf deinem Gerät zu speichern. Bitte erlaube den Zugriff in den Browser-Einstellungen und lade die Seite neu.'
               : `Fehler: ${initError}`
@@ -473,7 +473,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-        <div className="text-sm text-stone-500">Initialisiere...</div>
+        <div className="text-sm text-muted-foreground">Initialisiere...</div>
       </div>
     )
   }

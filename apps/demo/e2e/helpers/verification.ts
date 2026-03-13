@@ -86,7 +86,7 @@ export async function performMutualVerification(
   await confirmVerificationInFlow(bobPage)
 
   // Bob sees success
-  await bobPage.getByText('Verifizierung erfolgreich!').waitFor({ timeout: 10_000 })
+  await bobPage.getByText('Verbindung erfolgreich!').waitFor({ timeout: 10_000 })
 
   // Alice gets the incoming verification dialog and confirms
   await confirmIncomingVerification(alicePage)

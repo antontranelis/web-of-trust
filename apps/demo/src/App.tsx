@@ -222,10 +222,10 @@ function MutualVerificationDialog() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="mutual-dialog-title">
-      <div className="bg-stone-50 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
+      <div className="bg-background rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
         <button
           onClick={dismissMutualDialog}
-          className="absolute top-3 right-3 p-2 text-stone-400 hover:text-stone-600 transition-colors"
+          className="absolute top-3 right-3 p-2 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
           aria-label={t.aria.closeDialog}
         >
           <X size={20} />
@@ -243,7 +243,7 @@ function MutualVerificationDialog() {
               size="lg"
             />
           </div>
-          <h3 id="mutual-dialog-title" className="text-lg font-bold text-stone-900 text-center">
+          <h3 id="mutual-dialog-title" className="text-lg font-bold text-foreground text-center">
             {fmt(t.app.mutualFriendsTitle, { name: peerName })}
           </h3>
         </div>
@@ -263,7 +263,7 @@ function MutualVerificationDialog() {
               dismissMutualDialog()
               navigate(`/p/${encodeURIComponent(mutualPeer.did)}`)
             }}
-            className="flex-1 px-4 py-3 border-2 border-stone-200 text-stone-700 font-medium rounded-xl hover:bg-stone-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-border text-foreground/80 font-medium rounded-xl hover:bg-background transition-colors"
           >
             {t.app.viewProfile}
           </button>
@@ -292,22 +292,22 @@ function IncomingAttestationDialog() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="attestation-dialog-title">
-      <div className="bg-stone-50 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
+      <div className="bg-background rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
         <button
           onClick={dismissAttestationDialog}
-          className="absolute top-3 right-3 p-2 text-stone-400 hover:text-stone-600 transition-colors"
+          className="absolute top-3 right-3 p-2 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
           aria-label={t.aria.closeDialog}
         >
           <X size={20} />
         </button>
-        <h3 id="attestation-dialog-title" className="text-lg font-bold text-stone-900">
+        <h3 id="attestation-dialog-title" className="text-lg font-bold text-foreground">
           {fmt(t.app.newAttestationFrom, { name: incomingAttestation.senderName })}
         </h3>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
             <Award className="w-6 h-6 text-amber-600" />
           </div>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-muted-foreground">
             &ldquo;{incomingAttestation.claim}&rdquo;
           </p>
         </div>
@@ -315,7 +315,7 @@ function IncomingAttestationDialog() {
         <div className="flex gap-3">
           <button
             onClick={dismissAttestationDialog}
-            className="flex-1 px-4 py-3 border-2 border-stone-200 text-stone-700 font-medium rounded-xl hover:bg-stone-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-border text-foreground/80 font-medium rounded-xl hover:bg-background transition-colors"
           >
             {t.common.close}
           </button>
@@ -381,22 +381,22 @@ function IncomingSpaceInviteDialog() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="space-invite-dialog-title">
-      <div className="bg-stone-50 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
+      <div className="bg-background rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4 animate-toast-in relative">
         <button
           onClick={dismissSpaceInviteDialog}
-          className="absolute top-3 right-3 p-2 text-stone-400 hover:text-stone-600 transition-colors"
+          className="absolute top-3 right-3 p-2 text-muted-foreground/70 hover:text-muted-foreground transition-colors"
           aria-label={t.aria.closeDialog}
         >
           <X size={20} />
         </button>
-        <h3 id="space-invite-dialog-title" className="text-lg font-bold text-stone-900">
+        <h3 id="space-invite-dialog-title" className="text-lg font-bold text-foreground">
           {t.app.spaceInviteTitle}
         </h3>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
             <Users className="w-6 h-6 text-primary-600" />
           </div>
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-muted-foreground">
             {fmt(t.app.spaceInviteMessage, { name: incomingSpaceInvite.inviterName, spaceName: incomingSpaceInvite.spaceName })}
           </p>
         </div>
@@ -404,7 +404,7 @@ function IncomingSpaceInviteDialog() {
         <div className="flex gap-3">
           <button
             onClick={dismissSpaceInviteDialog}
-            className="flex-1 px-4 py-3 border-2 border-stone-200 text-stone-700 font-medium rounded-xl hover:bg-stone-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-border text-foreground/80 font-medium rounded-xl hover:bg-background transition-colors"
           >
             {t.common.close}
           </button>
@@ -474,39 +474,39 @@ function IncomingVerificationDialog() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="verification-dialog-title">
-      <div className="bg-stone-50 rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
-        <h3 id="verification-dialog-title" className="text-lg font-bold text-stone-900 text-center">
+      <div className="bg-background rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+        <h3 id="verification-dialog-title" className="text-lg font-bold text-foreground text-center">
           {t.verification.confirmQuestion}
         </h3>
 
         <div className="flex flex-col items-center gap-3 py-2">
           <Avatar name={profile?.name} avatar={profile?.avatar} size="lg" />
           <div className="text-center">
-            <p className="text-xl font-semibold text-stone-900">{name}</p>
+            <p className="text-xl font-semibold text-foreground">{name}</p>
             {profile?.bio && (
-              <p className="text-sm text-stone-500 mt-1">{profile.bio}</p>
+              <p className="text-sm text-muted-foreground mt-1">{profile.bio}</p>
             )}
-            <p className="text-xs text-stone-400 font-mono mt-1 max-w-[280px] truncate">
+            <p className="text-xs text-muted-foreground/70 font-mono mt-1 max-w-[280px] truncate">
               {incomingDid}
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-stone-600 text-center">
+        <p className="text-sm text-muted-foreground text-center">
           {t.verification.confirmHint}
         </p>
 
         <div className="flex gap-3 pt-2">
           <button
             onClick={rejectIncoming}
-            className="flex-1 px-4 py-3 border-2 border-red-200 text-red-600 font-medium rounded-xl hover:bg-red-50 transition-colors"
+            className="flex-1 px-4 py-3 border-2 border-destructive/30 text-destructive font-medium rounded-xl hover:bg-destructive/10 transition-colors"
           >
             {t.app.reject}
           </button>
           <button
             onClick={handleConfirm}
             disabled={confirming}
-            className="flex-1 px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-3 bg-success text-white font-medium rounded-xl hover:bg-success/80 transition-colors disabled:opacity-50"
           >
             {confirming ? t.app.sending : t.common.confirm}
           </button>
@@ -529,7 +529,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-stone-600">{t.common.loading}</p>
+          <p className="text-muted-foreground">{t.common.loading}</p>
         </div>
       </div>
     )
@@ -572,7 +572,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
  */
 function PublicProfileStandalone() {
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <PublicProfile />
       </div>

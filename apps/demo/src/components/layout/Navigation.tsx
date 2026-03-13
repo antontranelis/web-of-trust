@@ -38,7 +38,7 @@ export function Navigation() {
         <QrCode size={24} />
       </button>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 md:relative md:border-t-0 md:border-r md:h-screen md:w-64">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border md:relative md:border-t-0 md:border-r md:h-screen md:w-64">
         {/* Desktop: show all items in sidebar */}
         <ul className="hidden md:flex md:flex-col md:p-4 md:gap-2">
           {sidebarItems.map(({ to, icon: Icon, label }) => (
@@ -49,7 +49,7 @@ export function Navigation() {
                   `flex flex-row items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? 'text-primary-600 bg-primary-50'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`
                 }
               >
@@ -71,7 +71,7 @@ export function Navigation() {
                   `flex flex-col items-center gap-1 py-3 transition-colors ${
                     isActive
                       ? 'text-primary-600'
-                      : 'text-stone-600'
+                      : 'text-muted-foreground'
                   }`
                 }
               >

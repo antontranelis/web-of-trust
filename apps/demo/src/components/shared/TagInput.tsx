@@ -11,7 +11,7 @@ interface TagInputProps {
 }
 
 const colorClasses: Record<ChipColor, { chip: string; x: string }> = {
-  green: { chip: 'bg-green-100 text-green-800', x: 'text-green-500 hover:text-green-700' },
+  green: { chip: 'bg-success/15 text-success', x: 'text-success hover:text-success' },
   amber: { chip: 'bg-amber-100 text-amber-800', x: 'text-amber-500 hover:text-amber-700' },
   blue: { chip: 'bg-primary-100 text-primary-800', x: 'text-primary-500 hover:text-primary-700' },
 }
@@ -53,7 +53,7 @@ export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zu
 
   return (
     <div
-      className="flex flex-wrap gap-1.5 min-h-[42px] w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus-within:ring-2 focus-within:ring-primary-500 cursor-text"
+      className="flex flex-wrap gap-1.5 min-h-[42px] w-full px-3 py-2 bg-card border border-border rounded-lg focus-within:ring-2 focus-within:ring-primary-500 cursor-text"
       onClick={() => inputRef.current?.focus()}
     >
       {tags.map((tag, i) => (
@@ -78,7 +78,7 @@ export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zu
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={() => { if (input.trim()) addTag(input) }}
-        className="flex-1 min-w-[120px] outline-none text-sm bg-transparent text-stone-900 placeholder-stone-400"
+        className="flex-1 min-w-[120px] outline-none text-sm bg-transparent text-foreground placeholder-muted-foreground"
         placeholder={tags.length === 0 ? placeholder : ''}
       />
     </div>

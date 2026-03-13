@@ -46,26 +46,26 @@ function DeliveryIndicator({ status, onRetry, attestationId, t }: {
       )
     case 'delivered':
       return (
-        <span className="text-stone-400" title={t.attestations.deliveryDelivered}>
+        <span className="text-muted-foreground/70" title={t.attestations.deliveryDelivered}>
           <Check size={16} />
         </span>
       )
     case 'acknowledged':
       return (
-        <span className="text-stone-400" title={t.attestations.deliveryAcknowledged}>
+        <span className="text-muted-foreground/70" title={t.attestations.deliveryAcknowledged}>
           <CheckCheck size={16} />
         </span>
       )
     case 'failed':
       return (
         <div className="flex items-center gap-1">
-          <span className="text-red-500" title={t.attestations.deliveryFailed}>
+          <span className="text-destructive" title={t.attestations.deliveryFailed}>
             <XCircle size={16} />
           </span>
           {onRetry && (
             <button
               onClick={() => onRetry(attestationId)}
-              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+              className="p-1 text-destructive hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
               title={t.attestations.retryButton}
             >
               <RefreshCw size={14} />
@@ -91,7 +91,7 @@ export function AttestationCard({
   const shortToDid = attestation.to.slice(0, 20) + '...'
 
   return (
-    <div className="bg-white rounded-lg border border-stone-200 p-4">
+    <div className="bg-card rounded-lg border border-border p-4">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
           <Award className="w-5 h-5 text-primary-600" />
@@ -103,7 +103,7 @@ export function AttestationCard({
               {attestation.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs px-2 py-0.5 bg-stone-100 text-stone-600 rounded-full"
+                  className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded-full"
                 >
                   {tag}
                 </span>
@@ -111,9 +111,9 @@ export function AttestationCard({
             </div>
           )}
 
-          <p className="text-stone-900 mb-2">{attestation.claim}</p>
+          <p className="text-foreground mb-2">{attestation.claim}</p>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {showFrom && (
               <span className="flex items-center gap-1">
                 <User size={12} />
@@ -145,8 +145,8 @@ export function AttestationCard({
               onClick={() => onTogglePublic(attestation.id, !isPublic)}
               className={`p-2 rounded-lg transition-colors ${
                 isPublic
-                  ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                  : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
+                  ? 'text-success hover:text-success hover:bg-success/10'
+                  : 'text-muted-foreground/70 hover:text-muted-foreground hover:bg-muted'
               }`}
               title={isPublic ? t.attestations.attestationPublicTitle : t.attestations.attestationPrivateTitle}
             >

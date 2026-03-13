@@ -27,7 +27,7 @@ export function IdentityManagement({ onComplete }: IdentityManagementProps) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
-        <div className="text-sm text-stone-500">Lade...</div>
+        <div className="text-sm text-muted-foreground">Lade...</div>
       </div>
     )
   }
@@ -57,7 +57,7 @@ export function IdentityManagement({ onComplete }: IdentityManagementProps) {
       <div className="max-w-2xl mx-auto px-6 mt-4">
         <button
           onClick={() => setMode('recovery')}
-          className="w-full py-2 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           Bereits Magische Wörter? → Identität importieren
         </button>

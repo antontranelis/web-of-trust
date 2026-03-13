@@ -43,7 +43,7 @@ export function ScanCode({
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
           {error}
         </div>
       )}
@@ -53,7 +53,7 @@ export function ScanCode({
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground/80 transition-colors"
         >
           {showManual ? t.scanCode.hideManualEntry : t.scanCode.showManualEntry}
         </button>
@@ -65,7 +65,7 @@ export function ScanCode({
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder={t.scanCode.placeholder}
-            className="w-full h-24 bg-white border border-stone-200 rounded-lg p-3 text-xs font-mono text-stone-700 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full h-24 bg-card border border-border rounded-lg p-3 text-xs font-mono text-foreground/80 resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
           <button
             type="submit"

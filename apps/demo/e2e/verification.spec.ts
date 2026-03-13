@@ -39,7 +39,7 @@ test.describe('QR Verification', () => {
       await confirmVerificationInFlow(bobPage)
 
       // Bob sees success
-      await expect(bobPage.getByText('Verifizierung erfolgreich!')).toBeVisible({ timeout: 10_000 })
+      await expect(bobPage.getByText('Verbindung erfolgreich!')).toBeVisible({ timeout: 10_000 })
 
       // Alice receives the incoming verification dialog
       await confirmIncomingVerification(alicePage)

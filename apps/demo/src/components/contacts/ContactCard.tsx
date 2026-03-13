@@ -17,10 +17,10 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
   const { t, fmt, formatDate } = useLanguage()
 
   const verificationInfo: Record<VerificationDirection, { label: string; color: string; icon: typeof Shield }> = {
-    mutual: { label: t.contacts.statusMutual, color: 'bg-green-100 text-green-700', icon: ShieldCheck },
+    mutual: { label: t.contacts.statusMutual, color: 'bg-success/15 text-success', icon: ShieldCheck },
     incoming: { label: t.contacts.statusIncoming, color: 'bg-blue-100 text-blue-700', icon: ArrowDownLeft },
     outgoing: { label: t.contacts.statusOutgoing, color: 'bg-amber-100 text-amber-700', icon: ArrowUpRight },
-    none: { label: t.contacts.statusNone, color: 'bg-stone-100 text-stone-500', icon: ShieldAlert },
+    none: { label: t.contacts.statusNone, color: 'bg-muted text-muted-foreground', icon: ShieldAlert },
   }
 
   const statusColors = {
@@ -37,7 +37,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
   const displayName = contact.name || shortDid
 
   return (
-    <div className="bg-white rounded-lg border border-stone-200 p-4">
+    <div className="bg-card rounded-lg border border-border p-4">
       <div className="flex items-center gap-3">
         <Link to={`/p/${encodeURIComponent(contact.did)}`}>
           <Avatar name={contact.name} avatar={contact.avatar} size="sm" />
@@ -45,19 +45,19 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Link to={`/p/${encodeURIComponent(contact.did)}`} className="font-medium text-stone-900 truncate hover:text-primary-600 transition-colors">
+            <Link to={`/p/${encodeURIComponent(contact.did)}`} className="font-medium text-foreground truncate hover:text-primary-600 transition-colors">
               {displayName}
             </Link>
             <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${statusColors[contact.status]}`}>
               {statusLabels[contact.status]}
             </span>
           </div>
-          <p className="hidden md:block text-xs text-stone-500 font-mono break-all mt-0.5">{contact.did}</p>
+          <p className="hidden md:block text-xs text-muted-foreground font-mono break-all mt-0.5">{contact.did}</p>
 
           {contact.status === 'active' && (
             <>
               {/* Mobile: compact */}
-              <div className="flex items-center gap-3 mt-1 text-xs text-stone-400 md:hidden">
+              <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground/70 md:hidden">
                 {contact.verifiedAt && (
                   <span>{formatDate(new Date(contact.verifiedAt))}</span>
                 )}
@@ -75,7 +75,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
                 )}
               </div>
               {/* Desktop: full labels */}
-              <div className="hidden md:flex items-center gap-4 mt-1 text-xs text-stone-400">
+              <div className="hidden md:flex items-center gap-4 mt-1 text-xs text-muted-foreground/70">
                 {contact.verifiedAt && (() => {
                   const StatusIcon = verificationInfo[verificationStatus].icon
                   return (
@@ -103,7 +103,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
         {contact.status === 'active' && (
           <Link
             to={`/attestations/new?to=${contact.did}`}
-            className="p-2 text-stone-400 hover:text-accent-600 hover:bg-accent-50 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 text-muted-foreground/70 hover:text-accent-600 hover:bg-accent-50 rounded-lg transition-colors flex-shrink-0"
             title={t.contacts.createAttestationTitle}
           >
             <Award size={18} />
@@ -113,7 +113,7 @@ export function ContactCard({ contact, onRemove, verificationCount, attestationC
         {contact.status === 'pending' && onRemove && (
           <button
             onClick={onRemove}
-            className="p-2 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+            className="p-2 text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors flex-shrink-0"
             title={t.contacts.removeTitle}
           >
             <Trash2 size={18} />
