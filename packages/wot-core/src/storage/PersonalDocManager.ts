@@ -12,6 +12,7 @@
  */
 import { Repo, stringifyAutomergeUrl, parseAutomergeUrl } from '@automerge/automerge-repo'
 import type { DocHandle, DocumentId, AutomergeUrl, BinaryDocumentId } from '@automerge/automerge-repo'
+import * as Automerge from '@automerge/automerge'
 import type { WotIdentity } from '../identity'
 import type { MessagingAdapter } from '../adapters/interfaces/MessagingAdapter'
 import { VaultClient, base64ToUint8 } from '../services/VaultClient'
@@ -271,11 +272,10 @@ async function restoreFromVault(vault: VaultClient, key: Uint8Array): Promise<Ui
       )
       // Seed local seq counter from vault data
       vaultSeq = vaultData.snapshot?.upToSeq ?? 0
-      console.log('[personal-doc] Restored from vault')
       return docBinary
     }
   } catch (err) {
-    console.debug('[personal-doc] Vault restore failed:', err)
+    console.error('[personal-doc] Vault restore failed:', err)
   }
   return null
 }
@@ -296,8 +296,9 @@ async function pushToVault(): Promise<void> {
       return
     }
 
-    const docBinary = await personalRepo.export(docHandle.url)
-    if (!docBinary) return
+    // Use Automerge.save() — compact compressed binary of current state
+    const docBinary = Automerge.save(doc)
+    if (!docBinary || docBinary.length === 0) return
 
     const encrypted = await EncryptedSyncService.encryptChange(
       docBinary,
@@ -309,7 +310,6 @@ async function pushToVault(): Promise<void> {
 
     vaultSeq++
     await vaultClient.putSnapshot(VAULT_PERSONAL_DOC_ID, encrypted.ciphertext, encrypted.nonce, vaultSeq)
-    console.log('[personal-doc] Pushed to vault')
   } catch (err) {
     console.debug('[personal-doc] Vault push failed:', err)
   }
@@ -357,90 +357,93 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
   const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
   const repoStorage = new IndexedDBStorageAdapter('automerge-personal')
 
-  // Create network adapter for encrypted personal sync (if messaging available)
-  const networkAdapters = []
-  if (messaging) {
-    networkAdapter = new PersonalNetworkAdapter(messaging, personalKey, did)
-    networkAdapter.setDocumentId(documentId)
-    networkAdapters.push(networkAdapter)
-  }
-
-  // Create repo
+  // Create repo WITHOUT network first — so find() only reads from local IndexedDB
+  // (adding network adapters before find() causes Automerge to wait for peer sync)
   personalRepo = new Repo({
     peerId: `${did}-personal` as any,
-    network: networkAdapters,
+    network: [],
     storage: repoStorage,
-    sharePolicy: async () => true, // Sync personal doc via PersonalNetworkAdapter
+    sharePolicy: async () => true,
   })
 
-  // Try to find existing doc (from local IndexedDB or remote sync)
+  // Strategy: Try vault first (compact snapshot, fast), then IndexedDB (may have many incrementals)
   let handle!: DocHandle<PersonalDoc>
-  try {
-    handle = await personalRepo.find<PersonalDoc>(documentUrl, { signal: AbortSignal.timeout(2000) })
-    // Verify the doc loaded correctly
-    const doc = handle.doc()
-    if (!doc || typeof doc !== 'object') {
-      throw new Error('Doc loaded but empty')
-    }
-    console.log('[personal-doc] Loaded existing Automerge doc')
-  } catch {
-    // Doc not found locally — try vault before creating empty
-    let restoredFromVault = false
-    if (vaultClient && vaultPersonalKey) {
-      console.log('[personal-doc] Attempting vault restore...')
-      const vaultBinary = await restoreFromVault(vaultClient, vaultPersonalKey)
-      if (vaultBinary && vaultBinary.length > 0) {
-        handle = personalRepo.import<PersonalDoc>(vaultBinary, { docId: documentId })
-        if (!handle.isReady()) handle.doneLoading()
-        restoredFromVault = true
-        const doc = handle.doc()
-        console.log('[personal-doc] Vault restore successful:',
-          'profile:', !!doc?.profile,
-          'contacts:', Object.keys(doc?.contacts ?? {}).length,
-          'spaces:', Object.keys(doc?.spaces ?? {}).length,
-        )
-      } else {
-        console.log('[personal-doc] Vault has no data for personal doc')
-      }
-    }
+  let loadedFrom = ''
 
-    if (!restoredFromVault) {
-      // Try old IndexedDB migration
-      const oldData = await loadFromOldIDB()
-      if (oldData) {
-        const migratedDoc = { ...emptyPersonalDoc(), ...oldData }
-        if (!migratedDoc.cachedGraph?.entries) migratedDoc.cachedGraph = emptyPersonalDoc().cachedGraph
-        handle = personalRepo.import<PersonalDoc>(
-          new Uint8Array(0),
-          { docId: documentId },
-        )
-        if (!handle.isReady()) handle.doneLoading()
-        handle.change(doc => {
-          Object.assign(doc, migratedDoc)
-        })
-        console.log('[personal-doc] Migrated from old IndexedDB format')
-        await deleteOldIDB()
-      } else {
-        // Brand new — create empty doc with our deterministic ID
-        handle = personalRepo.import<PersonalDoc>(
-          new Uint8Array(0),
-          { docId: documentId },
-        )
-        if (!handle.isReady()) handle.doneLoading()
-        handle.change(doc => {
-          Object.assign(doc, emptyPersonalDoc())
-        })
-        console.log('[personal-doc] Created new Automerge doc')
+  // 1) Try vault restore first — single compact binary, much faster than 44+ IndexedDB incrementals
+  if (vaultClient && vaultPersonalKey) {
+    const vaultBinary = await restoreFromVault(vaultClient, vaultPersonalKey)
+    if (vaultBinary && vaultBinary.length > 0) {
+      // Vault snapshots are already compact (pushed via Automerge.save()),
+      // so we can import directly without any compaction step
+      handle = personalRepo.import<PersonalDoc>(vaultBinary, { docId: documentId })
+      if (!handle.isReady()) handle.doneLoading()
+
+      const doc = handle.doc()
+      if (doc && typeof doc === 'object') {
+        loadedFrom = 'vault'
+        console.log(`[personal-doc] Restored from vault — contacts: ${Object.keys(doc.contacts ?? {}).length}, spaces: ${Object.keys(doc.spaces ?? {}).length}`)
       }
+    } else {
+      console.log('[personal-doc] Vault has no data')
+    }
+  }
+
+  // 2) Fallback: load from local IndexedDB
+  if (!loadedFrom) {
+    try {
+      handle = await Promise.race([
+        personalRepo.find<PersonalDoc>(documentUrl),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('find timeout')), 5000)),
+      ])
+      const doc = handle.doc()
+      if (doc && typeof doc === 'object') {
+        loadedFrom = 'indexeddb'
+      } else {
+        throw new Error('Doc loaded but empty')
+      }
+    } catch (err) {
+      console.warn('[personal-doc] IndexedDB load failed/timeout:', err)
+    }
+  }
+
+  // 3) Fallback: old IDB migration or create empty
+  if (!loadedFrom) {
+    const oldData = await loadFromOldIDB()
+    if (oldData) {
+      const migratedDoc = { ...emptyPersonalDoc(), ...oldData }
+      if (!migratedDoc.cachedGraph?.entries) migratedDoc.cachedGraph = emptyPersonalDoc().cachedGraph
+      handle = personalRepo.import<PersonalDoc>(new Uint8Array(0), { docId: documentId })
+      if (!handle.isReady()) handle.doneLoading()
+      handle.change(doc => { Object.assign(doc, migratedDoc) })
+      loadedFrom = 'migration'
+      console.log('[personal-doc] Migrated from old IndexedDB format')
+      await deleteOldIDB()
+    } else {
+      handle = personalRepo.import<PersonalDoc>(new Uint8Array(0), { docId: documentId })
+      if (!handle.isReady()) handle.doneLoading()
+      handle.change(doc => { Object.assign(doc, emptyPersonalDoc()) })
+      loadedFrom = 'new'
+      console.log('[personal-doc] Created new Automerge doc')
     }
     await personalRepo.flush([documentId])
   }
 
+  // Compact IndexedDB in background after vault restore (replaces 44+ incrementals with 1 snapshot)
+  if (loadedFrom === 'vault') {
+    personalRepo.flush([documentId]).then(() => {
+      console.log('[personal-doc] IndexedDB compacted after vault restore')
+    }).catch(() => {})
+  }
+
   docHandle = handle
 
-  // Signal to the network adapter that the doc handle is ready —
-  // incoming relay messages can now be safely emitted to the repo
-  if (networkAdapter) {
+  // Add network adapter AFTER doc is loaded from local storage —
+  // adding it before find() causes Automerge to wait for peer sync (~20s)
+  if (messaging) {
+    networkAdapter = new PersonalNetworkAdapter(messaging, personalKey, did)
+    networkAdapter.setDocumentId(documentId)
+    personalRepo.networkSubsystem.addNetworkAdapter(networkAdapter)
     networkAdapter.setDocReady()
   }
 

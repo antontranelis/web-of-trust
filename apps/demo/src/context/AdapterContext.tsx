@@ -102,14 +102,20 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         }
         localStorage.setItem('wot-active-did', did)
 
-        // Create WebSocket adapter and connect BEFORE personal doc init,
-        // so PersonalNetworkAdapter can receive sync messages from relay
+        // Create WebSocket adapter — try to connect quickly, but don't block init
         const wsAdapter = new WebSocketMessagingAdapter(RELAY_URL)
-        await wsAdapter.connect(did)
+        try {
+          await Promise.race([
+            wsAdapter.connect(did),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('WS connect timeout')), 3000)),
+          ])
+        } catch {
+          console.warn('[init] WebSocket not connected yet, continuing with local data')
+        }
 
         const VAULT_URL = 'https://vault.utopia-lab.org'
 
-        // Initialize personal doc as Automerge doc with multi-device sync + vault
+        // Initialize personal doc — loads from local IndexedDB first, syncs later via relay
         if (!isPersonalDocInitialized()) {
           await initPersonalDoc(identity, wsAdapter, VAULT_URL)
         }
@@ -118,7 +124,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const crypto = new WebCryptoAdapter()
         const outboxStore = new AutomergeOutboxStore()
         outboxAdapter = new OutboxMessagingAdapter(wsAdapter, outboxStore, {
-          skipTypes: ['profile-update', 'attestation-ack', 'personal-sync'],
+          // content = Automerge CRDT sync messages (high volume, auto-resync on reconnect)
+          // personal-sync = multi-device personal doc sync (same reason)
+          // profile-update / attestation-ack = fire-and-forget notifications
+          skipTypes: ['content', 'profile-update', 'attestation-ack', 'personal-sync'],
           sendTimeoutMs: 15_000,
         })
         const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
@@ -191,9 +200,14 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
                 await storage.createIdentity(did, restoredProfile)
               }
 
-              // Restore verifications from server (incoming: to=me)
-              const verifications = await httpDiscovery.resolveVerifications(did)
-              console.log('[restore] Verifications from server:', verifications.length)
+              // Restore verifications + attestations from server (parallel)
+              const [verifications, attestations] = await Promise.all([
+                httpDiscovery.resolveVerifications(did),
+                httpDiscovery.resolveAttestations(did),
+              ])
+              console.log('[restore] Verifications:', verifications.length, 'Attestations:', attestations.length)
+
+              // Save verifications and collect contact DIDs
               const contactDids = new Set<string>()
               for (const v of verifications) {
                 await storage.saveVerification(v)
@@ -201,18 +215,32 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
                 contactDids.add(contactDid)
               }
 
-              // Also load outgoing verifications from each contact's server profile
-              // (my verification of them is published on THEIR profile, not mine)
-              for (const contactDid of contactDids) {
-                try {
-                  const contactVerifications = await httpDiscovery.resolveVerifications(contactDid)
-                  for (const v of contactVerifications) {
-                    if (v.from === did && v.to === contactDid) {
-                      await storage.saveVerification(v)
+              // Save attestations
+              for (const a of attestations) {
+                await storage.saveAttestation(a)
+                await storage.setAttestationAccepted(a.id, true)
+              }
+
+              // Load outgoing verifications + attestations from each contact (parallel)
+              await Promise.all(Array.from(contactDids).map(async (contactDid) => {
+                const [contactVerifications, contactAttestations] = await Promise.all([
+                  httpDiscovery.resolveVerifications(contactDid).catch(() => []),
+                  httpDiscovery.resolveAttestations(contactDid).catch(() => []),
+                ])
+                for (const v of contactVerifications) {
+                  if (v.from === did && v.to === contactDid) {
+                    await storage.saveVerification(v)
+                  }
+                }
+                for (const a of contactAttestations) {
+                  if (a.from === did && a.to === contactDid) {
+                    const existingAtt = await storage.getAttestation(a.id)
+                    if (!existingAtt) {
+                      await storage.saveAttestation(a)
                     }
                   }
-                } catch { /* best effort — contact's profile may not exist */ }
-              }
+                }
+              }))
 
               // Create contacts from verification partners
               for (const contactDid of contactDids) {
@@ -231,30 +259,6 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
                     updatedAt: earliest,
                   })
                 }
-              }
-
-              // Restore accepted attestations from server (incoming: to=me)
-              const attestations = await httpDiscovery.resolveAttestations(did)
-              console.log('[restore] Attestations (incoming) from server:', attestations.length)
-              for (const a of attestations) {
-                await storage.saveAttestation(a)
-                await storage.setAttestationAccepted(a.id, true)
-              }
-
-              // Also load outgoing attestations from each contact's server profile
-              // (attestations I sent are published on the RECIPIENT's profile)
-              for (const contactDid of contactDids) {
-                try {
-                  const contactAttestations = await httpDiscovery.resolveAttestations(contactDid)
-                  for (const a of contactAttestations) {
-                    if (a.from === did && a.to === contactDid) {
-                      const existingAtt = await storage.getAttestation(a.id)
-                      if (!existingAtt) {
-                        await storage.saveAttestation(a)
-                      }
-                    }
-                  }
-                } catch { /* best effort */ }
               }
 
               console.log('[restore] Restored data from wot-profiles server:', restoredProfile.name || '(no name)')
@@ -445,10 +449,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
           <div className="text-4xl">&#9888;&#65039;</div>
-          <h2 className="text-xl font-semibold text-slate-800">
+          <h2 className="text-xl font-semibold text-stone-800">
             {isStorageBlocked ? 'Speicherzugriff blockiert' : 'Initialisierung fehlgeschlagen'}
           </h2>
-          <p className="text-slate-600">
+          <p className="text-stone-600">
             {isStorageBlocked
               ? 'Die App benötigt Zugriff auf den lokalen Speicher, um deine Identität und Daten sicher auf deinem Gerät zu speichern. Bitte erlaube den Zugriff in den Browser-Einstellungen und lade die Seite neu.'
               : `Fehler: ${initError}`
@@ -456,7 +460,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
           >
             Seite neu laden
           </button>
@@ -467,8 +471,9 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
   if (!isInitialized || !adapters) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-slate-500">Initialisiere...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        <div className="text-sm text-stone-500">Initialisiere...</div>
       </div>
     )
   }

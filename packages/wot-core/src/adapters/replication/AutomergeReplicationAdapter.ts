@@ -1,6 +1,7 @@
 import { Repo, parseAutomergeUrl, type DocumentId, type AutomergeUrl, type PeerId } from '@automerge/automerge-repo'
 import type { StorageAdapterInterface } from '@automerge/automerge-repo'
 import type { DocHandle } from '@automerge/automerge-repo'
+import * as Automerge from '@automerge/automerge'
 import type { ReplicationAdapter, SpaceHandle } from '../interfaces/ReplicationAdapter'
 import type { Subscribable } from '../interfaces/Subscribable'
 import type { MessagingAdapter } from '../interfaces/MessagingAdapter'
@@ -233,15 +234,13 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       }
 
       // Find the doc handle (triggers loading from storage or sync from peers)
+      // Use short timeout — if not locally available, _waitForDoc handles async sync
       let docReady = false
       try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 5000)
         const handle = await this.repo.find(spaceState.documentUrl, {
           allowableStates: ['ready', 'unavailable'],
-          signal: controller.signal,
+          signal: AbortSignal.timeout(2000),
         })
-        clearTimeout(timer)
         docReady = handle.isReady()
       } catch {
         // Timeout — doc not available yet
@@ -399,8 +398,12 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     const groupKey = this.groupKeyService.getCurrentKey(spaceState.info.id)
     if (!groupKey) return
 
-    const docBinary = await this.repo.export(spaceState.documentUrl)
-    if (!docBinary) return
+    // Use Automerge.save() for compact compressed snapshot instead of
+    // repo.export() — both return the same data, but we already have the doc
+    const docHandle = this.repo.handles[spaceState.documentId]
+    const doc = docHandle?.doc()
+    if (!doc) return
+    const docBinary = Automerge.save(doc)
 
     const generation = this.groupKeyService.getCurrentGeneration(spaceState.info.id)
     const encrypted = await EncryptedSyncService.encryptChange(
@@ -619,9 +622,11 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       memberEncryptionPublicKey,
     )
 
-    // Export current doc binary for the invite snapshot
-    const docBinary = await this.repo.export(space.documentUrl)
-    if (!docBinary) throw new Error(`Cannot export doc for space: ${spaceId}`)
+    // Export current doc state as compact snapshot (no history) for the invite
+    const docHandle = this.repo.handles[space.documentId]
+    const doc = docHandle?.doc()
+    if (!doc) throw new Error(`Cannot access doc for space: ${spaceId}`)
+    const docBinary = Automerge.save(doc)
 
     const encryptedDoc = await EncryptedSyncService.encryptChange(
       docBinary,
