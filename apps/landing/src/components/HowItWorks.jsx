@@ -130,7 +130,7 @@ export default function HowItWorks() {
           </div>
 
           {/* Network Animation — heartbeat spreads through nodes */}
-          <svg className="w-full h-48 md:h-64" viewBox="0 0 800 240" fill="none">
+          <svg className="w-full h-48 md:h-64 dark:brightness-150" viewBox="0 0 800 240" fill="none">
             <defs>
               {/* Primary blue glow */}
               <radialGradient id="glowPrimary">
