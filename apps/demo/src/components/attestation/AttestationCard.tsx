@@ -23,20 +23,20 @@ function DeliveryIndicator({ status, onRetry, attestationId, t }: {
   switch (status) {
     case 'sending':
       return (
-        <span className="text-blue-500" title={t.attestations.deliverySending}>
+        <span className="text-primary" title={t.attestations.deliverySending}>
           <Loader2 size={16} className="animate-spin" />
         </span>
       )
     case 'queued':
       return (
         <div className="flex items-center gap-1">
-          <span className="text-amber-500" title={t.attestations.deliveryQueued}>
+          <span className="text-warning" title={t.attestations.deliveryQueued}>
             <Clock size={16} />
           </span>
           {onRetry && (
             <button
               onClick={() => onRetry(attestationId)}
-              className="p-1 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+              className="p-1 text-warning hover:text-warning/80 hover:bg-warning/10 rounded transition-colors"
               title={t.attestations.retryButton}
             >
               <RefreshCw size={14} />
@@ -93,8 +93,8 @@ export function AttestationCard({
   return (
     <div className="bg-card rounded-lg border border-border p-4">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <Award className="w-5 h-5 text-primary-600" />
+        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <Award className="w-5 h-5 text-primary" />
         </div>
 
         <div className="flex-1 min-w-0">

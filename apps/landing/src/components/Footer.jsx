@@ -9,7 +9,7 @@ export default function Footer() {
   const links = {
     projekt: [
       { label: t.footer.links.project.concept, href: 'https://github.com/antontranelis/web-of-trust-concept' },
-      { label: t.footer.links.project.prototype, href: 'https://github.com/antontranelis/web-of-trust-concept' },
+      { label: t.footer.links.project.prototype, href: '/demo/' },
       { label: t.footer.links.project.specification, href: 'https://github.com/antontranelis/web-of-trust-concept' },
     ],
     mitmachen: [
@@ -83,18 +83,20 @@ export default function Footer() {
             <div>
               <h3 className="font-semibold text-background dark:text-foreground mb-4">{t.footer.projectTitle}</h3>
               <ul className="space-y-2">
-                {links.projekt.map((link, index) => (
-                  <li key={index}>
-                    <a
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-background/60 dark:text-muted-foreground hover:text-background dark:hover:text-foreground transition-colors text-sm"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+                {links.projekt.map((link, index) => {
+                  const isExternal = link.href.startsWith('http')
+                  return (
+                    <li key={index}>
+                      <a
+                        href={link.href}
+                        {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                        className="text-background/60 dark:text-muted-foreground hover:text-background dark:hover:text-foreground transition-colors text-sm"
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
 

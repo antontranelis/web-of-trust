@@ -21,8 +21,8 @@ export default function Header() {
   const isLandingPage = location.pathname === '/'
 
   const navItems = [
-    { label: t.nav.concept, href: isLandingPage ? '#konzept' : '/#konzept' },
-    { label: t.nav.apps, href: isLandingPage ? '#apps' : '/#apps' },
+    { label: t.nav.concept, href: isLandingPage ? '#konzept' : '/#konzept', isRoute: !isLandingPage },
+    { label: t.nav.apps, href: isLandingPage ? '#apps' : '/#apps', isRoute: !isLandingPage },
     { label: t.architecture?.nav || 'Architecture', href: '/architecture', isRoute: true },
     { label: t.nav.blog, href: '/blog', isRoute: true },
   ]

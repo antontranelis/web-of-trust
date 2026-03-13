@@ -30,13 +30,13 @@ test.describe('Attestation Flow', () => {
       await alicePage.locator('textarea').fill('Kann gut kochen')
 
       // Submit
-      await alicePage.getByRole('button', { name: 'Attestation erstellen' }).click()
+      await alicePage.getByRole('button', { name: 'Bestätigung erstellen' }).click()
 
       // Wait for redirect to attestations list
       await alicePage.waitForURL('/attestations', { timeout: 10_000 })
 
       // Bob receives the incoming attestation dialog
-      await bobPage.getByText('Neue Attestierung von').waitFor({ timeout: 30_000 })
+      await bobPage.getByText('Neue Bestätigung von').waitFor({ timeout: 30_000 })
       await expect(bobPage.getByText('Kann gut kochen')).toBeVisible()
 
       // Bob publishes

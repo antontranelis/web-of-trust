@@ -59,11 +59,11 @@ export async function confirmIncomingVerification(page: Page): Promise<void> {
  * Wait for the mutual verification dialog and dismiss it.
  */
 export async function dismissMutualDialog(page: Page): Promise<void> {
-  await page.getByText('sind Freunde!').waitFor({ timeout: 20_000 })
+  await page.getByText('seid verbunden!').waitFor({ timeout: 20_000 })
   // The X close button is `button.absolute.top-3.right-3` inside the dialog
   await page.locator('.fixed button.absolute').click()
   // Wait for dialog to disappear
-  await page.getByText('sind Freunde!').waitFor({ state: 'hidden', timeout: 5_000 })
+  await page.getByText('seid verbunden!').waitFor({ state: 'hidden', timeout: 5_000 })
 }
 
 /**

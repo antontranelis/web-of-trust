@@ -55,13 +55,13 @@ test.describe('Multi-Device Sync', () => {
       await navigateTo(bobPage, '/attestations/new')
       await bobPage.locator('select').selectOption({ label: 'Alice' })
       await bobPage.locator('textarea').fill('Vertrauenswürdig')
-      await bobPage.getByRole('button', { name: 'Attestation erstellen' }).click()
+      await bobPage.getByRole('button', { name: 'Bestätigung erstellen' }).click()
       await bobPage.waitForURL('/attestations', { timeout: 10_000 })
 
       // Both of Alice's devices should receive the attestation dialog
       // (Relay routes to ALL WebSocket connections for the same DID)
-      await alice1Page.getByText('Neue Attestierung von').waitFor({ timeout: 30_000 })
-      await alice2Page.getByText('Neue Attestierung von').waitFor({ timeout: 30_000 })
+      await alice1Page.getByText('Neue Bestätigung von').waitFor({ timeout: 30_000 })
+      await alice2Page.getByText('Neue Bestätigung von').waitFor({ timeout: 30_000 })
 
       // Alice Device 1 publishes
       await alice1Page.getByText('Veröffentlichen').click()

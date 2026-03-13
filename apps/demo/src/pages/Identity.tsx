@@ -162,7 +162,7 @@ export function Identity() {
         {!isEditingProfile && (
           <button
             onClick={() => setIsEditingProfile(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors flex-shrink-0"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/80 transition-colors flex-shrink-0"
           >
             <Pencil size={16} />
             {t.identity.editProfile}
@@ -192,7 +192,7 @@ export function Identity() {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setIsEditingProfile(false)
                       }}
-                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                       placeholder={t.identity.namePlaceholder}
                       autoFocus
                     />
@@ -202,7 +202,7 @@ export function Identity() {
                     <textarea
                       value={profileBio}
                       onChange={(e) => setProfileBio(e.target.value)}
-                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                      className="w-full px-3 py-2 bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                       rows={2}
                       placeholder={t.identity.aboutPlaceholder}
                     />
@@ -236,7 +236,7 @@ export function Identity() {
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
                 <button
                   onClick={handleSaveProfile}
-                  className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
+                  className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-lg hover:bg-primary/80 transition-colors"
                 >
                   {t.common.save}
                 </button>
@@ -264,7 +264,7 @@ export function Identity() {
                     {profileSaved && <Check size={16} className="text-success flex-shrink-0" />}
                     <button
                       onClick={handleShareProfile}
-                      className="p-2 text-muted-foreground/70 hover:text-primary-600 hover:bg-muted rounded-lg transition-colors ml-auto flex-shrink-0"
+                      className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-muted rounded-lg transition-colors ml-auto flex-shrink-0"
                       aria-label={t.aria.shareProfile}
                     >
                       {shared ? <Check size={15} className="text-success" /> : <Share2 size={15} />}
@@ -277,7 +277,7 @@ export function Identity() {
                     <p className="text-xs text-muted-foreground/70 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{did}</p>
                     <button
                       onClick={handleCopyDid}
-                      className="text-muted-foreground/70 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
+                      className="text-muted-foreground/70 hover:text-primary transition-colors flex-shrink-0 p-2"
                       aria-label={t.aria.copyDid}
                     >
                       {copiedDid ? <Check size={12} /> : <Copy size={12} />}
@@ -304,7 +304,7 @@ export function Identity() {
                       <p className="text-xs font-medium text-muted-foreground mb-1.5">Bedürfnisse</p>
                       <div className="flex flex-wrap gap-1.5">
                         {profileNeeds.map((tag) => (
-                          <span key={tag} className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">{tag}</span>
+                          <span key={tag} className="inline-block px-2.5 py-1 bg-warning/10 text-warning text-xs rounded-full border border-warning/20">{tag}</span>
                         ))}
                       </div>
                     </div>
@@ -319,7 +319,7 @@ export function Identity() {
         {verifications.length > 0 && (
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Users size={16} className="text-primary-600" />
+              <Users size={16} className="text-primary" />
               <h3 className="text-sm font-medium text-foreground">
                 {fmt(t.identity.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
               </h3>
@@ -334,7 +334,7 @@ export function Identity() {
                   <div key={v.id} className="flex items-center justify-between text-sm">
                     <Link
                       to={`/p/${encodeURIComponent(v.from)}`}
-                      className="text-foreground/80 hover:text-primary-600 transition-colors"
+                      className="text-foreground/80 hover:text-primary transition-colors"
                     >
                       {name || <span className="font-mono text-xs">{shortDid}</span>}
                     </Link>
@@ -352,7 +352,7 @@ export function Identity() {
         {receivedAttestations.length > 0 && (
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Award size={16} className="text-amber-600" />
+              <Award size={16} className="text-warning" />
               <h3 className="text-sm font-medium text-foreground">
                 {fmt(t.identity.attestationsAboutMe, { count: receivedAttestations.length, attestationLabel: plural(receivedAttestations.length, t.common.attestationOne, t.common.attestationMany) })}
               </h3>
@@ -368,14 +368,14 @@ export function Identity() {
                   : a.from
                 const isPublic = acceptedMap[a.id] ?? false
                 return (
-                  <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-success/30' : 'border-amber-200'}`}>
+                  <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-success' : 'border-warning'}`}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground/80">&ldquo;{a.claim}&rdquo;</p>
                       <p className="text-xs text-muted-foreground/70 mt-0.5">
                         {t.common.from}{' '}
                         <Link
                           to={`/p/${encodeURIComponent(a.from)}`}
-                          className="hover:text-primary-600 transition-colors"
+                          className="hover:text-primary transition-colors"
                         >
                           {fromName || shortFrom}
                         </Link>

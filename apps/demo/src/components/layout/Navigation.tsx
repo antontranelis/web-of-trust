@@ -31,8 +31,8 @@ export function Navigation() {
         aria-label={t.nav.verify}
         className={`md:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
           location.pathname === '/verify'
-            ? 'bg-primary-600 text-white'
-            : 'bg-primary-500 text-white active:bg-primary-700'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-primary text-primary-foreground active:bg-primary/80'
         }`}
       >
         <QrCode size={24} />
@@ -48,7 +48,7 @@ export function Navigation() {
                 className={({ isActive }) =>
                   `flex flex-row items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? 'text-primary-600 bg-primary-50'
+                      ? 'text-primary bg-primary/10'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`
                 }
@@ -70,7 +70,7 @@ export function Navigation() {
                 className={({ isActive }) =>
                   `flex flex-col items-center gap-1 py-3 transition-colors ${
                     isActive
-                      ? 'text-primary-600'
+                      ? 'text-primary'
                       : 'text-muted-foreground'
                   }`
                 }

@@ -599,7 +599,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Konzept',
-          prototype: 'Prototyp',
+          prototype: 'Demo',
           specification: 'Spezifikation',
         },
         contribute: {
@@ -1207,7 +1207,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Concept',
-          prototype: 'Prototype',
+          prototype: 'Demo',
           specification: 'Specification',
         },
         contribute: {
@@ -1540,7 +1540,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Concepto',
-          prototype: 'Prototipo',
+          prototype: 'Demo',
           specification: 'Especificación',
         },
         contribute: {
@@ -1873,7 +1873,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Conceito',
-          prototype: 'Protótipo',
+          prototype: 'Demo',
           specification: 'Especificação',
         },
         contribute: {
@@ -2205,7 +2205,7 @@ export const translations = {
       links: {
         project: {
           concept: 'المفهوم',
-          prototype: 'النموذج الأولي',
+          prototype: 'Demo',
           specification: 'المواصفات',
         },
         contribute: {
@@ -2537,7 +2537,7 @@ export const translations = {
       links: {
         project: {
           concept: '概念',
-          prototype: '原型',
+          prototype: 'Demo',
           specification: '规范',
         },
         contribute: {
@@ -2870,7 +2870,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Концепция',
-          prototype: 'Прототип',
+          prototype: 'Demo',
           specification: 'Спецификация',
         },
         contribute: {
@@ -3203,7 +3203,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Концепція',
-          prototype: 'Прототип',
+          prototype: 'Demo',
           specification: 'Специфікація',
         },
         contribute: {
@@ -3535,7 +3535,7 @@ export const translations = {
       links: {
         project: {
           concept: 'קונספט',
-          prototype: 'פרוטוטייפ',
+          prototype: 'Demo',
           specification: 'מפרט',
         },
         contribute: {
@@ -3868,7 +3868,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Concetto',
-          prototype: 'Prototipo',
+          prototype: 'Demo',
           specification: 'Specifica',
         },
         contribute: {
@@ -4200,7 +4200,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Konsept',
-          prototype: 'Prototip',
+          prototype: 'Demo',
           specification: 'Şartname',
         },
         contribute: {
@@ -4808,7 +4808,7 @@ export const translations = {
       links: {
         project: {
           concept: 'Concept',
-          prototype: 'Prototype',
+          prototype: 'Demo',
           specification: 'Spécification',
         },
         contribute: {

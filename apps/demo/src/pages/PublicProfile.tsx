@@ -352,8 +352,8 @@ export function PublicProfile() {
                   {verificationStatus && (
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full whitespace-nowrap mt-1 ${
                       verificationStatus === 'mutual' ? 'bg-success/15 text-success' :
-                      verificationStatus === 'incoming' ? 'bg-blue-100 text-blue-700' :
-                      'bg-amber-100 text-amber-700'
+                      verificationStatus === 'incoming' ? 'bg-primary/10 text-primary' :
+                      'bg-warning/10 text-warning'
                     }`}>
                       {verificationStatus === 'mutual' ? t.contacts.statusMutual :
                        verificationStatus === 'incoming' ? t.contacts.statusIncoming :
@@ -363,7 +363,7 @@ export function PublicProfile() {
                 </div>
                 <button
                   onClick={handleShareProfile}
-                  className="p-2 text-muted-foreground/70 hover:text-primary-600 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
+                  className="p-2 text-muted-foreground/70 hover:text-primary hover:bg-muted rounded-lg transition-colors flex-shrink-0"
                   aria-label={t.aria.shareProfile}
                 >
                   {shared ? <Check size={15} className="text-success" /> : <Share2 size={15} />}
@@ -376,7 +376,7 @@ export function PublicProfile() {
                 <p className="text-xs text-muted-foreground/70 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{decodedDid}</p>
                 <button
                   onClick={handleCopyDid}
-                  className="text-muted-foreground/70 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
+                  className="text-muted-foreground/70 hover:text-primary transition-colors flex-shrink-0 p-2"
                   aria-label={t.aria.copyDid}
                 >
                   {copiedDid ? <Check size={12} /> : <Copy size={12} />}
@@ -403,7 +403,7 @@ export function PublicProfile() {
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">Bedürfnisse</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.needs.map((tag) => (
-                      <span key={tag} className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">{tag}</span>
+                      <span key={tag} className="inline-block px-2.5 py-1 bg-warning/10 text-warning text-xs rounded-full border border-warning/20">{tag}</span>
                     ))}
                   </div>
                 </div>
@@ -415,10 +415,10 @@ export function PublicProfile() {
 
       {/* Offline banner */}
       {state === 'loaded-offline' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <WifiOff className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-800">
+            <WifiOff className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-foreground">
               {t.publicProfile.offlineBanner}
             </div>
           </div>
@@ -427,10 +427,10 @@ export function PublicProfile() {
 
       {/* Mutual contacts */}
       {mutualContacts.length > 0 && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <Users className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-primary-800">
+            <Users className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-foreground">
               {mutualContacts.length === 1
                 ? fmt(t.publicProfile.mutualContactSingular, { name: resolveContact(mutualContacts[0]).name })
                 : fmt(t.publicProfile.mutualContactPlural, { count: mutualContacts.length, names: mutualContacts.map(d => resolveContact(d).name).join(', ') })
@@ -444,7 +444,7 @@ export function PublicProfile() {
       {verifications.length > 0 && (
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Users size={16} className="text-primary-600" />
+            <Users size={16} className="text-primary" />
             <h3 className="text-sm font-medium text-foreground">
               {fmt(t.publicProfile.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
             </h3>
@@ -456,14 +456,14 @@ export function PublicProfile() {
                 <div key={v.id} className="flex items-center justify-between">
                   <Link
                     to={`/p/${encodeURIComponent(v.from)}`}
-                    className="flex items-center gap-2 min-w-0 hover:text-primary-600 transition-colors"
+                    className="flex items-center gap-2 min-w-0 hover:text-primary transition-colors"
                   >
                     <Avatar name={resolved.name} avatar={resolved.avatar} size="xs" />
                     <span className={`text-sm truncate ${resolved.isContact || resolved.isSelf ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                       {resolved.name}
                     </span>
                     {resolved.isSelf && <span className="text-xs text-muted-foreground/70">{t.publicProfile.youSuffix}</span>}
-                    {resolved.isContact && !resolved.isSelf && <span className="text-xs text-primary-500">{t.publicProfile.contactBadge}</span>}
+                    {resolved.isContact && !resolved.isSelf && <span className="text-xs text-primary">{t.publicProfile.contactBadge}</span>}
                   </Link>
                   <span className="text-xs text-muted-foreground/70 shrink-0 ml-2">
                     {formatDate(new Date(v.timestamp))}
@@ -479,7 +479,7 @@ export function PublicProfile() {
       {attestations.length > 0 && (
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Award size={16} className="text-amber-600" />
+            <Award size={16} className="text-warning" />
             <h3 className="text-sm font-medium text-foreground">
               {fmt(t.publicProfile.attestationCount, { count: attestations.length, attestationLabel: plural(attestations.length, t.common.attestationOne, t.common.attestationMany) })}
             </h3>
@@ -488,7 +488,7 @@ export function PublicProfile() {
             {attestations.map((a) => {
               const resolved = resolveContact(a.from)
               return (
-                <div key={a.id} className={`border-l-2 pl-3 ${resolved.isContact || resolved.isSelf ? 'border-success/30' : 'border-amber-200'}`}>
+                <div key={a.id} className={`border-l-2 pl-3 ${resolved.isContact || resolved.isSelf ? 'border-success' : 'border-warning'}`}>
                   <p className="text-sm text-foreground/80">&ldquo;{a.claim}&rdquo;</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <Avatar name={resolved.name} avatar={resolved.avatar} size="xs" />
@@ -496,7 +496,7 @@ export function PublicProfile() {
                       {t.common.from}{' '}
                       <Link
                         to={`/p/${encodeURIComponent(a.from)}`}
-                        className={`hover:text-primary-600 transition-colors ${resolved.isContact || resolved.isSelf ? 'text-foreground/80 font-medium' : ''}`}
+                        className={`hover:text-primary transition-colors ${resolved.isContact || resolved.isSelf ? 'text-foreground/80 font-medium' : ''}`}
                       >
                         {resolved.name}
                       </Link>
@@ -514,17 +514,17 @@ export function PublicProfile() {
 
       {/* Actions */}
       {!isLoggedIn && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <LogIn size={16} className="text-primary-600" />
-              <span className="text-sm text-primary-800">
+              <LogIn size={16} className="text-primary" />
+              <span className="text-sm text-foreground">
                 {t.publicProfile.joinCta}
               </span>
             </div>
             <Link
               to="/"
-              className="text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors"
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
               {t.publicProfile.joinButton}
             </Link>
@@ -542,7 +542,7 @@ export function PublicProfile() {
             </div>
             <Link
               to="/verify"
-              className="text-sm text-primary-600 hover:text-primary-800 transition-colors"
+              className="text-sm text-primary hover:text-primary/80 transition-colors"
             >
               {t.publicProfile.verifyButton}
             </Link>
