@@ -275,7 +275,18 @@ async function restoreFromVault(vault: VaultClient, key: Uint8Array): Promise<Ui
       return docBinary
     }
   } catch (err) {
-    console.error('[personal-doc] Vault restore failed:', err)
+    // AES-GCM OperationError = corrupt ciphertext (truncated upload, bit flip, etc.)
+    // Since the key is deterministic (HKDF from mnemonic), no device can ever decrypt
+    // a corrupt snapshot. It's irrecoverable data — safe to delete.
+    // The next local change will push a fresh snapshot via debouncedVaultPush().
+    // If another device has newer data, Automerge sync via relay will merge it first.
+    console.error('[personal-doc] Vault snapshot corrupt, deleting:', err)
+    try {
+      await vault.deleteDoc(VAULT_PERSONAL_DOC_ID)
+      console.log('[personal-doc] Deleted corrupt vault snapshot')
+    } catch (delErr) {
+      console.debug('[personal-doc] Could not delete corrupt vault doc:', delErr)
+    }
   }
   return null
 }
@@ -434,6 +445,11 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     personalRepo.flush([documentId]).then(() => {
       console.log('[personal-doc] IndexedDB compacted after vault restore')
     }).catch(() => {})
+  }
+
+  // Push to vault after migration (first-time setup from old format)
+  if (loadedFrom === 'migration' && vaultClient) {
+    debouncedVaultPush()
   }
 
   docHandle = handle
