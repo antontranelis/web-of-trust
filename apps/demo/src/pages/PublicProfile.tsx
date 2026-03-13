@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { User, ShieldCheck, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff, Share2, Link as LinkIcon } from 'lucide-react'
+import { User, ShieldCheck, UserPlus, Copy, Check, AlertCircle, Loader2, LogIn, Award, Users, WifiOff, Share2, Link as LinkIcon, ArrowRight } from 'lucide-react'
 import { HttpDiscoveryAdapter, type PublicProfile as PublicProfileType, type Verification, type Attestation, type Contact, type Identity, type Subscribable } from '@real-life/wot-core'
 import { Avatar } from '../components/shared'
 import { Tooltip } from '../components/ui/Tooltip'
@@ -260,13 +260,11 @@ export function PublicProfile() {
     return null
   }, [myDid, isMyProfile, verifications, receivedVerifications, decodedDid])
 
-  const shortDid = decodedDid.length > 30
-    ? `${decodedDid.slice(0, 16)}...${decodedDid.slice(-8)}`
-    : decodedDid
+  // Full DID — break-all so it wraps instead of truncating
 
   if (state === 'loading') {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+      <div className="flex flex-col items-center justify-center py-20 text-stone-500">
         <Loader2 size={32} className="animate-spin mb-3" />
         <p className="text-sm">{t.publicProfile.loading}</p>
       </div>
@@ -277,15 +275,15 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">{t.publicProfile.title}</h1>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
-          <User size={48} className="mx-auto text-slate-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.notFoundTitle}</h2>
-          <p className="text-sm text-slate-500 mb-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-6 text-center">
+          <User size={48} className="mx-auto text-stone-300 mb-4" />
+          <h2 className="text-lg font-medium text-stone-700 mb-2">{t.publicProfile.notFoundTitle}</h2>
+          <p className="text-sm text-stone-500 mb-4">
             {t.publicProfile.notFoundDescription}
           </p>
-          <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
+          <p className="text-xs text-stone-400 font-mono break-all">{decodedDid}</p>
         </div>
       </div>
     )
@@ -295,15 +293,15 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">{t.publicProfile.title}</h1>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
-          <WifiOff size={48} className="mx-auto text-slate-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.offlineTitle}</h2>
-          <p className="text-sm text-slate-500 mb-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-6 text-center">
+          <WifiOff size={48} className="mx-auto text-stone-300 mb-4" />
+          <h2 className="text-lg font-medium text-stone-700 mb-2">{t.publicProfile.offlineTitle}</h2>
+          <p className="text-sm text-stone-500 mb-4">
             {t.publicProfile.offlineDescription}
           </p>
-          <p className="text-xs text-slate-400 font-mono break-all">{decodedDid}</p>
+          <p className="text-xs text-stone-400 font-mono break-all">{decodedDid}</p>
         </div>
       </div>
     )
@@ -313,12 +311,12 @@ export function PublicProfile() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.title}</h1>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">{t.publicProfile.title}</h1>
         </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
+        <div className="bg-white border border-stone-200 rounded-lg p-6 text-center">
           <AlertCircle size={48} className="mx-auto text-red-300 mb-4" />
-          <h2 className="text-lg font-medium text-slate-700 mb-2">{t.publicProfile.errorTitle}</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-lg font-medium text-stone-700 mb-2">{t.publicProfile.errorTitle}</h2>
+          <p className="text-sm text-stone-500">
             {t.publicProfile.errorDescription}
           </p>
         </div>
@@ -329,11 +327,11 @@ export function PublicProfile() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.publicProfile.publicTitle}</h1>
+        <h1 className="text-2xl font-bold text-stone-900 mb-2">{t.publicProfile.publicTitle}</h1>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white border border-slate-200 rounded-lg p-6">
+      <div className="bg-white border border-stone-200 rounded-lg p-6">
         <div>
           {/* Header: Avatar + Name + Actions */}
           <div className="flex items-start gap-4">
@@ -342,8 +340,8 @@ export function PublicProfile() {
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-semibold text-slate-900 truncate">
-                      {profile?.name || <span className="text-slate-400 italic font-normal">{t.publicProfile.unknown}</span>}
+                    <h2 className="text-lg font-semibold text-stone-900 truncate">
+                      {profile?.name || <span className="text-stone-400 italic font-normal">{t.publicProfile.unknown}</span>}
                     </h2>
                     {state === 'loaded' && (
                       <Tooltip content={t.publicProfile.verifiedBanner}>
@@ -365,21 +363,21 @@ export function PublicProfile() {
                 </div>
                 <button
                   onClick={handleShareProfile}
-                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
-                  title="Profil teilen"
+                  className="p-2 text-stone-400 hover:text-primary-600 hover:bg-stone-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label={t.aria.shareProfile}
                 >
                   {shared ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
                 </button>
               </div>
               {profile?.bio && (
-                <p className="text-sm text-slate-600 leading-relaxed mt-0.5">{profile.bio}</p>
+                <p className="text-sm text-stone-600 leading-relaxed mt-0.5">{profile.bio}</p>
               )}
               <div className="flex items-center gap-2 mt-1">
-                <p className="text-xs text-slate-400 font-mono truncate flex-1 min-w-0">{shortDid}</p>
+                <p className="text-xs text-stone-400 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{decodedDid}</p>
                 <button
                   onClick={handleCopyDid}
-                  className="text-slate-400 hover:text-blue-600 transition-colors flex-shrink-0 p-1.5"
-                  title={t.publicProfile.copyDid}
+                  className="text-stone-400 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
+                  aria-label={t.aria.copyDid}
                 >
                   {copiedDid ? <Check size={12} /> : <Copy size={12} />}
                 </button>
@@ -389,10 +387,10 @@ export function PublicProfile() {
 
           {/* Offers & Needs */}
           {((profile?.offers && profile.offers.length > 0) || (profile?.needs && profile.needs.length > 0)) && (
-            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-3">
               {profile?.offers && profile.offers.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-slate-500 mb-1.5">Angebote</p>
+                  <p className="text-xs font-medium text-stone-500 mb-1.5">Angebote</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.offers.map((tag) => (
                       <span key={tag} className="inline-block px-2.5 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">{tag}</span>
@@ -402,7 +400,7 @@ export function PublicProfile() {
               )}
               {profile?.needs && profile.needs.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-slate-500 mb-1.5">Bedürfnisse</p>
+                  <p className="text-xs font-medium text-stone-500 mb-1.5">Bedürfnisse</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.needs.map((tag) => (
                       <span key={tag} className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">{tag}</span>
@@ -429,10 +427,10 @@ export function PublicProfile() {
 
       {/* Mutual contacts */}
       {mutualContacts.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <Users className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <Users className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-primary-800">
               {mutualContacts.length === 1
                 ? fmt(t.publicProfile.mutualContactSingular, { name: resolveContact(mutualContacts[0]).name })
                 : fmt(t.publicProfile.mutualContactPlural, { count: mutualContacts.length, names: mutualContacts.map(d => resolveContact(d).name).join(', ') })
@@ -444,10 +442,10 @@ export function PublicProfile() {
 
       {/* Verifications */}
       {verifications.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Users size={16} className="text-blue-600" />
-            <h3 className="text-sm font-medium text-slate-900">
+            <Users size={16} className="text-primary-600" />
+            <h3 className="text-sm font-medium text-stone-900">
               {fmt(t.publicProfile.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
             </h3>
           </div>
@@ -461,13 +459,13 @@ export function PublicProfile() {
                     className="flex items-center gap-2 min-w-0 hover:text-primary-600 transition-colors"
                   >
                     <Avatar name={resolved.name} avatar={resolved.avatar} size="xs" />
-                    <span className={`text-sm truncate ${resolved.isContact || resolved.isSelf ? 'text-slate-800 font-medium' : 'text-slate-600'}`}>
+                    <span className={`text-sm truncate ${resolved.isContact || resolved.isSelf ? 'text-stone-800 font-medium' : 'text-stone-600'}`}>
                       {resolved.name}
                     </span>
-                    {resolved.isSelf && <span className="text-xs text-slate-400">{t.publicProfile.youSuffix}</span>}
-                    {resolved.isContact && !resolved.isSelf && <span className="text-xs text-blue-500">{t.publicProfile.contactBadge}</span>}
+                    {resolved.isSelf && <span className="text-xs text-stone-400">{t.publicProfile.youSuffix}</span>}
+                    {resolved.isContact && !resolved.isSelf && <span className="text-xs text-primary-500">{t.publicProfile.contactBadge}</span>}
                   </Link>
-                  <span className="text-xs text-slate-400 shrink-0 ml-2">
+                  <span className="text-xs text-stone-400 shrink-0 ml-2">
                     {formatDate(new Date(v.timestamp))}
                   </span>
                 </div>
@@ -479,10 +477,10 @@ export function PublicProfile() {
 
       {/* Attestations */}
       {attestations.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
             <Award size={16} className="text-amber-600" />
-            <h3 className="text-sm font-medium text-slate-900">
+            <h3 className="text-sm font-medium text-stone-900">
               {fmt(t.publicProfile.attestationCount, { count: attestations.length, attestationLabel: plural(attestations.length, t.common.attestationOne, t.common.attestationMany) })}
             </h3>
           </div>
@@ -491,18 +489,18 @@ export function PublicProfile() {
               const resolved = resolveContact(a.from)
               return (
                 <div key={a.id} className={`border-l-2 pl-3 ${resolved.isContact || resolved.isSelf ? 'border-green-300' : 'border-amber-200'}`}>
-                  <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
+                  <p className="text-sm text-stone-700">&ldquo;{a.claim}&rdquo;</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <Avatar name={resolved.name} avatar={resolved.avatar} size="xs" />
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-stone-400">
                       {t.common.from}{' '}
                       <Link
                         to={`/p/${encodeURIComponent(a.from)}`}
-                        className={`hover:text-primary-600 transition-colors ${resolved.isContact || resolved.isSelf ? 'text-slate-700 font-medium' : ''}`}
+                        className={`hover:text-primary-600 transition-colors ${resolved.isContact || resolved.isSelf ? 'text-stone-700 font-medium' : ''}`}
                       >
                         {resolved.name}
                       </Link>
-                      {resolved.isSelf && <span className="text-slate-400 ml-1">{t.publicProfile.youSuffix}</span>}
+                      {resolved.isSelf && <span className="text-stone-400 ml-1">{t.publicProfile.youSuffix}</span>}
                       {resolved.isContact && !resolved.isSelf && <span className="text-green-600 ml-1">{t.publicProfile.yourContactBadge}</span>}
                       {' '}&middot; {formatDate(new Date(a.createdAt))}
                     </p>
@@ -534,11 +532,11 @@ export function PublicProfile() {
         </div>
       )}
       {isLoggedIn && !isMyProfile && !isContact && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+        <div className="bg-white border border-stone-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <UserPlus size={16} className="text-slate-500" />
-              <span className="text-sm text-slate-600">
+              <UserPlus size={16} className="text-stone-500" />
+              <span className="text-sm text-stone-600">
                 {t.publicProfile.verifyPerson}
               </span>
             </div>
@@ -552,28 +550,27 @@ export function PublicProfile() {
         </div>
       )}
       {isLoggedIn && !isMyProfile && isContact && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Award size={16} className="text-blue-600" />
-              <span className="text-sm text-blue-800">
-                {t.publicProfile.attestPerson}
-              </span>
+        <Link
+          to={`/attestations/new?to=${encodeURIComponent(decodedDid)}`}
+          className="flex items-center justify-between p-4 bg-white border border-stone-200 rounded-xl hover:border-accent-300 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent-100 rounded-lg flex items-center justify-center">
+              <Award className="w-5 h-5 text-accent-600" />
             </div>
-            <Link
-              to={`/attestations/new?to=${encodeURIComponent(decodedDid)}`}
-              className="text-sm font-medium text-blue-700 hover:text-blue-900 transition-colors"
-            >
-              {t.publicProfile.attestButton}
-            </Link>
+            <div>
+              <div className="font-medium text-stone-900">{t.publicProfile.attestPerson}</div>
+              <div className="text-sm text-stone-500">{fmt(t.publicProfile.attestPersonDesc, { name: profile?.name || t.publicProfile.unknown })}</div>
+            </div>
           </div>
-        </div>
+          <ArrowRight size={18} className="text-stone-400" />
+        </Link>
       )}
 
       {/* Share toast */}
       {shared && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-toast-in">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white text-sm rounded-lg shadow-lg">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-stone-800 text-white text-sm rounded-lg shadow-lg">
             <LinkIcon size={14} />
             <span>Link kopiert</span>
           </div>

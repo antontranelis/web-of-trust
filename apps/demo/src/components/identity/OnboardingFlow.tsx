@@ -186,21 +186,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           }}
         >
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-primary-600" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">{t.onboarding.welcomeTitle}</h1>
-            <p className="text-slate-600 text-lg">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">{t.onboarding.welcomeTitle}</h1>
+            <p className="text-stone-600 text-lg">
               {t.onboarding.welcomeSubtitle}
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-            <h3 className="font-medium text-blue-900 flex items-center space-x-2">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 space-y-3">
+            <h3 className="font-medium text-primary-900 flex items-center space-x-2">
               <Shield className="w-5 h-5" />
               <span>{t.onboarding.whatHappensTitle}</span>
             </h3>
-            <ol className="space-y-2 text-sm text-blue-800 ml-7">
+            <ol className="space-y-2 text-sm text-primary-800 ml-7">
               <li>{t.onboarding.whatHappens1}</li>
               <li>{t.onboarding.whatHappens2}</li>
               <li>{t.onboarding.whatHappens3}</li>
@@ -226,7 +226,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <button
             onClick={handleGenerate}
             disabled={isLoading}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             autoFocus
           >
             {isLoading ? t.onboarding.generating : t.onboarding.generateButton}
@@ -248,21 +248,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-yellow-600" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
               {t.onboarding.magicWordsTitle}
               <InfoTooltip content={t.onboarding.magicWordsTooltip} />
             </h1>
-            <p className="text-slate-600">
+            <p className="text-stone-600">
               {t.onboarding.magicWordsInstruction}
             </p>
           </div>
 
-          <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6">
+          <div className="bg-white border-2 border-stone-200 rounded-lg p-6">
             <div className="grid grid-cols-3 gap-3">
               {mnemonic.split(' ').map((word, i) => (
                 <div key={i} className="flex items-center space-x-2">
-                  <span className="text-slate-500 text-sm w-6">{i + 1}.</span>
-                  <span className="font-mono font-medium text-slate-900">{word}</span>
+                  <span className="text-stone-500 text-sm w-6">{i + 1}.</span>
+                  <span className="font-mono font-medium text-stone-900">{word}</span>
                 </div>
               ))}
             </div>
@@ -270,7 +270,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <button
             onClick={handleCopyMnemonic}
-            className="w-full py-3 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center space-x-2"
+            className="w-full py-3 border-2 border-stone-300 text-stone-700 font-medium rounded-lg hover:bg-stone-50 transition-colors flex items-center justify-center space-x-2"
           >
             {copied ? (
               <>
@@ -294,7 +294,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <button
             onClick={() => goToStep('verify')}
             disabled={!checklistItems.every((item) => item.checked)}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t.onboarding.continueToVerify}
           </button>
@@ -315,8 +315,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           }}
         >
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">{t.onboarding.verifyTitle}</h1>
-            <p className="text-slate-600">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">{t.onboarding.verifyTitle}</h1>
+            <p className="text-stone-600">
               {t.onboarding.verifyInstruction}
             </p>
           </div>
@@ -324,7 +324,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="space-y-4">
             {verifyWords.map((v) => (
               <div key={v.index}>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
                   {fmt(t.onboarding.wordLabel, { number: v.index + 1 })}
                 </label>
                 <input
@@ -348,7 +348,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       }
                     }
                   }}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder={t.onboarding.wordPlaceholder}
                   autoComplete="off"
                   autoFocus={v.index === verifyWords[0].index}
@@ -365,14 +365,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <button
               onClick={handleVerify}
               disabled={verifyWords.some((v) => !verifyInput[v.index]?.trim())}
-              className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
               {t.onboarding.verifyButton}
             </button>
 
             <button
               onClick={() => history.back()}
-              className="w-full py-2 text-slate-600 hover:text-slate-900 text-sm"
+              className="w-full py-2 text-stone-600 hover:text-stone-900 text-sm"
             >
               {t.onboarding.backToMagicWords}
             </button>
@@ -391,8 +391,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           }}
         >
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">{t.onboarding.profileTitle}</h1>
-            <p className="text-slate-600">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">{t.onboarding.profileTitle}</h1>
+            <p className="text-stone-600">
               {t.onboarding.profileSubtitle}
             </p>
           </div>
@@ -401,23 +401,23 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t.onboarding.profileNameLabel}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.onboarding.profileNameLabel}</label>
               <input
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder={t.onboarding.profileNamePlaceholder}
                 autoFocus
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t.onboarding.profileAboutLabel}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.onboarding.profileAboutLabel}</label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                 rows={3}
                 placeholder={t.onboarding.profileAboutPlaceholder}
               />
@@ -426,14 +426,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <button
             onClick={() => goToStep('protect')}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
           >
             {t.common.next}
           </button>
 
           <button
             onClick={() => goToStep('protect')}
-            className="w-full py-2 text-slate-500 hover:text-slate-700 text-sm transition-colors"
+            className="w-full py-2 text-stone-500 hover:text-stone-700 text-sm transition-colors"
           >
             {t.common.skip}
           </button>
@@ -461,35 +461,35 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Key className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
               {t.onboarding.protectTitle}
               <InfoTooltip content={t.onboarding.protectTooltip} />
             </h1>
-            <p className="text-slate-600">
+            <p className="text-stone-600">
               {t.onboarding.protectSubtitle}
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 text-sm text-primary-800">
             <strong>{t.onboarding.tipLabel}</strong> {t.onboarding.tipText}
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t.common.passwordLabel}</label>
+              <label className="block text-sm font-medium text-stone-700 mb-1">{t.common.passwordLabel}</label>
               <div className="relative">
                 <input
                   type={showPassphrase ? 'text' : 'password'}
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder={t.common.passwordPlaceholder}
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassphrase(!showPassphrase)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
                 >
                   {showPassphrase ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -497,14 +497,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-stone-700 mb-1">
                 {t.common.passwordConfirmLabel}
               </label>
               <input
                 type={showPassphrase ? 'text' : 'password'}
                 value={passphraseConfirm}
                 onChange={(e) => setPassphraseConfirm(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder={t.common.passwordConfirmPlaceholder}
               />
             </div>
@@ -518,7 +518,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <button
               onClick={handleProtect}
               disabled={isLoading || !passphrase || !passphraseConfirm}
-              className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
             >
               {isLoading ? t.onboarding.protecting : t.onboarding.protectButton}
             </button>
@@ -532,13 +532,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">{t.onboarding.completeTitle}</h1>
-          <p className="text-slate-600">{t.onboarding.completeSubtitle}</p>
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-            <p className="text-sm text-slate-600 mb-2">{t.onboarding.yourDid}</p>
-            <p className="font-mono text-xs text-slate-900 break-all">{did}</p>
+          <h1 className="text-3xl font-bold text-stone-900">{t.onboarding.completeTitle}</h1>
+          <p className="text-stone-600">{t.onboarding.completeSubtitle}</p>
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
+            <p className="text-sm text-stone-600 mb-2">{t.onboarding.yourDid}</p>
+            <p className="font-mono text-xs text-stone-900 break-all">{did}</p>
           </div>
-          <div className="animate-pulse text-slate-500 text-sm">
+          <div className="animate-pulse text-stone-500 text-sm">
             {t.onboarding.redirecting}
           </div>
         </div>

@@ -41,8 +41,8 @@ export function ImportAttestation() {
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">{t.importAttestation.successTitle}</h2>
-        <p className="text-slate-600">{t.importAttestation.successDescription}</p>
+        <h2 className="text-xl font-bold text-stone-900 mb-2">{t.importAttestation.successTitle}</h2>
+        <p className="text-stone-600">{t.importAttestation.successDescription}</p>
       </div>
     )
   }
@@ -51,26 +51,26 @@ export function ImportAttestation() {
     <div className="max-w-md mx-auto">
       <button
         onClick={() => navigate('/attestations')}
-        className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6"
+        className="flex items-center gap-2 text-stone-600 hover:text-stone-900 mb-6"
       >
         <ArrowLeft size={16} />
         {t.common.back}
       </button>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-6">
+      <div className="bg-white rounded-xl border border-stone-200 p-6">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
             <Download className="w-5 h-5 text-primary-600" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">{t.importAttestation.title}</h1>
-            <p className="text-sm text-slate-500">{t.importAttestation.subtitle}</p>
+            <h1 className="text-lg font-bold text-stone-900">{t.importAttestation.title}</h1>
+            <p className="text-sm text-stone-500">{t.importAttestation.subtitle}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-sm font-medium text-stone-700 mb-2">
               {t.importAttestation.codeLabel}
             </label>
             <textarea
@@ -80,7 +80,7 @@ export function ImportAttestation() {
                 setError(null)
               }}
               placeholder={t.importAttestation.codePlaceholder}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-mono text-sm"
+              className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-mono text-sm"
               rows={6}
               disabled={isImporting}
             />
@@ -101,7 +101,7 @@ export function ImportAttestation() {
             {isImporting ? t.importAttestation.importing : t.importAttestation.importButton}
           </button>
 
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-stone-500 text-center">
             {t.importAttestation.signatureNote}
           </p>
         </div>

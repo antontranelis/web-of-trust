@@ -3,7 +3,7 @@ import { useAdapters } from '../context'
 import { useLanguage, plural } from '../i18n'
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Copy, Check, Fingerprint, ShieldCheck, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock, Share2, Link as LinkIcon } from 'lucide-react'
+import { Copy, Check, ShieldCheck, Trash2, Pencil, ChevronDown, ChevronRight, Users, Award, Globe, GlobeLock, Share2, Link as LinkIcon, ArrowRight } from 'lucide-react'
 import { Avatar, AvatarUpload, TagInput } from '../components/shared'
 import { Tooltip } from '../components/ui/Tooltip'
 import { resetPersonalDoc, deletePersonalDocDB } from '../personalDocManager'
@@ -153,22 +153,26 @@ export function Identity() {
     setTimeout(() => setShared(false), 2000)
   }
 
-  const shortDid = did.length > 30
-    ? `${did.slice(0, 16)}...${did.slice(-8)}`
-    : did
+  // Full DID — use break-all so it wraps instead of truncating
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 mb-2">{t.identity.title}</h1>
-        <p className="text-slate-600">
-          {t.identity.subtitle}
-        </p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-stone-900">{t.identity.title}</h1>
+        {!isEditingProfile && (
+          <button
+            onClick={() => setIsEditingProfile(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors flex-shrink-0"
+          >
+            <Pencil size={16} />
+            {t.identity.editProfile}
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">
         {/* Profile Card */}
-        <div className="bg-white border border-slate-200 rounded-lg p-6">
+        <div className="bg-white border border-stone-200 rounded-lg p-6">
           {isEditingProfile ? (
             <div>
               {/* Header: Avatar + Name/Bio fields */}
@@ -180,7 +184,7 @@ export function Identity() {
                 />
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{t.identity.nameLabel}</label>
+                    <label className="block text-xs font-medium text-stone-500 mb-1">{t.identity.nameLabel}</label>
                     <input
                       type="text"
                       value={profileName}
@@ -188,17 +192,17 @@ export function Identity() {
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') setIsEditingProfile(false)
                       }}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                       placeholder={t.identity.namePlaceholder}
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">{t.identity.aboutLabel}</label>
+                    <label className="block text-xs font-medium text-stone-500 mb-1">{t.identity.aboutLabel}</label>
                     <textarea
                       value={profileBio}
                       onChange={(e) => setProfileBio(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                       rows={2}
                       placeholder={t.identity.aboutPlaceholder}
                     />
@@ -207,9 +211,9 @@ export function Identity() {
               </div>
 
               {/* Offers & Needs fields */}
-              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Angebote</label>
+                  <label className="block text-xs font-medium text-stone-500 mb-1.5">Angebote</label>
                   <TagInput
                     tags={profileOffers}
                     onChange={setProfileOffers}
@@ -218,7 +222,7 @@ export function Identity() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Bedürfnisse</label>
+                  <label className="block text-xs font-medium text-stone-500 mb-1.5">Bedürfnisse</label>
                   <TagInput
                     tags={profileNeeds}
                     onChange={setProfileNeeds}
@@ -229,16 +233,16 @@ export function Identity() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-stone-100">
                 <button
                   onClick={handleSaveProfile}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   {t.common.save}
                 </button>
                 <button
                   onClick={() => setIsEditingProfile(false)}
-                  className="px-4 py-2 text-slate-500 text-sm hover:text-slate-700 transition-colors"
+                  className="px-4 py-2 text-stone-500 text-sm hover:text-stone-700 transition-colors"
                 >
                   {t.common.cancel}
                 </button>
@@ -251,39 +255,30 @@ export function Identity() {
                 <Avatar name={profileName} avatar={profileAvatar} size="lg" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="text-lg font-semibold text-slate-900 truncate">
-                      {profileName || <span className="text-slate-400 italic font-normal">{t.identity.noNameSet}</span>}
+                    <h3 className="text-lg font-semibold text-stone-900 truncate">
+                      {profileName || <span className="text-stone-400 italic font-normal">{t.identity.noNameSet}</span>}
                     </h3>
                     <Tooltip content={t.identity.securityInfo}>
                       <ShieldCheck size={16} className="text-green-500" />
                     </Tooltip>
                     {profileSaved && <Check size={16} className="text-green-500 flex-shrink-0" />}
-                    <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-                      <button
-                        onClick={() => setIsEditingProfile(true)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Profil bearbeiten"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={handleShareProfile}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Profil teilen"
-                      >
-                        {shared ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
-                      </button>
-                    </div>
+                    <button
+                      onClick={handleShareProfile}
+                      className="p-2 text-stone-400 hover:text-primary-600 hover:bg-stone-100 rounded-lg transition-colors ml-auto flex-shrink-0"
+                      aria-label={t.aria.shareProfile}
+                    >
+                      {shared ? <Check size={15} className="text-green-500" /> : <Share2 size={15} />}
+                    </button>
                   </div>
                   {profileBio && (
-                    <p className="text-sm text-slate-600 leading-relaxed">{profileBio}</p>
+                    <p className="text-sm text-stone-600 leading-relaxed">{profileBio}</p>
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-slate-400 font-mono truncate flex-1 min-w-0">{shortDid}</p>
+                    <p className="text-xs text-stone-400 font-mono flex-1 min-w-0 truncate md:whitespace-normal md:break-all">{did}</p>
                     <button
                       onClick={handleCopyDid}
-                      className="text-slate-400 hover:text-blue-600 transition-colors flex-shrink-0 p-1.5"
-                      title={t.common.copy}
+                      className="text-stone-400 hover:text-primary-600 transition-colors flex-shrink-0 p-2"
+                      aria-label={t.aria.copyDid}
                     >
                       {copiedDid ? <Check size={12} /> : <Copy size={12} />}
                     </button>
@@ -293,10 +288,10 @@ export function Identity() {
 
               {/* Offers & Needs */}
               {(profileOffers.length > 0 || profileNeeds.length > 0) && (
-                <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 gap-3">
                   {profileOffers.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1.5">Angebote</p>
+                      <p className="text-xs font-medium text-stone-500 mb-1.5">Angebote</p>
                       <div className="flex flex-wrap gap-1.5">
                         {profileOffers.map((tag) => (
                           <span key={tag} className="inline-block px-2.5 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">{tag}</span>
@@ -306,7 +301,7 @@ export function Identity() {
                   )}
                   {profileNeeds.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1.5">Bedürfnisse</p>
+                      <p className="text-xs font-medium text-stone-500 mb-1.5">Bedürfnisse</p>
                       <div className="flex flex-wrap gap-1.5">
                         {profileNeeds.map((tag) => (
                           <span key={tag} className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">{tag}</span>
@@ -322,10 +317,10 @@ export function Identity() {
 
         {/* Verifications */}
         {verifications.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="bg-white border border-stone-200 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Users size={16} className="text-blue-600" />
-              <h3 className="text-sm font-medium text-slate-900">
+              <Users size={16} className="text-primary-600" />
+              <h3 className="text-sm font-medium text-stone-900">
                 {fmt(t.identity.verifiedByCount, { count: verifications.length, personLabel: plural(verifications.length, t.common.personOne, t.common.personMany) })}
               </h3>
             </div>
@@ -339,11 +334,11 @@ export function Identity() {
                   <div key={v.id} className="flex items-center justify-between text-sm">
                     <Link
                       to={`/p/${encodeURIComponent(v.from)}`}
-                      className="text-slate-700 hover:text-blue-600 transition-colors"
+                      className="text-stone-700 hover:text-primary-600 transition-colors"
                     >
                       {name || <span className="font-mono text-xs">{shortDid}</span>}
                     </Link>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-stone-400">
                       {formatDate(new Date(v.timestamp))}
                     </span>
                   </div>
@@ -355,14 +350,14 @@ export function Identity() {
 
         {/* Received Attestations */}
         {receivedAttestations.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-lg p-4">
+          <div className="bg-white border border-stone-200 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
               <Award size={16} className="text-amber-600" />
-              <h3 className="text-sm font-medium text-slate-900">
+              <h3 className="text-sm font-medium text-stone-900">
                 {fmt(t.identity.attestationsAboutMe, { count: receivedAttestations.length, attestationLabel: plural(receivedAttestations.length, t.common.attestationOne, t.common.attestationMany) })}
               </h3>
             </div>
-            <p className="text-xs text-slate-400 mb-3 ml-6">
+            <p className="text-xs text-stone-400 mb-3 ml-6">
               {t.identity.publishedAttestationsHint}
             </p>
             <div className="space-y-2">
@@ -375,12 +370,12 @@ export function Identity() {
                 return (
                   <div key={a.id} className={`flex items-center gap-3 border-l-2 pl-3 ${isKnownContact(a.from) ? 'border-green-300' : 'border-amber-200'}`}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700">&ldquo;{a.claim}&rdquo;</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-sm text-stone-700">&ldquo;{a.claim}&rdquo;</p>
+                      <p className="text-xs text-stone-400 mt-0.5">
                         {t.common.from}{' '}
                         <Link
                           to={`/p/${encodeURIComponent(a.from)}`}
-                          className="hover:text-blue-600 transition-colors"
+                          className="hover:text-primary-600 transition-colors"
                         >
                           {fromName || shortFrom}
                         </Link>
@@ -392,7 +387,7 @@ export function Identity() {
                       className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
                         isPublic
                           ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
-                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                          : 'text-stone-400 hover:text-stone-600 hover:bg-stone-100'
                       }`}
                       title={isPublic ? t.identity.attestationPublicTitle : t.identity.attestationPrivateTitle}
                     >
@@ -406,33 +401,16 @@ export function Identity() {
         )}
 
         {/* Details (collapsible) — DID + Maintenance + Danger Zone */}
-        <div className="bg-white border border-slate-200 rounded-lg">
+        <div className="bg-white border border-stone-200 rounded-lg">
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between p-4 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors rounded-lg"
+            className="w-full flex items-center justify-between p-4 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors rounded-lg"
           >
             <span>{t.identity.detailsAndMaintenance}</span>
             {showDetails ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
           {showDetails && (
-            <div className="px-4 pb-4 space-y-5 border-t border-slate-100 pt-4">
-              {/* DID */}
-              <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <Fingerprint size={16} className="text-slate-400" />
-                  <h4 className="text-sm font-medium text-slate-500">DID</h4>
-                </div>
-                <div className="font-mono text-sm text-slate-900 break-all mb-2">{did}</div>
-                <button
-                  onClick={handleCopyDid}
-                  className="inline-flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-700"
-                >
-                  {copiedDid ? <><Check size={14} /><span>{t.common.copied}</span></> : <><Copy size={14} /><span>{t.common.copy}</span></>}
-                </button>
-              </div>
-
-              <div className="border-t border-slate-200" />
-
+            <div className="px-4 pb-4 space-y-5 border-t border-stone-100 pt-4">
               {/* Delete Identity */}
               <div className="space-y-2">
                 <p className="text-sm text-red-700">
@@ -472,7 +450,7 @@ export function Identity() {
                       <button
                         onClick={() => setShowDeleteConfirm(false)}
                         disabled={isDeleting}
-                        className="px-4 py-2 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-stone-200 text-stone-700 text-sm rounded-lg hover:bg-stone-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {t.common.cancel}
                       </button>
@@ -488,7 +466,7 @@ export function Identity() {
       {/* Share toast */}
       {shared && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-toast-in">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white text-sm rounded-lg shadow-lg">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-stone-800 text-white text-sm rounded-lg shadow-lg">
             <LinkIcon size={14} />
             <span>Link kopiert</span>
           </div>

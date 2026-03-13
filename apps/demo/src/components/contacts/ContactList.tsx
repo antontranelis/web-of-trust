@@ -43,7 +43,7 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-blue-200 p-4">
+    <div className="bg-white rounded-lg border border-primary-200 p-4">
       <div className="flex items-start gap-3">
         <Link to={`/p/${encodeURIComponent(verification.from)}`}>
           <Avatar name={profile?.name} avatar={profile?.avatar} size="sm" />
@@ -53,7 +53,7 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
           <div className="flex items-center gap-2 mb-1">
             <Link
               to={`/p/${encodeURIComponent(verification.from)}`}
-              className="font-medium text-slate-900 truncate hover:text-primary-600 transition-colors"
+              className="font-medium text-stone-900 truncate hover:text-primary-600 transition-colors"
             >
               {name}
             </Link>
@@ -61,8 +61,8 @@ function PendingVerificationCard({ verification, onCounterVerify }: {
               {t.contacts.verifiedYouBadge}
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-mono truncate">{shortDid}</p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-stone-500 font-mono truncate md:whitespace-normal md:break-all">{verification.from}</p>
+          <p className="text-xs text-stone-400 mt-1">
             {formatDate(new Date(verification.timestamp))}
           </p>
         </div>
@@ -117,7 +117,7 @@ export function ContactList() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-8 text-slate-500">
+      <div className="text-center py-8 text-stone-500">
         {t.contacts.loading}
       </div>
     )
@@ -126,11 +126,11 @@ export function ContactList() {
   if (activeContacts.length === 0 && pendingContacts.length === 0 && unreciplocatedVerifications.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Users className="w-8 h-8 text-slate-400" />
+        <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Users className="w-8 h-8 text-stone-400" />
         </div>
-        <h3 className="text-lg font-medium text-slate-900 mb-2">{t.contacts.emptyTitle}</h3>
-        <p className="text-slate-600 mb-4">
+        <h3 className="text-lg font-medium text-stone-900 mb-2">{t.contacts.emptyTitle}</h3>
+        <p className="text-stone-600 mb-4">
           {t.contacts.emptyDescription}
         </p>
         <Link
@@ -147,10 +147,10 @@ export function ContactList() {
     <div className="space-y-6">
       {unreciplocatedVerifications.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium text-blue-600 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-medium text-primary-600 uppercase tracking-wider mb-3">
             {fmt(t.contacts.pendingCounterHeading, { count: unreciplocatedVerifications.length })}
           </h2>
-          <p className="text-xs text-slate-500 mb-3">
+          <p className="text-xs text-stone-500 mb-3">
             {t.contacts.pendingCounterDescription}
           </p>
           <div className="space-y-2">
@@ -167,7 +167,7 @@ export function ContactList() {
 
       {activeContacts.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wider mb-3">
             {fmt(t.contacts.activeContactsHeading, { count: activeContacts.length })}
           </h2>
           <div className="space-y-2">
@@ -186,7 +186,7 @@ export function ContactList() {
 
       {pendingContacts.length > 0 && (
         <section>
-          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
+          <h2 className="text-sm font-medium text-stone-500 uppercase tracking-wider mb-3">
             {fmt(t.contacts.pendingContactsHeading, { count: pendingContacts.length })}
           </h2>
           <div className="space-y-2">

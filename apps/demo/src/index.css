@@ -1,20 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a8a;
+  /* Primary: Blue — passend zur Landing-Page (#2563eb) */
+  --color-primary-50: oklch(97% 0.02 264);
+  --color-primary-100: oklch(93% 0.05 264);
+  --color-primary-200: oklch(87% 0.08 264);
+  --color-primary-300: oklch(78% 0.12 264);
+  --color-primary-400: oklch(68% 0.16 264);
+  --color-primary-500: oklch(58% 0.19 264);
+  --color-primary-600: oklch(55% 0.21 264);
+  --color-primary-700: oklch(48% 0.18 264);
+  --color-primary-800: oklch(40% 0.15 264);
+  --color-primary-900: oklch(30% 0.10 264);
+
+  /* Accent: Orange — Warning/Highlight (#f59e0b) */
+  --color-accent-50: oklch(97% 0.02 55);
+  --color-accent-100: oklch(93% 0.05 55);
+  --color-accent-200: oklch(87% 0.08 55);
+  --color-accent-300: oklch(78% 0.12 55);
+  --color-accent-400: oklch(72% 0.15 55);
+  --color-accent-500: oklch(70% 0.17 55);
+  --color-accent-600: oklch(62% 0.16 55);
+  --color-accent-700: oklch(52% 0.13 55);
+
+  /* Stone Neutrals — leicht warm getönt */
+  --color-stone-50: oklch(98% 0.003 265);
+  --color-stone-100: oklch(95% 0.005 265);
+  --color-stone-200: oklch(90% 0.008 265);
+  --color-stone-300: oklch(82% 0.008 265);
+  --color-stone-400: oklch(68% 0.008 265);
+  --color-stone-500: oklch(55% 0.008 265);
+  --color-stone-600: oklch(44% 0.008 265);
+  --color-stone-700: oklch(37% 0.008 265);
+  --color-stone-800: oklch(30% 0.006 265);
+  --color-stone-900: oklch(22% 0.004 265);
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-stone-50 text-stone-900 antialiased;
 }
 
 @keyframes confetti-fall {
@@ -38,4 +61,20 @@ body {
 
 .animate-fade-in {
   animation: fade-in 150ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in,
+  .animate-fade-in {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

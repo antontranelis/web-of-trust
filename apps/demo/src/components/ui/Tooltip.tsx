@@ -110,11 +110,11 @@ export function Tooltip({ content, children }: TooltipProps) {
       {open && (
         <div
           ref={tooltipCallbackRef}
-          className="z-50 w-64 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg animate-fade-in"
+          className="z-50 w-64 px-3 py-2 bg-stone-800 text-white text-xs rounded-lg shadow-lg animate-fade-in"
         >
           {content}
           <div
-            className="absolute -top-1 w-2 h-2 bg-slate-800 rotate-45"
+            className="absolute -top-1 w-2 h-2 bg-stone-800 rotate-45"
             style={{ left: 'var(--arrow-left, 50%)', marginLeft: '-4px' }}
           />
         </div>

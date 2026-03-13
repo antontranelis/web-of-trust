@@ -12,14 +12,14 @@ const sizeClasses = {
 }
 
 const colors = [
-  'bg-purple-100 text-purple-600',
-  'bg-blue-100 text-blue-600',
-  'bg-green-100 text-green-600',
-  'bg-amber-100 text-amber-600',
-  'bg-rose-100 text-rose-600',
-  'bg-teal-100 text-teal-600',
-  'bg-indigo-100 text-indigo-600',
-  'bg-orange-100 text-orange-600',
+  'bg-primary-100 text-primary-700',
+  'bg-accent-100 text-accent-600',
+  'bg-amber-100 text-amber-700',
+  'bg-green-100 text-green-700',
+  'bg-orange-100 text-orange-700',
+  'bg-teal-100 text-teal-700',
+  'bg-rose-100 text-rose-700',
+  'bg-stone-200 text-stone-600',
 ]
 
 function getInitials(name: string): string {
@@ -62,7 +62,7 @@ export function Avatar({ name, avatar, size = 'md' }: AvatarProps) {
   }
 
   return (
-    <div className={`${sizeClass} bg-slate-100 text-slate-400 rounded-full flex items-center justify-center flex-shrink-0 font-semibold`}>
+    <div className={`${sizeClass} bg-stone-100 text-stone-400 rounded-full flex items-center justify-center flex-shrink-0 font-semibold`}>
       ?
     </div>
   )

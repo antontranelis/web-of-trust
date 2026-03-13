@@ -19,10 +19,10 @@ export function SecurityChecklist({ items, onToggle }: SecurityChecklistProps) {
   return (
     <div
       className={`border-2 rounded-lg p-4 transition-colors ${
-        allChecked ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'
+        allChecked ? 'border-green-200 bg-green-50' : 'border-stone-200 bg-white'
       }`}
     >
-      <h3 className="text-sm font-medium text-slate-900 mb-3">
+      <h3 className="text-sm font-medium text-stone-900 mb-3">
         {t.securityChecklist.title} {allChecked && '✓'}
       </h3>
       <div className="space-y-2">
@@ -36,12 +36,12 @@ export function SecurityChecklist({ items, onToggle }: SecurityChecklistProps) {
               {item.checked ? (
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
               ) : (
-                <Circle className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                <Circle className="w-5 h-5 text-stone-400 group-hover:text-stone-600 transition-colors" />
               )}
             </div>
             <span
               className={`text-sm ${
-                item.checked ? 'text-slate-700 line-through' : 'text-slate-900'
+                item.checked ? 'text-stone-700 line-through' : 'text-stone-900'
               }`}
             >
               {item.label}

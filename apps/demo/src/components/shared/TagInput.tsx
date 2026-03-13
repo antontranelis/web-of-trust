@@ -13,7 +13,7 @@ interface TagInputProps {
 const colorClasses: Record<ChipColor, { chip: string; x: string }> = {
   green: { chip: 'bg-green-100 text-green-800', x: 'text-green-500 hover:text-green-700' },
   amber: { chip: 'bg-amber-100 text-amber-800', x: 'text-amber-500 hover:text-amber-700' },
-  blue: { chip: 'bg-blue-100 text-blue-800', x: 'text-blue-500 hover:text-blue-700' },
+  blue: { chip: 'bg-primary-100 text-primary-800', x: 'text-primary-500 hover:text-primary-700' },
 }
 
 export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zum Bestätigen', color = 'green' }: TagInputProps) {
@@ -53,7 +53,7 @@ export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zu
 
   return (
     <div
-      className="flex flex-wrap gap-1.5 min-h-[42px] w-full px-3 py-2 border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 cursor-text"
+      className="flex flex-wrap gap-1.5 min-h-[42px] w-full px-3 py-2 bg-white border border-stone-300 rounded-lg focus-within:ring-2 focus-within:ring-primary-500 cursor-text"
       onClick={() => inputRef.current?.focus()}
     >
       {tags.map((tag, i) => (
@@ -65,7 +65,8 @@ export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zu
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); removeTag(i) }}
-            className={`transition-colors ${x}`}
+            className={`p-0.5 -m-0.5 transition-colors ${x}`}
+            aria-label={`${tag} entfernen`}
           >
             <X size={12} />
           </button>
@@ -77,7 +78,7 @@ export function TagInput({ tags, onChange, placeholder = 'Tag eingeben, Enter zu
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={() => { if (input.trim()) addTag(input) }}
-        className="flex-1 min-w-[120px] outline-none text-sm bg-transparent text-slate-900 placeholder-slate-400"
+        className="flex-1 min-w-[120px] outline-none text-sm bg-transparent text-stone-900 placeholder-stone-400"
         placeholder={tags.length === 0 ? placeholder : ''}
       />
     </div>
