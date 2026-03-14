@@ -19,6 +19,8 @@ import { VaultClient, base64ToUint8 } from '../services/VaultClient'
 import { VaultPushScheduler } from '../services/VaultPushScheduler'
 import { EncryptedSyncService } from '../services/EncryptedSyncService'
 import { PersonalNetworkAdapter } from '../adapters/replication/PersonalNetworkAdapter'
+import { CompactStorageManager } from './CompactStorageManager'
+import { SyncOnlyStorageAdapter } from './SyncOnlyStorageAdapter'
 import { getMetrics, registerDebugApi } from './PersistenceMetrics'
 
 // --- Personal Document Schema ---
@@ -207,6 +209,46 @@ async function checkIdbHealth(dbName: string, storeName: string): Promise<boolea
   }
 }
 
+/**
+ * Check if an IndexedDB database exists and has entries.
+ * Returns false if the DB doesn't exist (onupgradeneeded fires = first open).
+ */
+async function idbHasData(dbName: string, storeName: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const req = indexedDB.open(dbName, 1)
+    let isNew = false
+    req.onupgradeneeded = () => {
+      // DB didn't exist before — mark as new
+      isNew = true
+      const db = req.result
+      if (!db.objectStoreNames.contains(storeName)) {
+        db.createObjectStore(storeName)
+      }
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      if (isNew) {
+        // DB was just created — no data. Delete it and return false.
+        db.close()
+        indexedDB.deleteDatabase(dbName)
+        resolve(false)
+        return
+      }
+      try {
+        const tx = db.transaction(storeName, 'readonly')
+        const store = tx.objectStore(storeName)
+        const countReq = store.count()
+        countReq.onsuccess = () => { db.close(); resolve(countReq.result > 0) }
+        countReq.onerror = () => { db.close(); resolve(false) }
+      } catch {
+        db.close()
+        resolve(false)
+      }
+    }
+    req.onerror = () => resolve(false)
+  })
+}
+
 // --- Old IndexedDB (for migration) ---
 
 const OLD_IDB_NAME = 'wot-personal-doc'
@@ -259,7 +301,12 @@ let vaultClient: VaultClient | null = null
 let vaultPersonalKey: Uint8Array | null = null
 let vaultSeq = 0
 let vaultScheduler: VaultPushScheduler | null = null
+/** CompactStore for local doc persistence (replaces automerge-repo's chunked IDB) */
+let compactStore: CompactStorageManager | null = null
+let compactScheduler: VaultPushScheduler | null = null
 const VAULT_PERSONAL_DOC_ID = '__personal__'
+const COMPACT_STORE_DB = 'wot-compact-store'
+const SYNC_STATE_DB = 'wot-personal-sync-states'
 
 function emptyPersonalDoc(): PersonalDoc {
   return {
@@ -342,6 +389,34 @@ async function restoreFromVault(vault: VaultClient, key: Uint8Array): Promise<Ui
 }
 
 /**
+ * Push the current personal doc snapshot to the CompactStore (local IDB).
+ * Called by compactScheduler — dirty check is done by the scheduler.
+ */
+async function pushToCompactStore(): Promise<void> {
+  if (!compactStore || !docHandle) return
+
+  try {
+    const doc = docHandle.doc()
+    if (!doc) return
+
+    // clone() strips history → save() produces a compact state-only snapshot.
+    // Without clone(), save() includes the full change history which grows
+    // unboundedly with every sync cycle (~1KB per remote change).
+    const t0save = Date.now()
+    const cloned = Automerge.clone(doc)
+    const docBinary = Automerge.save(cloned)
+    const blockedUiMs = Date.now() - t0save
+    if (!docBinary || docBinary.length === 0) return
+
+    const t0 = Date.now()
+    await compactStore.save(VAULT_PERSONAL_DOC_ID, docBinary)
+    getMetrics().logSave('compact-store', Date.now() - t0, docBinary.length, blockedUiMs)
+  } catch (err) {
+    getMetrics().logError('save:compact-store', err)
+  }
+}
+
+/**
  * Push the current personal doc snapshot to the vault (encrypted).
  * Called by VaultPushScheduler — dirty check is done by the scheduler.
  */
@@ -358,8 +433,9 @@ async function pushToVault(): Promise<void> {
       return
     }
 
-    // Use Automerge.save() — compact compressed binary of current state
-    const docBinary = Automerge.save(doc)
+    // clone() strips history → save() produces a compact state-only snapshot.
+    const cloned = Automerge.clone(doc)
+    const docBinary = Automerge.save(cloned)
     if (!docBinary || docBinary.length === 0) return
 
     const encrypted = await EncryptedSyncService.encryptChange(
@@ -396,6 +472,7 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     if (doc) return doc
   }
 
+  const tInit = Date.now()
   const { documentId, documentUrl, personalKey } = await derivePersonalDocId(identity)
   const did = identity.getDid()
 
@@ -405,86 +482,127 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     vaultPersonalKey = personalKey
   }
 
-  // Create IndexedDB storage for automerge-repo (separate from shared spaces)
-  const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
-  const repoStorage = new IndexedDBStorageAdapter('automerge-personal')
+  // Open CompactStore for local doc persistence
+  compactStore = new CompactStorageManager(COMPACT_STORE_DB)
+  await compactStore.open()
 
-  // Create repo WITHOUT network first — so find() only reads from local IndexedDB
-  // (adding network adapters before find() causes Automerge to wait for peer sync)
+  // Create repo with SyncOnlyStorageAdapter (only sync-state, no doc chunks)
+  const syncStorage = new SyncOnlyStorageAdapter(SYNC_STATE_DB)
   personalRepo = new Repo({
     peerId: `${did}-personal` as any,
     network: [],
-    storage: repoStorage,
+    storage: syncStorage,
     sharePolicy: async () => true,
   })
 
-  // Strategy: Check IDB health first, then decide: healthy IDB → use it, else vault → else new
   const metrics = getMetrics()
+  metrics.setImpl('compact-store')
   registerDebugApi(metrics)
   let handle!: DocHandle<PersonalDoc>
   let loadedFrom = ''
 
-  // 0) Check if IndexedDB has too many chunks (causes WASM OOM crash on load)
-  const idbHealthy = await checkIdbHealth('automerge-personal', 'documents')
-
-  // 1) Try local IndexedDB — only if healthy (few chunks = already compacted)
-  if (idbHealthy) {
-    try {
-      const t0 = Date.now()
-      handle = await Promise.race([
-        personalRepo.find<PersonalDoc>(documentUrl),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('find timeout')), 8000)),
-      ])
+  // 1) Try CompactStore (fastest path — single snapshot from own IDB)
+  try {
+    const t0 = Date.now()
+    const snapshot = await compactStore.load(VAULT_PERSONAL_DOC_ID)
+    const t1 = Date.now()
+    if (snapshot && snapshot.length > 0) {
+      handle = personalRepo.import<PersonalDoc>(snapshot, { docId: documentId })
+      const t2 = Date.now()
+      if (!handle.isReady()) handle.doneLoading()
       const doc = handle.doc()
+      const t3 = Date.now()
+      console.debug(`[personal-doc] CompactStore load breakdown: idb=${t1-t0}ms import=${t2-t1}ms doc=${t3-t2}ms size=${snapshot.length}B`)
       if (doc && typeof doc === 'object') {
-        loadedFrom = 'indexeddb'
+        loadedFrom = 'compact-store'
         const timeMs = Date.now() - t0
-        const sizeBytes = Automerge.save(doc).length
-        metrics.setFindDuration(timeMs)
-        metrics.logLoad('indexeddb', timeMs, sizeBytes, {
+        metrics.logLoad('compact-store', timeMs, snapshot.length, {
           contacts: Object.keys(doc.contacts ?? {}).length,
           attestations: Object.keys(doc.attestations ?? {}).length,
           spaces: Object.keys(doc.spaces ?? {}).length,
         })
         metrics.setDocStats(
-          sizeBytes,
+          snapshot.length,
           Object.keys(doc.contacts ?? {}).length,
           Object.keys(doc.attestations ?? {}).length,
           Object.keys(doc.spaces ?? {}).length,
         )
-      } else {
-        throw new Error('Doc loaded but empty')
+      }
+    }
+  } catch (err) {
+    metrics.logError('load:compact-store', err)
+  }
+
+  // 2) Migration: old automerge-personal IDB → CompactStore (one-time)
+  if (!loadedFrom) {
+    try {
+      const tMig = Date.now()
+      // Only attempt migration if the old IDB actually exists (has data)
+      const oldIdbExists = await idbHasData('automerge-personal', 'documents')
+      console.debug(`[personal-doc] Migration check: exists=${oldIdbExists} took=${Date.now()-tMig}ms`)
+      if (oldIdbExists) {
+        const idbHealthy = await checkIdbHealth('automerge-personal', 'documents')
+        if (idbHealthy) {
+          // Create temporary repo just to read from old IDB
+          const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
+          const tempRepo = new Repo({
+            peerId: `${did}-migration` as any,
+            network: [],
+            storage: new IndexedDBStorageAdapter('automerge-personal'),
+            sharePolicy: async () => true,
+          })
+          try {
+            const t0 = Date.now()
+            const tempHandle = await Promise.race([
+              tempRepo.find<PersonalDoc>(documentUrl),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('migration find timeout')), 8000)),
+            ])
+            const doc = tempHandle.doc()
+            if (doc && typeof doc === 'object') {
+              // Save to CompactStore
+              const docBinary = Automerge.save(doc)
+              await compactStore.save(VAULT_PERSONAL_DOC_ID, docBinary)
+
+              // Import into main repo
+              handle = personalRepo.import<PersonalDoc>(docBinary, { docId: documentId })
+              if (!handle.isReady()) handle.doneLoading()
+
+              loadedFrom = 'migration'
+              const timeMs = Date.now() - t0
+              const fromChunks = metrics['_idbChunkCount'] ?? 0
+              metrics.logMigration(typeof fromChunks === 'number' ? fromChunks : 0, docBinary.length)
+              metrics.logLoad('migration', timeMs, docBinary.length, {
+                contacts: Object.keys(doc.contacts ?? {}).length,
+                attestations: Object.keys(doc.attestations ?? {}).length,
+                spaces: Object.keys(doc.spaces ?? {}).length,
+                source: 'automerge-personal',
+              })
+              metrics.setDocStats(
+                docBinary.length,
+                Object.keys(doc.contacts ?? {}).length,
+                Object.keys(doc.attestations ?? {}).length,
+                Object.keys(doc.spaces ?? {}).length,
+              )
+            }
+          } finally {
+            try { tempRepo.shutdown() } catch { /* best effort */ }
+          }
+        }
+        // Delete old IDB after migration (or if unhealthy — vault is the fallback)
+        await new Promise<void>((resolve) => {
+          const req = indexedDB.deleteDatabase('automerge-personal')
+          req.onsuccess = () => resolve()
+          req.onerror = () => resolve()
+          req.onblocked = () => resolve()
+        }).catch(() => {})
+        console.debug('[personal-doc] Cleaned up old automerge-personal IDB')
       }
     } catch (err) {
-      metrics.logError('load:indexeddb', err)
-    }
-  } else {
-    metrics.logError('load:indexeddb', 'Too many chunks, skipping (would crash WASM)')
-  }
-
-  // If IDB failed or was skipped, delete it and re-create clean repo
-  if (!loadedFrom && !idbHealthy) {
-    try {
-      await new Promise<void>((resolve) => {
-        const req = indexedDB.deleteDatabase('automerge-personal')
-        req.onsuccess = () => resolve()
-        req.onerror = () => resolve()
-        req.onblocked = () => resolve()
-      })
-      console.debug('[personal-doc] Deleted fragmented IndexedDB')
-      const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
-      personalRepo = new Repo({
-        storage: new IndexedDBStorageAdapter('automerge-personal'),
-        network: [],
-        peerId: `${did}-personal` as any,
-        sharePolicy: async () => true,
-      })
-    } catch (cleanupErr) {
-      console.debug('[personal-doc] IDB cleanup failed:', cleanupErr)
+      metrics.logError('load:migration', err)
     }
   }
 
-  // 2) Fallback: try vault (compact snapshot over HTTP)
+  // 3) Fallback: try vault (compact snapshot over HTTP)
   if (!loadedFrom && vaultClient && vaultPersonalKey) {
     const t0 = Date.now()
     const vaultBinary = await restoreFromVault(vaultClient, vaultPersonalKey)
@@ -507,13 +625,15 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
           Object.keys(doc.attestations ?? {}).length,
           Object.keys(doc.spaces ?? {}).length,
         )
+        // Save to CompactStore for fast next load
+        await compactStore.save(VAULT_PERSONAL_DOC_ID, vaultBinary)
       }
     } else {
       console.debug('[personal-doc] Vault has no data')
     }
   }
 
-  // 3) Fallback: old IDB migration or create empty
+  // 4) Fallback: old wot-personal-doc IDB migration or create empty
   if (!loadedFrom) {
     const oldData = await loadFromOldIDB()
     if (oldData) {
@@ -532,19 +652,24 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
       loadedFrom = 'new'
       metrics.logLoad('new', 0, 0)
     }
-    await personalRepo.flush([documentId])
   }
 
-  // Compact IndexedDB in background (replaces many incrementals with 1 snapshot for fast next load)
-  if (loadedFrom === 'vault' || loadedFrom === 'indexeddb') {
-    const flushT0 = Date.now()
-    personalRepo.flush([documentId]).then(() => {
-      metrics.setFlushDuration(Date.now() - flushT0)
-      console.debug(`[personal-doc] IndexedDB compacted after ${loadedFrom} load`)
-    }).catch(() => {})
+  // Create CompactStore scheduler (2s debounce for local persistence)
+  compactScheduler = new VaultPushScheduler({
+    pushFn: pushToCompactStore,
+    getHeadsFn: () => {
+      const d = handle.doc()
+      return d ? Automerge.getHeads(d).join(',') : null
+    },
+    debounceMs: 2000,
+  })
+  // Mark initial heads as saved if loaded from CompactStore
+  if (loadedFrom === 'compact-store') {
+    const initialDoc = handle.doc()
+    if (initialDoc) compactScheduler.setLastPushedHeads(Automerge.getHeads(initialDoc).join(','))
   }
 
-  // Create VaultPushScheduler (replaces manual debounce + dirty check)
+  // Create VaultPushScheduler
   if (vaultClient) {
     vaultScheduler = new VaultPushScheduler({
       pushFn: pushToVault,
@@ -561,8 +686,7 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
       vaultScheduler.setLastPushedHeads(Automerge.getHeads(initialDoc).join(','))
     }
 
-    // Push to vault when it's empty or was just cleaned up (corrupt snapshot deleted)
-    // Also covers migration from old format
+    // Push to vault when it's empty or was just cleaned up
     if (loadedFrom !== 'vault' && loadedFrom !== 'new') {
       vaultScheduler.pushDebounced()
     }
@@ -586,6 +710,8 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
       console.debug('[personal-doc] Remote change detected, notifying listeners')
       notifyListeners()
       // No vault push here — the sender already pushed to vault.
+      // But persist locally via CompactStore (debounced) for offline-first.
+      compactScheduler?.pushDebounced()
     }
   })
 
@@ -600,6 +726,7 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
 
   const doc = handle.doc()
   if (!doc) throw new Error('Failed to initialize personal doc')
+  console.debug(`[personal-doc] initPersonalDoc total: ${Date.now() - tInit}ms (loaded from: ${loadedFrom})`)
   return doc
 }
 
@@ -640,6 +767,7 @@ export function changePersonalDoc(fn: (doc: PersonalDoc) => void): PersonalDoc {
     localChangeInProgress = false
   }
   notifyListeners()
+  compactScheduler?.pushImmediate()
   vaultScheduler?.pushImmediate()
   const doc = docHandle.doc()
   if (!doc) throw new Error('Doc disappeared after change')
@@ -657,12 +785,11 @@ export function onPersonalDocChange(callback: () => void): () => void {
 }
 
 /**
- * Force-flush the Automerge doc to IndexedDB immediately.
+ * Force-flush the personal doc to CompactStore and Vault immediately.
  */
 export async function flushPersonalDoc(): Promise<void> {
-  if (personalRepo && docHandle) {
-    await personalRepo.flush([docHandle.documentId])
-  }
+  await compactScheduler?.flush()
+  await vaultScheduler?.flush()
 }
 
 /**
@@ -677,7 +804,9 @@ export async function resetPersonalDoc(): Promise<void> {
   vaultClient = null
   vaultPersonalKey = null
   vaultSeq = 0
+  if (compactScheduler) { compactScheduler.destroy(); compactScheduler = null }
   if (vaultScheduler) { vaultScheduler.destroy(); vaultScheduler = null }
+  if (compactStore) { compactStore.close(); compactStore = null }
   changeListeners.clear()
   // Shutdown after clearing refs (so nothing retries during shutdown)
   try {
@@ -694,7 +823,7 @@ export async function deletePersonalDocDB(): Promise<void> {
   await resetPersonalDoc()
   // Delete both old and new IndexedDB databases
   // Use timeout to avoid Firefox blocking indefinitely on open connections
-  for (const dbName of [OLD_IDB_NAME, 'automerge-personal']) {
+  for (const dbName of [OLD_IDB_NAME, 'automerge-personal', COMPACT_STORE_DB, SYNC_STATE_DB]) {
     await Promise.race([
       new Promise<void>((resolve) => {
         const req = indexedDB.deleteDatabase(dbName)
