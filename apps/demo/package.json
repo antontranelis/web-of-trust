@@ -11,8 +11,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@automerge/automerge-repo": "^2.5.3",
-    "@automerge/automerge-repo-storage-indexeddb": "^2.5.3",
     "@real-life/wot-core": "workspace:*",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.562.0",

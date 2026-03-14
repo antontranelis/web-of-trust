@@ -6,6 +6,8 @@ import {
   OfflineFirstDiscoveryAdapter,
   OutboxMessagingAdapter,
   AutomergeReplicationAdapter,
+  CompactStorageManager,
+  SyncOnlyStorageAdapter,
   GroupKeyService,
   encodeBase64Url,
   getMetrics,
@@ -84,6 +86,8 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
     let outboxAdapter: OutboxMessagingAdapter | null = null
     let replicationAdapter: AutomergeReplicationAdapter | null = null
     let localCacheStore: LocalCacheStore | null = null
+    let spaceCompactStore: CompactStorageManager | null = null
+    let spaceSyncStorage: SyncOnlyStorageAdapter | null = null
     let offlineHandler: (() => void) | null = null
     let unsubRemoteSync: (() => void) | null = null
 
@@ -95,7 +99,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const previousDid = localStorage.getItem('wot-active-did')
         if (previousDid && previousDid !== did) {
           await deletePersonalDocDB()
-          for (const dbName of ['wot-space-metadata', 'automerge-repo', 'wot-local-cache']) {
+          for (const dbName of ['wot-space-metadata', 'automerge-repo', 'wot-local-cache', 'wot-space-compact-store', 'wot-space-sync-states']) {
             try { await new Promise<void>((resolve, reject) => {
               const req = indexedDB.deleteDatabase(dbName)
               req.onsuccess = () => resolve()
@@ -184,14 +188,16 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
         const groupKeyService = new GroupKeyService()
         const spaceMetadataStorage = new AutomergeSpaceMetadataStorage()
-        const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
-        const repoStorage = new IndexedDBStorageAdapter()
+        spaceCompactStore = new CompactStorageManager('wot-space-compact-store')
+        await spaceCompactStore.open()
+        spaceSyncStorage = new SyncOnlyStorageAdapter('wot-space-sync-states')
         replicationAdapter = new AutomergeReplicationAdapter({
           identity,
           messaging: outboxAdapter,
           groupKeyService,
           metadataStorage: spaceMetadataStorage,
-          repoStorage,
+          repoStorage: spaceSyncStorage,
+          compactStore: spaceCompactStore,
           vaultUrl: VAULT_URL,
         })
 
@@ -495,6 +501,8 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       replicationAdapter?.stop().catch(() => {})
       outboxAdapter?.disconnect()
       localCacheStore?.close()
+      spaceCompactStore?.close()
+      spaceSyncStorage?.close()
     }
   }, [identity])
 

@@ -141,6 +141,7 @@ export { WebSocketMessagingAdapter } from './adapters/messaging/WebSocketMessagi
 export { AutomergeReplicationAdapter } from './adapters/replication/AutomergeReplicationAdapter'
 export type { CompactStore } from './adapters/replication/AutomergeReplicationAdapter'
 export { CompactStorageManager } from './storage/CompactStorageManager'
+export { SyncOnlyStorageAdapter } from './storage/SyncOnlyStorageAdapter'
 export { HttpDiscoveryAdapter } from './adapters/discovery/HttpDiscoveryAdapter'
 export { OfflineFirstDiscoveryAdapter } from './adapters/discovery/OfflineFirstDiscoveryAdapter'
 export { InMemoryPublishStateStore } from './adapters/discovery/InMemoryPublishStateStore'
