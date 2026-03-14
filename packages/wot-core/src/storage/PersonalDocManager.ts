@@ -150,12 +150,6 @@ export interface PersonalDoc {
   verifications: Record<string, VerificationDoc>
   attestations: Record<string, AttestationDoc>
   attestationMetadata: Record<string, AttestationMetadataDoc>
-  publishState: Record<string, PublishStateDoc>
-  cachedGraph: {
-    entries: Record<string, CachedGraphEntryDoc>
-    verifications: Record<string, CachedGraphVerificationDoc>
-    attestations: Record<string, CachedGraphAttestationDoc>
-  }
   outbox: Record<string, OutboxEntryDoc>
   spaces: Record<string, SpaceMetadataDoc>
   groupKeys: Record<string, GroupKeyDoc>
@@ -315,12 +309,6 @@ function emptyPersonalDoc(): PersonalDoc {
     verifications: {},
     attestations: {},
     attestationMetadata: {},
-    publishState: {},
-    cachedGraph: {
-      entries: {},
-      verifications: {},
-      attestations: {},
-    },
     outbox: {},
     spaces: {},
     groupKeys: {},
@@ -640,7 +628,6 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     const oldData = await loadFromOldIDB()
     if (oldData) {
       const migratedDoc = { ...emptyPersonalDoc(), ...oldData }
-      if (!migratedDoc.cachedGraph?.entries) migratedDoc.cachedGraph = emptyPersonalDoc().cachedGraph
       handle = personalRepo.import<PersonalDoc>(new Uint8Array(0), { docId: documentId })
       if (!handle.isReady()) handle.doneLoading()
       handle.change(doc => { Object.assign(doc, migratedDoc) })

@@ -1,7 +1,8 @@
 /**
- * AutomergeGraphCacheStore - GraphCacheStore backed by Personal Automerge Doc
+ * GraphCacheStore backed by LocalCacheStore (plain JSON in IndexedDB).
  *
- * Replaces EvoluGraphCacheStore. Stores cached graph data in doc.cachedGraph.
+ * Local-only cache — NOT synced to other devices, NOT stored in PersonalDoc.
+ * Used as offline fallback for profile lookups (OfflineFirstDiscoveryAdapter).
  */
 import type {
   GraphCacheStore,
@@ -10,12 +11,63 @@ import type {
   Verification,
   Attestation,
 } from '@real-life/wot-core'
-import {
-  getPersonalDoc,
-  changePersonalDoc,
-} from '../personalDocManager'
+import type { LocalCacheStore } from './LocalCacheStore'
+
+const ENTRIES_KEY = 'graph:entries'
+const VERIFICATIONS_KEY = 'graph:verifications'
+const ATTESTATIONS_KEY = 'graph:attestations'
+
+interface EntryDoc {
+  did: string
+  name: string | null
+  bio: string | null
+  avatar: string | null
+  encryptionPublicKey: string | null
+  verificationCount: number
+  attestationCount: number
+  verifierDids: string[]
+  fetchedAt: string
+}
+
+interface VerificationDoc {
+  subjectDid: string
+  verificationId: string
+  fromDid: string
+  toDid: string
+  timestamp: string
+  proofJson: string
+  locationJson: string | null
+}
+
+interface AttestationDoc {
+  subjectDid: string
+  attestationId: string
+  fromDid: string
+  toDid: string
+  claim: string
+  tagsJson: string | null
+  context: string | null
+  attestationCreatedAt: string
+  proofJson: string
+}
 
 export class AutomergeGraphCacheStore implements GraphCacheStore {
+  private store: LocalCacheStore
+  // In-memory cache — loaded once, then kept in sync
+  private entries: Record<string, EntryDoc> = {}
+  private verifications: Record<string, VerificationDoc> = {}
+  private attestations: Record<string, AttestationDoc> = {}
+
+  constructor(store: LocalCacheStore) {
+    this.store = store
+  }
+
+  /** Load cached data from IDB into memory. Call once after LocalCacheStore.open(). */
+  async load(): Promise<void> {
+    this.entries = await this.store.get<Record<string, EntryDoc>>(ENTRIES_KEY) ?? {}
+    this.verifications = await this.store.get<Record<string, VerificationDoc>>(VERIFICATIONS_KEY) ?? {}
+    this.attestations = await this.store.get<Record<string, AttestationDoc>>(ATTESTATIONS_KEY) ?? {}
+  }
 
   async cacheEntry(
     did: string,
@@ -26,70 +78,68 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
     const verifierDids = [...new Set(verifications.map(v => v.from))]
     const now = new Date().toISOString()
 
-    changePersonalDoc(doc => {
-      // Update summary entry
-      doc.cachedGraph.entries[did] = {
-        did,
-        name: profile?.name ?? null,
-        bio: profile?.bio ?? null,
-        avatar: profile?.avatar ?? null,
-        encryptionPublicKey: profile?.encryptionPublicKey ?? null,
-        verificationCount: verifications.length,
-        attestationCount: attestations.length,
-        verifierDidsJson: verifierDids.length > 0 ? JSON.stringify(verifierDids) : null,
-        fetchedAt: now,
-      }
+    // Update entry
+    this.entries[did] = {
+      did,
+      name: profile?.name ?? null,
+      bio: profile?.bio ?? null,
+      avatar: profile?.avatar ?? null,
+      encryptionPublicKey: profile?.encryptionPublicKey ?? null,
+      verificationCount: verifications.length,
+      attestationCount: attestations.length,
+      verifierDids,
+      fetchedAt: now,
+    }
 
-      // Delete old detail records for this subject
-      for (const [key, v] of Object.entries(doc.cachedGraph.verifications)) {
-        if (v.subjectDid === did) delete doc.cachedGraph.verifications[key]
-      }
-      for (const [key, a] of Object.entries(doc.cachedGraph.attestations)) {
-        if (a.subjectDid === did) delete doc.cachedGraph.attestations[key]
-      }
+    // Delete old detail records for this subject
+    for (const key of Object.keys(this.verifications)) {
+      if (this.verifications[key].subjectDid === did) delete this.verifications[key]
+    }
+    for (const key of Object.keys(this.attestations)) {
+      if (this.attestations[key].subjectDid === did) delete this.attestations[key]
+    }
 
-      // Insert new detail records
-      for (const v of verifications) {
-        const key = `${did}-${v.id}`
-        doc.cachedGraph.verifications[key] = {
-          subjectDid: did,
-          verificationId: v.id,
-          fromDid: v.from,
-          toDid: v.to,
-          timestamp: v.timestamp,
-          proofJson: JSON.stringify(v.proof),
-          locationJson: v.location ? JSON.stringify(v.location) : null,
-        }
+    // Insert new detail records
+    for (const v of verifications) {
+      const key = `${did}-${v.id}`
+      this.verifications[key] = {
+        subjectDid: did,
+        verificationId: v.id,
+        fromDid: v.from,
+        toDid: v.to,
+        timestamp: v.timestamp,
+        proofJson: JSON.stringify(v.proof),
+        locationJson: v.location ? JSON.stringify(v.location) : null,
       }
-      for (const a of attestations) {
-        const key = `${did}-${a.id}`
-        doc.cachedGraph.attestations[key] = {
-          subjectDid: did,
-          attestationId: a.id,
-          fromDid: a.from,
-          toDid: a.to,
-          claim: a.claim,
-          tagsJson: a.tags ? JSON.stringify(a.tags) : null,
-          context: a.context ?? null,
-          attestationCreatedAt: a.createdAt,
-          proofJson: JSON.stringify(a.proof),
-        }
+    }
+    for (const a of attestations) {
+      const key = `${did}-${a.id}`
+      this.attestations[key] = {
+        subjectDid: did,
+        attestationId: a.id,
+        fromDid: a.from,
+        toDid: a.to,
+        claim: a.claim,
+        tagsJson: a.tags ? JSON.stringify(a.tags) : null,
+        context: a.context ?? null,
+        attestationCreatedAt: a.createdAt,
+        proofJson: JSON.stringify(a.proof),
       }
-    }, { background: true })
+    }
+
+    // Persist (fire-and-forget — cache loss is acceptable)
+    this.persistAll()
   }
 
   async getEntry(did: string): Promise<CachedGraphEntry | null> {
-    const doc = getPersonalDoc()
-    const entry = doc.cachedGraph.entries[did]
-    if (!entry) return null
-    return this.toGraphEntry(entry)
+    const entry = this.entries[did]
+    return entry ? this.toGraphEntry(entry) : null
   }
 
   async getEntries(dids: string[]): Promise<Map<string, CachedGraphEntry>> {
-    const doc = getPersonalDoc()
     const didSet = new Set(dids)
     const map = new Map<string, CachedGraphEntry>()
-    for (const [did, entry] of Object.entries(doc.cachedGraph.entries)) {
+    for (const [did, entry] of Object.entries(this.entries)) {
       if (didSet.has(did)) {
         map.set(did, this.toGraphEntry(entry))
       }
@@ -98,8 +148,7 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
   }
 
   async getCachedVerifications(did: string): Promise<Verification[]> {
-    const doc = getPersonalDoc()
-    return Object.values(doc.cachedGraph.verifications)
+    return Object.values(this.verifications)
       .filter(v => v.subjectDid === did)
       .map(v => ({
         id: v.verificationId,
@@ -112,8 +161,7 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
   }
 
   async getCachedAttestations(did: string): Promise<Attestation[]> {
-    const doc = getPersonalDoc()
-    return Object.values(doc.cachedGraph.attestations)
+    return Object.values(this.attestations)
       .filter(a => a.subjectDid === did)
       .map(a => ({
         id: a.attestationId,
@@ -128,43 +176,35 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
   }
 
   async resolveName(did: string): Promise<string | null> {
-    const doc = getPersonalDoc()
-    const entry = doc.cachedGraph.entries[did]
-    return entry?.name ?? null
+    return this.entries[did]?.name ?? null
   }
 
   async resolveNames(dids: string[]): Promise<Map<string, string>> {
-    const doc = getPersonalDoc()
     const map = new Map<string, string>()
     for (const did of dids) {
-      const entry = doc.cachedGraph.entries[did]
-      if (entry?.name) map.set(did, entry.name)
+      const name = this.entries[did]?.name
+      if (name) map.set(did, name)
     }
     return map
   }
 
   async findMutualContacts(targetDid: string, myContactDids: string[]): Promise<string[]> {
-    const doc = getPersonalDoc()
-    const entry = doc.cachedGraph.entries[targetDid]
-    if (!entry?.verifierDidsJson) return []
-    const verifierDids: string[] = JSON.parse(entry.verifierDidsJson)
+    const entry = this.entries[targetDid]
+    if (!entry?.verifierDids?.length) return []
     const myContactSet = new Set(myContactDids)
-    return verifierDids.filter(d => myContactSet.has(d))
+    return entry.verifierDids.filter(d => myContactSet.has(d))
   }
 
   async search(query: string): Promise<CachedGraphEntry[]> {
-    const doc = getPersonalDoc()
     const lower = query.toLowerCase()
     const results: CachedGraphEntry[] = []
 
-    for (const entry of Object.values(doc.cachedGraph.entries)) {
-      // Search in name and bio
+    for (const entry of Object.values(this.entries)) {
       if (entry.name?.toLowerCase().includes(lower) || entry.bio?.toLowerCase().includes(lower)) {
         results.push(this.toGraphEntry(entry))
         continue
       }
-      // Search in attestation claims
-      for (const a of Object.values(doc.cachedGraph.attestations)) {
+      for (const a of Object.values(this.attestations)) {
         if (a.subjectDid === entry.did && a.claim.toLowerCase().includes(lower)) {
           results.push(this.toGraphEntry(entry))
           break
@@ -181,67 +221,47 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
     verificationCount: number,
     attestationCount: number,
   ): Promise<void> {
-    changePersonalDoc(doc => {
-      const existing = doc.cachedGraph.entries[did]
-      if (existing) {
-        existing.name = name
-        existing.verificationCount = verificationCount
-        existing.attestationCount = attestationCount
-        existing.fetchedAt = new Date().toISOString()
-      } else {
-        doc.cachedGraph.entries[did] = {
-          did,
-          name,
-          bio: null,
-          avatar: null,
-          encryptionPublicKey: null,
-          verificationCount,
-          attestationCount,
-          verifierDidsJson: null,
-          fetchedAt: new Date().toISOString(),
-        }
+    const existing = this.entries[did]
+    if (existing) {
+      existing.name = name
+      existing.verificationCount = verificationCount
+      existing.attestationCount = attestationCount
+      existing.fetchedAt = new Date().toISOString()
+    } else {
+      this.entries[did] = {
+        did,
+        name,
+        bio: null,
+        avatar: null,
+        encryptionPublicKey: null,
+        verificationCount,
+        attestationCount,
+        verifierDids: [],
+        fetchedAt: new Date().toISOString(),
       }
-    }, { background: true })
+    }
+    this.store.set(ENTRIES_KEY, this.entries).catch(() => {})
   }
 
   async evict(did: string): Promise<void> {
-    changePersonalDoc(doc => {
-      delete doc.cachedGraph.entries[did]
-      for (const [key, v] of Object.entries(doc.cachedGraph.verifications)) {
-        if (v.subjectDid === did) delete doc.cachedGraph.verifications[key]
-      }
-      for (const [key, a] of Object.entries(doc.cachedGraph.attestations)) {
-        if (a.subjectDid === did) delete doc.cachedGraph.attestations[key]
-      }
-    }, { background: true })
+    delete this.entries[did]
+    for (const key of Object.keys(this.verifications)) {
+      if (this.verifications[key].subjectDid === did) delete this.verifications[key]
+    }
+    for (const key of Object.keys(this.attestations)) {
+      if (this.attestations[key].subjectDid === did) delete this.attestations[key]
+    }
+    this.persistAll()
   }
 
   async clear(): Promise<void> {
-    changePersonalDoc(doc => {
-      // Clear all entries
-      for (const key of Object.keys(doc.cachedGraph.entries)) {
-        delete doc.cachedGraph.entries[key]
-      }
-      for (const key of Object.keys(doc.cachedGraph.verifications)) {
-        delete doc.cachedGraph.verifications[key]
-      }
-      for (const key of Object.keys(doc.cachedGraph.attestations)) {
-        delete doc.cachedGraph.attestations[key]
-      }
-    }, { background: true })
+    this.entries = {}
+    this.verifications = {}
+    this.attestations = {}
+    this.persistAll()
   }
 
-  private toGraphEntry(entry: {
-    did: string
-    name: string | null
-    bio: string | null
-    avatar: string | null
-    encryptionPublicKey: string | null
-    verificationCount: number
-    attestationCount: number
-    verifierDidsJson: string | null
-    fetchedAt: string
-  }): CachedGraphEntry {
+  private toGraphEntry(entry: EntryDoc): CachedGraphEntry {
     return {
       did: entry.did,
       ...(entry.name != null ? { name: entry.name } : {}),
@@ -250,8 +270,15 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
       ...(entry.encryptionPublicKey != null ? { encryptionPublicKey: entry.encryptionPublicKey } : {}),
       verificationCount: entry.verificationCount,
       attestationCount: entry.attestationCount,
-      verifierDids: entry.verifierDidsJson ? JSON.parse(entry.verifierDidsJson) : [],
+      verifierDids: entry.verifierDids ?? [],
       fetchedAt: entry.fetchedAt,
     }
+  }
+
+  private persistAll(): void {
+    // Fire-and-forget — cache loss is acceptable, will be re-fetched
+    this.store.set(ENTRIES_KEY, this.entries).catch(() => {})
+    this.store.set(VERIFICATIONS_KEY, this.verifications).catch(() => {})
+    this.store.set(ATTESTATIONS_KEY, this.attestations).catch(() => {})
   }
 }

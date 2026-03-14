@@ -169,13 +169,9 @@ export type {
   VerificationDoc,
   AttestationDoc,
   AttestationMetadataDoc,
-  PublishStateDoc,
   OutboxEntryDoc,
   SpaceMetadataDoc,
   GroupKeyDoc,
-  CachedGraphEntryDoc,
-  CachedGraphVerificationDoc,
-  CachedGraphAttestationDoc,
 } from './storage/PersonalDocManager'
 export { PersistenceMetrics, getMetrics, registerDebugApi } from './storage/PersistenceMetrics'
 export type { DebugSnapshot, SpaceMetric, ImplTag, LoadSource, SaveTarget } from './storage/PersistenceMetrics'

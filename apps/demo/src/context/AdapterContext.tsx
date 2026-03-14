@@ -29,6 +29,7 @@ import { AutomergePublishStateStore } from '../adapters/AutomergePublishStateSto
 import { AutomergeGraphCacheStore } from '../adapters/AutomergeGraphCacheStore'
 import { AutomergeOutboxStore } from '../adapters/AutomergeOutboxStore'
 import { AutomergeSpaceMetadataStorage } from '../adapters/AutomergeSpaceMetadataStorage'
+import { LocalCacheStore } from '../adapters/LocalCacheStore'
 import {
   initPersonalDoc,
   deletePersonalDocDB,
@@ -82,6 +83,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
     let cancelled = false
     let outboxAdapter: OutboxMessagingAdapter | null = null
     let replicationAdapter: AutomergeReplicationAdapter | null = null
+    let localCacheStore: LocalCacheStore | null = null
     let offlineHandler: (() => void) | null = null
     let unsubRemoteSync: (() => void) | null = null
 
@@ -93,7 +95,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         const previousDid = localStorage.getItem('wot-active-did')
         if (previousDid && previousDid !== did) {
           await deletePersonalDocDB()
-          for (const dbName of ['wot-space-metadata', 'automerge-repo']) {
+          for (const dbName of ['wot-space-metadata', 'automerge-repo', 'wot-local-cache']) {
             try { await new Promise<void>((resolve, reject) => {
               const req = indexedDB.deleteDatabase(dbName)
               req.onsuccess = () => resolve()
@@ -132,9 +134,42 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           sendTimeoutMs: 15_000,
         })
         const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
-        const publishStateStore = new AutomergePublishStateStore()
+        localCacheStore = new LocalCacheStore('wot-local-cache')
+        await localCacheStore.open()
+
+        // One-time migration: copy cachedGraph + publishState from PersonalDoc to LocalCacheStore
+        try {
+          const existingEntries = await localCacheStore.get('graph:entries')
+          if (!existingEntries) {
+            const { getPersonalDoc, changePersonalDoc } = await import('../personalDocManager')
+            const doc = getPersonalDoc() as any
+            if (doc.cachedGraph?.entries && Object.keys(doc.cachedGraph.entries).length > 0) {
+              await localCacheStore.set('graph:entries', JSON.parse(JSON.stringify(doc.cachedGraph.entries)))
+              await localCacheStore.set('graph:verifications', JSON.parse(JSON.stringify(doc.cachedGraph.verifications ?? {})))
+              await localCacheStore.set('graph:attestations', JSON.parse(JSON.stringify(doc.cachedGraph.attestations ?? {})))
+              console.debug('[migration] Copied cachedGraph from PersonalDoc to LocalCacheStore')
+            }
+            if (doc.publishState && Object.keys(doc.publishState).length > 0) {
+              await localCacheStore.set('publish-state', JSON.parse(JSON.stringify(doc.publishState)))
+              console.debug('[migration] Copied publishState from PersonalDoc to LocalCacheStore')
+            }
+            // Clean up PersonalDoc — remove migrated fields to shrink the doc
+            if (doc.cachedGraph || doc.publishState) {
+              changePersonalDoc((d: any) => {
+                delete d.cachedGraph
+                delete d.publishState
+              })
+              console.debug('[migration] Removed cachedGraph + publishState from PersonalDoc')
+            }
+          }
+        } catch (err) {
+          console.warn('[migration] LocalCacheStore migration failed (non-fatal):', err)
+        }
+
+        const publishStateStore = new AutomergePublishStateStore(localCacheStore)
+        const graphCacheStore = new AutomergeGraphCacheStore(localCacheStore)
+        await Promise.all([publishStateStore.load(), graphCacheStore.load()])
         publishStateStore.setDid(did)
-        const graphCacheStore = new AutomergeGraphCacheStore()
         const discovery = new OfflineFirstDiscoveryAdapter(httpDiscovery, publishStateStore, graphCacheStore)
 
         const attestationService = new AttestationService(storage, crypto)
@@ -459,6 +494,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
       if (unsubRemoteSync) unsubRemoteSync()
       replicationAdapter?.stop().catch(() => {})
       outboxAdapter?.disconnect()
+      localCacheStore?.close()
     }
   }, [identity])
 

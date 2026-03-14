@@ -20,11 +20,7 @@ export type {
   VerificationDoc,
   AttestationDoc,
   AttestationMetadataDoc,
-  PublishStateDoc,
   OutboxEntryDoc,
   SpaceMetadataDoc,
   GroupKeyDoc,
-  CachedGraphEntryDoc,
-  CachedGraphVerificationDoc,
-  CachedGraphAttestationDoc,
 } from '@real-life/wot-core'

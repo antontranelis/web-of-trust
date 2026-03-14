@@ -1,14 +1,13 @@
 /**
- * AutomergePublishStateStore - PublishStateStore backed by Personal Automerge Doc
+ * PublishStateStore backed by LocalCacheStore (plain JSON in IndexedDB).
  *
- * Replaces EvoluPublishStateStore. Stores dirty flags in doc.publishState.
+ * Local-only state — NOT synced to other devices, NOT stored in PersonalDoc.
+ * Tracks which data needs to be re-published to wot-profiles.
  */
 import type { PublishStateStore, PublishStateField, Subscribable } from '@real-life/wot-core'
-import {
-  getPersonalDoc,
-  changePersonalDoc,
-  onPersonalDocChange,
-} from '../personalDocManager'
+import type { LocalCacheStore } from './LocalCacheStore'
+
+const STATE_KEY = 'publish-state'
 
 export interface DirtyState {
   profile: boolean
@@ -16,8 +15,29 @@ export interface DirtyState {
   attestations: boolean
 }
 
+interface StoredPublishState {
+  [did: string]: {
+    profileDirty: boolean
+    verificationsDirty: boolean
+    attestationsDirty: boolean
+  }
+}
+
 export class AutomergePublishStateStore implements PublishStateStore {
   private did: string | null = null
+  private store: LocalCacheStore
+  // In-memory cache
+  private state: StoredPublishState = {}
+  private dirtyStateListeners = new Set<() => void>()
+
+  constructor(store: LocalCacheStore) {
+    this.store = store
+  }
+
+  /** Load state from IDB. Call once after LocalCacheStore.open(). */
+  async load(): Promise<void> {
+    this.state = await this.store.get<StoredPublishState>(STATE_KEY) ?? {}
+  }
 
   /** Set the DID for watchDirtyState(). Called once during init. */
   setDid(did: string): void {
@@ -25,72 +45,66 @@ export class AutomergePublishStateStore implements PublishStateStore {
   }
 
   async markDirty(did: string, field: PublishStateField): Promise<void> {
-    changePersonalDoc(doc => {
-      if (!doc.publishState[did]) {
-        doc.publishState[did] = {
-          profileDirty: false,
-          verificationsDirty: false,
-          attestationsDirty: false,
-        }
-      }
-      const state = doc.publishState[did]
-      if (field === 'profile') state.profileDirty = true
-      else if (field === 'verifications') state.verificationsDirty = true
-      else if (field === 'attestations') state.attestationsDirty = true
-    }, { background: true })
+    if (!this.state[did]) {
+      this.state[did] = { profileDirty: false, verificationsDirty: false, attestationsDirty: false }
+    }
+    const s = this.state[did]
+    if (field === 'profile') s.profileDirty = true
+    else if (field === 'verifications') s.verificationsDirty = true
+    else if (field === 'attestations') s.attestationsDirty = true
+
+    this.store.set(STATE_KEY, this.state).catch(() => {})
+    this.notifyDirtyState()
   }
 
   async clearDirty(did: string, field: PublishStateField): Promise<void> {
-    changePersonalDoc(doc => {
-      const state = doc.publishState[did]
-      if (!state) return
-      if (field === 'profile') state.profileDirty = false
-      else if (field === 'verifications') state.verificationsDirty = false
-      else if (field === 'attestations') state.attestationsDirty = false
-    }, { background: true })
+    const s = this.state[did]
+    if (!s) return
+    if (field === 'profile') s.profileDirty = false
+    else if (field === 'verifications') s.verificationsDirty = false
+    else if (field === 'attestations') s.attestationsDirty = false
+
+    this.store.set(STATE_KEY, this.state).catch(() => {})
+    this.notifyDirtyState()
   }
 
   async getDirtyFields(did: string): Promise<Set<PublishStateField>> {
-    const doc = getPersonalDoc()
-    const state = doc.publishState[did]
+    const s = this.state[did]
     const result = new Set<PublishStateField>()
-    if (!state) return result
-    if (state.profileDirty) result.add('profile')
-    if (state.verificationsDirty) result.add('verifications')
-    if (state.attestationsDirty) result.add('attestations')
+    if (!s) return result
+    if (s.profileDirty) result.add('profile')
+    if (s.verificationsDirty) result.add('verifications')
+    if (s.attestationsDirty) result.add('attestations')
     return result
   }
 
   watchDirtyState(): Subscribable<DirtyState> {
-    const did = this.did
+    const self = this
+
     const getSnapshot = (): DirtyState => {
-      if (!did) return { profile: false, verifications: false, attestations: false }
-      const doc = getPersonalDoc()
-      const state = doc.publishState[did]
-      if (!state) return { profile: false, verifications: false, attestations: false }
+      if (!self.did) return { profile: false, verifications: false, attestations: false }
+      const s = self.state[self.did]
+      if (!s) return { profile: false, verifications: false, attestations: false }
       return {
-        profile: state.profileDirty,
-        verifications: state.verificationsDirty,
-        attestations: state.attestationsDirty,
+        profile: s.profileDirty,
+        verifications: s.verificationsDirty,
+        attestations: s.attestationsDirty,
       }
     }
 
-    let snapshot = getSnapshot()
-    let snapshotKey = JSON.stringify(snapshot)
-
     return {
       subscribe: (callback) => {
-        return onPersonalDocChange(() => {
-          const next = getSnapshot()
-          const nextKey = JSON.stringify(next)
-          if (nextKey !== snapshotKey) {
-            snapshot = next
-            snapshotKey = nextKey
-            callback(snapshot)
-          }
-        })
+        const wrappedCallback = () => callback(getSnapshot())
+        self.dirtyStateListeners.add(wrappedCallback)
+        return () => { self.dirtyStateListeners.delete(wrappedCallback) }
       },
-      getValue: () => snapshot,
+      getValue: getSnapshot,
+    }
+  }
+
+  private notifyDirtyState(): void {
+    for (const listener of this.dirtyStateListeners) {
+      try { listener() } catch { /* ignore */ }
     }
   }
 }
