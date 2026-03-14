@@ -157,6 +157,50 @@ export interface PersonalDoc {
   groupKeys: Record<string, GroupKeyDoc>
 }
 
+// --- IndexedDB health check ---
+
+const MAX_IDB_CHUNKS = 20 // Above this, Automerge WASM OOM-crashes on loadIncremental
+
+/**
+ * Count the number of entries in an IndexedDB store.
+ * If too many chunks exist, loading will crash WASM — skip IDB and use vault instead.
+ */
+async function checkIdbHealth(dbName: string, storeName: string): Promise<boolean> {
+  try {
+    const count = await new Promise<number>((resolve, reject) => {
+      const req = indexedDB.open(dbName, 1)
+      req.onerror = () => resolve(0)
+      req.onupgradeneeded = (event) => {
+        // DB doesn't exist yet — healthy (empty)
+        const db = (event.target as IDBOpenDBRequest).result
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName)
+        }
+      }
+      req.onsuccess = () => {
+        const db = req.result
+        try {
+          const tx = db.transaction(storeName, 'readonly')
+          const store = tx.objectStore(storeName)
+          const countReq = store.count()
+          countReq.onsuccess = () => {
+            db.close()
+            resolve(countReq.result)
+          }
+          countReq.onerror = () => { db.close(); resolve(0) }
+        } catch {
+          db.close()
+          resolve(0)
+        }
+      }
+    })
+    console.log(`[personal-doc] IndexedDB chunk count: ${count}`)
+    return count <= MAX_IDB_CHUNKS
+  } catch {
+    return true // If check fails, try loading anyway
+  }
+}
+
 // --- Old IndexedDB (for migration) ---
 
 const OLD_IDB_NAME = 'wot-personal-doc'
@@ -377,28 +421,37 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     sharePolicy: async () => true,
   })
 
-  // Strategy: IndexedDB first (local, no network), vault as fallback (compact but requires HTTP)
+  // Strategy: Check IDB health first, then decide: healthy IDB → use it, else vault → else new
   let handle!: DocHandle<PersonalDoc>
   let loadedFrom = ''
 
-  // 1) Try local IndexedDB first — fastest path, no network needed
-  try {
-    const t0 = Date.now()
-    handle = await Promise.race([
-      personalRepo.find<PersonalDoc>(documentUrl),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('find timeout')), 5000)),
-    ])
-    const doc = handle.doc()
-    if (doc && typeof doc === 'object') {
-      loadedFrom = 'indexeddb'
-      console.log(`[personal-doc] Loaded from IndexedDB in ${Date.now() - t0}ms — contacts: ${Object.keys(doc.contacts ?? {}).length}`)
-    } else {
-      throw new Error('Doc loaded but empty')
+  // 0) Check if IndexedDB has too many chunks (causes WASM OOM crash on load)
+  const idbHealthy = await checkIdbHealth('automerge-personal', 'documents')
+
+  // 1) Try local IndexedDB — only if healthy (few chunks = already compacted)
+  if (idbHealthy) {
+    try {
+      const t0 = Date.now()
+      handle = await Promise.race([
+        personalRepo.find<PersonalDoc>(documentUrl),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('find timeout')), 8000)),
+      ])
+      const doc = handle.doc()
+      if (doc && typeof doc === 'object') {
+        loadedFrom = 'indexeddb'
+        console.log(`[personal-doc] Loaded from IndexedDB in ${Date.now() - t0}ms — contacts: ${Object.keys(doc.contacts ?? {}).length}`)
+      } else {
+        throw new Error('Doc loaded but empty')
+      }
+    } catch (err) {
+      console.warn('[personal-doc] IndexedDB load failed:', err)
     }
-  } catch (err) {
-    console.warn('[personal-doc] IndexedDB load failed/timeout:', err)
-    // WASM crash (capacity overflow) or timeout = IndexedDB data is corrupt/too fragmented.
-    // Delete the IDB so the next load starts clean instead of crashing again.
+  } else {
+    console.warn('[personal-doc] IndexedDB has too many chunks, skipping (would crash WASM)')
+  }
+
+  // If IDB failed or was skipped, delete it and re-create clean repo
+  if (!loadedFrom && !idbHealthy) {
     try {
       await new Promise<void>((resolve) => {
         const req = indexedDB.deleteDatabase('automerge-personal')
@@ -406,8 +459,7 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
         req.onerror = () => resolve()
         req.onblocked = () => resolve()
       })
-      console.log('[personal-doc] Deleted corrupt IndexedDB after load failure')
-      // Re-create repo with fresh storage
+      console.log('[personal-doc] Deleted fragmented IndexedDB')
       const { IndexedDBStorageAdapter } = await import('@automerge/automerge-repo-storage-indexeddb')
       personalRepo = new Repo({
         storage: new IndexedDBStorageAdapter('automerge-personal'),
