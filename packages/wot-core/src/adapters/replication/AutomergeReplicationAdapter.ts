@@ -26,6 +26,13 @@ interface SpaceState {
   memberEncryptionKeys: Map<string, Uint8Array>
 }
 
+/** Duck-typed interface for CompactStorageManager / InMemoryCompactStore */
+export interface CompactStore {
+  save(docId: string, binary: Uint8Array): Promise<void>
+  load(docId: string): Promise<Uint8Array | null>
+  delete(docId: string): Promise<void>
+}
+
 export interface AutomergeReplicationAdapterConfig {
   identity: WotIdentity
   messaging: MessagingAdapter
@@ -34,6 +41,8 @@ export interface AutomergeReplicationAdapterConfig {
   metadataStorage?: SpaceMetadataStorage
   /** Optional: automerge-repo StorageAdapter for doc persistence (e.g. IndexedDB) */
   repoStorage?: StorageAdapterInterface
+  /** Optional: CompactStore for single-snapshot-per-doc persistence */
+  compactStore?: CompactStore
   /** Optional: vault URL for persistent encrypted doc storage */
   vaultUrl?: string
   /** Optional: only restore spaces matching this filter (e.g. by appTag) */
@@ -45,16 +54,18 @@ class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
   private spaceState: SpaceState
   private docHandle: DocHandle<T>
   private vaultScheduler: VaultPushScheduler | null
+  private compactScheduler: VaultPushScheduler | null
   private remoteUpdateCallbacks = new Set<() => void>()
   private closed = false
   private localChanging = false
   private unsubChange?: () => void
 
-  constructor(spaceState: SpaceState, docHandle: DocHandle<T>, vaultScheduler: VaultPushScheduler | null) {
+  constructor(spaceState: SpaceState, docHandle: DocHandle<T>, vaultScheduler: VaultPushScheduler | null, compactScheduler: VaultPushScheduler | null) {
     this.id = spaceState.info.id
     this.spaceState = spaceState
     this.docHandle = docHandle
     this.vaultScheduler = vaultScheduler
+    this.compactScheduler = compactScheduler
 
     // Listen for doc changes — distinguish local from remote via flag
     const handler = () => {
@@ -90,6 +101,14 @@ class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
         this.vaultScheduler.pushImmediate()
       }
     }
+    // Schedule CompactStore push — immediate for explicit actions, debounced for streaming
+    if (this.compactScheduler) {
+      if (options?.stream) {
+        this.compactScheduler.pushDebounced()
+      } else {
+        this.compactScheduler.pushImmediate()
+      }
+    }
   }
 
   onRemoteUpdate(callback: () => void): () => void {
@@ -101,6 +120,10 @@ class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
 
   _notifyRemoteUpdate(): void {
     // No vault push here — the sender already pushed to vault.
+    // But DO persist locally to CompactStore (debounced) so we have the merged state.
+    if (this.compactScheduler) {
+      this.compactScheduler.pushDebounced()
+    }
     for (const cb of this.remoteUpdateCallbacks) {
       cb()
     }
@@ -120,6 +143,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
   private groupKeyService: GroupKeyService
   private metadataStorage: SpaceMetadataStorage | null
   private repoStorage: StorageAdapterInterface | undefined
+  private compactStore: CompactStore | null = null
   private vault: VaultClient | null = null
   private spaces = new Map<string, SpaceState>()
   private state: ReplicationState = 'idle'
@@ -130,6 +154,8 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
   private vaultSeqs = new Map<string, number>()
   /** VaultPushScheduler per space — handles immediate/debounced vault pushes */
   private vaultSchedulers = new Map<string, VaultPushScheduler>()
+  /** VaultPushScheduler per space for CompactStore (2s debounce) */
+  private compactSchedulers = new Map<string, VaultPushScheduler>()
   /** Optional filter to restrict which spaces are restored (e.g. by appTag) */
   private spaceFilter: ((info: SpaceInfo) => boolean) | null
 
@@ -142,6 +168,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     this.groupKeyService = config.groupKeyService
     this.metadataStorage = config.metadataStorage ?? null
     this.repoStorage = config.repoStorage
+    this.compactStore = config.compactStore ?? null
     this.spaceFilter = config.spaceFilter ?? null
     if (config.vaultUrl) {
       this.vault = new VaultClient(config.vaultUrl, config.identity)
@@ -233,7 +260,17 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         this.groupKeyService.importKey(k.spaceId, k.key, k.generation)
       }
 
-      // Try vault first (avoids repo.find() putting doc in 'unavailable' state)
+      // Try CompactStore first (fastest — local snapshot, no decryption)
+      if (this.compactStore) {
+        const restoredFromCompact = await this._restoreFromCompactStore(spaceState)
+        if (restoredFromCompact) {
+          changed = true
+          console.log('[ReplicationAdapter] Restored space from CompactStore:', meta.info.name || meta.info.id)
+          continue
+        }
+      }
+
+      // Try vault second (avoids repo.find() putting doc in 'unavailable' state)
       if (this.vault) {
         const restoredFromVault = await this._restoreFromVault(spaceState)
         if (restoredFromVault) {
@@ -384,6 +421,46 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     return false
   }
 
+  /**
+   * Try to restore a space doc from the CompactStore.
+   * Returns true if doc was successfully imported.
+   */
+  private async _restoreFromCompactStore(spaceState: SpaceState): Promise<boolean> {
+    if (!this.compactStore) return false
+
+    try {
+      const binary = await this.compactStore.load(spaceState.info.id)
+      if (!binary) return false
+
+      const docHandle = this.repo.import<any>(binary, {
+        docId: spaceState.documentId,
+      })
+      if (!docHandle.isReady()) docHandle.doneLoading()
+      await this.repo.flush([spaceState.documentId])
+      return true
+    } catch (err) {
+      console.warn('[ReplicationAdapter] CompactStore restore failed for', spaceState.info.name || spaceState.info.id, ':', err)
+      return false
+    }
+  }
+
+  /**
+   * Save a history-free snapshot to the CompactStore.
+   * Uses Automerge.from(plain) to strip change history.
+   */
+  private async _saveToCompactStore(spaceState: SpaceState): Promise<void> {
+    if (!this.compactStore) return
+
+    const docHandle = this.repo.handles[spaceState.documentId]
+    const doc = docHandle?.doc()
+    if (!doc) return
+
+    // History-free compaction: Automerge.from(plain) creates a fresh doc without change history
+    const plain = JSON.parse(JSON.stringify(doc))
+    const binary = Automerge.save(Automerge.from(plain))
+    await this.compactStore.save(spaceState.info.id, binary)
+  }
+
   private async _pushSnapshotToVault(spaceState: SpaceState): Promise<void> {
     if (!this.vault) return
 
@@ -451,6 +528,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     // Destroy vault schedulers
     for (const scheduler of this.vaultSchedulers.values()) scheduler.destroy()
     this.vaultSchedulers.clear()
+    // Destroy compact store schedulers
+    for (const scheduler of this.compactSchedulers.values()) scheduler.destroy()
+    this.compactSchedulers.clear()
     this.vaultSeqs.clear()
     // Close all handles
     for (const space of this.spaces.values()) {
@@ -510,6 +590,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     await this._persistSpaceMetadata(spaceState)
     // Flush repo so the doc is persisted to IndexedDB
     await this.repo.flush([docHandle.documentId])
+
+    // Save initial snapshot to CompactStore (fire-and-forget)
+    this._saveToCompactStore(spaceState).catch(() => {})
 
     // Push initial snapshot to vault (fire-and-forget)
     this._pushSnapshotToVault(spaceState).catch(() => {})
@@ -582,7 +665,21 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       this.vaultSchedulers.set(spaceId, scheduler)
     }
 
-    const handle = new AutomergeSpaceHandle<T>(space, docHandle, scheduler)
+    // Create or reuse CompactStore scheduler (2s debounce)
+    let compactSched = this.compactSchedulers.get(spaceId) ?? null
+    if (!compactSched && this.compactStore) {
+      compactSched = new VaultPushScheduler({
+        pushFn: () => this._saveToCompactStore(space),
+        getHeadsFn: () => {
+          const doc = docHandle.doc()
+          return doc ? Automerge.getHeads(doc).join(',') : null
+        },
+        debounceMs: 2000,
+      })
+      this.compactSchedulers.set(spaceId, compactSched)
+    }
+
+    const handle = new AutomergeSpaceHandle<T>(space, docHandle, scheduler, compactSched)
     space.handles.add(handle)
 
     return handle
@@ -922,6 +1019,9 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     // Flush repo so the doc is persisted to IndexedDB
     await this.repo.flush([docHandle.documentId])
 
+    // Save to CompactStore (fire-and-forget)
+    this._saveToCompactStore(spaceState).catch(() => {})
+
     // Push to vault for multi-device persistence (fire-and-forget)
     this._pushSnapshotToVault(spaceState).catch(() => {})
 
@@ -1002,6 +1102,16 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       if (scheduler) {
         scheduler.destroy()
         this.vaultSchedulers.delete(payload.spaceId)
+      }
+      // Destroy compact store scheduler if any
+      const compactSched = this.compactSchedulers.get(payload.spaceId)
+      if (compactSched) {
+        compactSched.destroy()
+        this.compactSchedulers.delete(payload.spaceId)
+      }
+      // Delete compact store snapshot
+      if (this.compactStore) {
+        this.compactStore.delete(payload.spaceId).catch(() => {})
       }
       this.vaultSeqs.delete(payload.spaceId)
 

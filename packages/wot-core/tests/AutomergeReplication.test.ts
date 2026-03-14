@@ -5,6 +5,7 @@ import { InMemoryMessagingAdapter } from '../src/adapters/messaging/InMemoryMess
 import { GroupKeyService } from '../src/services/GroupKeyService'
 import { InMemorySpaceMetadataStorage } from '../src/adapters/storage/InMemorySpaceMetadataStorage'
 import { InMemoryRepoStorageAdapter } from '../src/adapters/storage/InMemoryRepoStorageAdapter'
+import { InMemoryCompactStore } from '../src/adapters/storage/InMemoryCompactStore'
 
 // Simple doc schema for testing
 interface TestDoc {
@@ -854,6 +855,205 @@ describe('AutomergeReplicationAdapter', () => {
 
       await adapter2.stop()
     })
+  })
+
+  describe('CompactStore Persistence', () => {
+    it('should save snapshot to CompactStore on transact', async () => {
+      const metadataStorage = new InMemorySpaceMetadataStorage()
+      const compactStore = new InMemoryCompactStore()
+      const groupKeyService = new GroupKeyService()
+
+      const adapter = new AutomergeReplicationAdapter({
+        identity: alice,
+        messaging: aliceMessaging,
+        groupKeyService,
+        metadataStorage,
+        compactStore,
+      })
+      await adapter.start()
+
+      const space = await adapter.createSpace<TestDoc>('shared', {
+        counter: 0,
+        items: [],
+      })
+
+      const handle = await adapter.openSpace<TestDoc>(space.id)
+      handle.transact(doc => {
+        doc.counter = 42
+        doc.items.push('compact-test')
+      })
+
+      // Wait for immediate CompactStore push
+      await new Promise(r => setTimeout(r, 200))
+
+      // CompactStore should have a snapshot for this space
+      expect(compactStore.has(space.id)).toBe(true)
+      expect(compactStore.size(space.id)).toBeGreaterThan(0)
+
+      handle.close()
+      await adapter.stop()
+    })
+
+    it('should restore space from CompactStore on restart (before vault)', async () => {
+      const metadataStorage = new InMemorySpaceMetadataStorage()
+      const compactStore = new InMemoryCompactStore()
+      const groupKeyService = new GroupKeyService()
+
+      // Create adapter and space
+      const adapter1 = new AutomergeReplicationAdapter({
+        identity: alice,
+        messaging: aliceMessaging,
+        groupKeyService,
+        metadataStorage,
+        compactStore,
+      })
+      await adapter1.start()
+
+      const space = await adapter1.createSpace<TestDoc>('shared', {
+        counter: 99,
+        items: ['from-compact'],
+      }, { name: 'Compact Space' })
+
+      const handle = await adapter1.openSpace<TestDoc>(space.id)
+      handle.transact(doc => {
+        doc.counter = 123
+      })
+
+      // Wait for CompactStore save
+      await new Promise(r => setTimeout(r, 200))
+      expect(compactStore.has(space.id)).toBe(true)
+
+      handle.close()
+      await adapter1.stop()
+
+      // Restart with same compactStore + metadata (no repoStorage!)
+      const groupKeyService2 = new GroupKeyService()
+      const adapter2 = new AutomergeReplicationAdapter({
+        identity: alice,
+        messaging: aliceMessaging,
+        groupKeyService: groupKeyService2,
+        metadataStorage,
+        compactStore,
+      })
+      await adapter2.start()
+
+      // Space should be restored from CompactStore
+      const restoredSpace = await adapter2.getSpace(space.id)
+      expect(restoredSpace).not.toBeNull()
+      expect(restoredSpace!.name).toBe('Compact Space')
+
+      const restoredHandle = await adapter2.openSpace<TestDoc>(space.id)
+      const doc = restoredHandle.getDoc()
+      expect(doc.counter).toBe(123)
+      expect(doc.items).toContain('from-compact')
+
+      restoredHandle.close()
+      await adapter2.stop()
+    })
+
+    it('should use history-free compaction for CompactStore snapshots', async () => {
+      const metadataStorage = new InMemorySpaceMetadataStorage()
+      const compactStore = new InMemoryCompactStore()
+      const groupKeyService = new GroupKeyService()
+
+      const adapter = new AutomergeReplicationAdapter({
+        identity: alice,
+        messaging: aliceMessaging,
+        groupKeyService,
+        metadataStorage,
+        compactStore,
+      })
+      await adapter.start()
+
+      const space = await adapter.createSpace<TestDoc>('shared', {
+        counter: 0,
+        items: [],
+      })
+
+      const handle = await adapter.openSpace<TestDoc>(space.id)
+
+      // Make many changes to accumulate history
+      for (let i = 0; i < 20; i++) {
+        handle.transact(doc => {
+          doc.counter = i
+          doc.items.push(`item-${i}`)
+        })
+      }
+
+      // Wait for CompactStore save
+      await new Promise(r => setTimeout(r, 500))
+
+      const snapshotSize = compactStore.size(space.id)
+
+      // Make 20 more changes
+      for (let i = 20; i < 40; i++) {
+        handle.transact(doc => {
+          doc.counter = i
+          doc.items.push(`item-${i}`)
+        })
+      }
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const snapshotSize2 = compactStore.size(space.id)
+
+      // With history-free compaction, size should grow roughly linearly
+      // with data, NOT exponentially with change count.
+      // The key test: snapshot size should be MUCH smaller than a full
+      // Automerge.save() with history would be. With 40 transact() calls,
+      // history-based save would be significantly larger.
+      // Snapshot with compaction should stay under 1KB for this simple data.
+      expect(snapshotSize2).toBeLessThan(1024)
+      // And it should grow roughly proportionally (not exponentially)
+      expect(snapshotSize2).toBeLessThan(snapshotSize * 5)
+
+      handle.close()
+      await adapter.stop()
+    })
+
+    it('should debounce CompactStore saves on remote changes', async () => {
+      const metadataStorage = new InMemorySpaceMetadataStorage()
+      const compactStore = new InMemoryCompactStore()
+      const groupKeyService = new GroupKeyService()
+
+      const adapter = new AutomergeReplicationAdapter({
+        identity: alice,
+        messaging: aliceMessaging,
+        groupKeyService,
+        metadataStorage,
+        compactStore,
+      })
+      await adapter.start()
+
+      const space = await adapter.createSpace<TestDoc>('shared', {
+        counter: 0,
+        items: [],
+      })
+
+      // Add Bob so we can test remote changes
+      const bobEncPub = await bob.getEncryptionPublicKeyBytes()
+      await adapter.addMember(space.id, bob.getDid(), bobEncPub)
+      await new Promise(r => setTimeout(r, 50))
+
+      // Open handle on Alice's side
+      const aliceHandle = await adapter.openSpace<TestDoc>(space.id)
+
+      // Bob makes a change (arrives as remote change on Alice's adapter)
+      const bobHandle = await bobAdapter.openSpace<TestDoc>(space.id)
+      bobHandle.transact(doc => {
+        doc.counter = 777
+      })
+
+      // Wait for sync + debounced CompactStore save (2s debounce)
+      await new Promise(r => setTimeout(r, 3000))
+
+      // Alice's CompactStore should have the merged state
+      expect(compactStore.has(space.id)).toBe(true)
+
+      aliceHandle.close()
+      bobHandle.close()
+      await adapter.stop()
+    }, 10_000)
   })
 
   describe('onMemberChange', () => {

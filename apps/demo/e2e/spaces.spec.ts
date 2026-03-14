@@ -66,10 +66,8 @@ test.describe('Spaces', () => {
       await expect(aliceNotes).toHaveValue(/Tomaten pflanzen/)
       await expect(aliceNotes).toHaveValue(/Gurken säen/)
 
-      // Alice removes Bob
-      // The remove button is a UserMinus icon button next to Bob's name
-      const bobMemberRow = alicePage.locator('div:has-text("Bob")').filter({ hasText: 'did:key:' }).first()
-      await bobMemberRow.locator('button').last().click()
+      // Alice removes Bob — use aria-label for the remove button
+      await alicePage.getByLabel('Mitglied entfernen').click()
 
       // Alice sees member count back to 1
       await expect(alicePage.getByText('Mitglieder (1)')).toBeVisible({ timeout: 10_000 })
