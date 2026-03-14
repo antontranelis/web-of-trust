@@ -71,7 +71,7 @@ export function Home() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <Link to="/contacts" className="bg-card border border-border rounded-xl p-4 hover:border-primary-300 transition-colors text-center">
-          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+          <div className="w-10 h-10 bg-primary-600/15 rounded-lg flex items-center justify-center mx-auto mb-2">
             <Users className="w-5 h-5 text-primary-600" />
           </div>
           <div className="text-2xl font-bold text-foreground">{activeContacts.length}</div>
@@ -85,7 +85,7 @@ export function Home() {
           <div className="text-xs text-muted-foreground">{t.home.createdLabel}</div>
         </Link>
         <Link to="/attestations" className="bg-card border border-border rounded-xl p-4 hover:border-accent-300 transition-colors text-center">
-          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+          <div className="w-10 h-10 bg-purple-600/15 rounded-lg flex items-center justify-center mx-auto mb-2">
             <Award className="w-5 h-5 text-purple-600" />
           </div>
           <div className="text-2xl font-bold text-foreground">{receivedAttestations.length}</div>
@@ -101,7 +101,7 @@ export function Home() {
           className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary-300 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary-600/15 rounded-lg flex items-center justify-center">
               <UserPlus className="w-5 h-5 text-primary-600" />
             </div>
             <div>
@@ -118,7 +118,7 @@ export function Home() {
             className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-accent-300 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-accent-600/15 rounded-lg flex items-center justify-center">
                 <Award className="w-5 h-5 text-accent-600" />
               </div>
               <div>

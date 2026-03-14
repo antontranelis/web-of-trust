@@ -514,6 +514,29 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
           Object.keys(doc.attestations ?? {}).length,
           Object.keys(doc.spaces ?? {}).length,
         )
+
+        // Deferred compaction: if snapshot has accumulated significant history,
+        // strip it and save back after init completes. This keeps subsequent
+        // loads fast without blocking the current init or every save.
+        if (snapshot.length > 50_000) {
+          const snapshotLen = snapshot.length
+          const compactStoreRef = compactStore
+          const docRef = doc
+          setTimeout(() => {
+            try {
+              const t0c = Date.now()
+              const plain = JSON.parse(JSON.stringify(docRef))
+              const compactBinary = Automerge.save(Automerge.from(plain))
+              const blockedMs = Date.now() - t0c
+              if (snapshotLen > compactBinary.length * 1.5) {
+                console.debug(`[personal-doc] Deferred compaction: ${snapshotLen}B → ${compactBinary.length}B (blocked ${blockedMs}ms)`)
+                compactStoreRef.save(VAULT_PERSONAL_DOC_ID, compactBinary).catch(() => {})
+              }
+            } catch (err) {
+              console.warn('[personal-doc] Deferred compaction failed:', err)
+            }
+          }, 5000) // Run 5s after init, when UI is idle
+        }
       }
     }
   } catch (err) {

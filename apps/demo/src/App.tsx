@@ -563,6 +563,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
         <IncomingAttestationDialog />
         <IncomingSpaceInviteDialog />
         {children}
+        <DebugPanel />
       </PendingVerificationProvider>
     </AdapterProvider>
   )
@@ -655,7 +656,6 @@ export default function App() {
       <LanguageProvider>
         <IdentityProvider>
           <AppRoutes />
-          <DebugPanel />
         </IdentityProvider>
       </LanguageProvider>
     </BrowserRouter>
