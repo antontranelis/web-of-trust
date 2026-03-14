@@ -133,9 +133,8 @@ export function DebugPanel() {
                 <Row
                   label="Source"
                   value={snapshot.persistence.lastLoad.source}
-                  status={getLoadHealthStatus(snapshot)}
                 />
-                <Row label="Time" value={formatMs(snapshot.persistence.lastLoad.timeMs)} />
+                <Row label="Time" value={formatMs(snapshot.persistence.lastLoad.timeMs)} status={getLoadHealthStatus(snapshot)} />
                 <Row label="Size" value={formatSize(snapshot.persistence.lastLoad.sizeBytes)} />
                 {Object.entries(snapshot.persistence.lastLoad.details).map(([k, v]) => (
                   <Row key={k} label={k} value={String(v)} />

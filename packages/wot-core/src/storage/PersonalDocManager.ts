@@ -258,6 +258,8 @@ let vaultClient: VaultClient | null = null
 let vaultPersonalKey: Uint8Array | null = null
 let vaultPushTimer: ReturnType<typeof setTimeout> | null = null
 let vaultSeq = 0
+/** Automerge heads at the time of the last vault push — used to skip redundant saves */
+let lastSavedHeads: string | null = null
 const VAULT_PERSONAL_DOC_ID = '__personal__'
 
 function emptyPersonalDoc(): PersonalDoc {
@@ -356,6 +358,13 @@ async function pushToVault(): Promise<void> {
       return
     }
 
+    // Skip push if doc hasn't changed since last save (sync handshakes trigger change events without new data)
+    const currentHeads = Automerge.getHeads(doc).join(',')
+    if (currentHeads === lastSavedHeads) {
+      console.debug('[personal-doc] Skip vault push — heads unchanged')
+      return
+    }
+
     // Use Automerge.save() — compact compressed binary of current state
     const docBinary = Automerge.save(doc)
     if (!docBinary || docBinary.length === 0) return
@@ -371,6 +380,7 @@ async function pushToVault(): Promise<void> {
     vaultSeq++
     const t0 = Date.now()
     await vaultClient.putSnapshot(VAULT_PERSONAL_DOC_ID, encrypted.ciphertext, encrypted.nonce, vaultSeq)
+    lastSavedHeads = currentHeads
     getMetrics().logSave('vault', Date.now() - t0, docBinary.length)
   } catch (err) {
     getMetrics().logError('save:vault', err)
@@ -554,6 +564,16 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
     }).catch(() => {})
   }
 
+  // Track initial heads so we can detect actual changes vs. sync handshakes
+  const initialDoc = handle.doc()
+  if (initialDoc) {
+    // If loaded from vault, vault already has this state — mark as saved
+    // Otherwise, we want the first push to go through
+    if (loadedFrom === 'vault') {
+      lastSavedHeads = Automerge.getHeads(initialDoc).join(',')
+    }
+  }
+
   // Push to vault when it's empty or was just cleaned up (corrupt snapshot deleted)
   // Also covers migration from old format
   if (loadedFrom !== 'vault' && loadedFrom !== 'new' && vaultClient) {
@@ -674,6 +694,7 @@ export async function resetPersonalDoc(): Promise<void> {
   vaultClient = null
   vaultPersonalKey = null
   vaultSeq = 0
+  lastSavedHeads = null
   if (vaultPushTimer) { clearTimeout(vaultPushTimer); vaultPushTimer = null }
   changeListeners.clear()
   // Shutdown after clearing refs (so nothing retries during shutdown)
