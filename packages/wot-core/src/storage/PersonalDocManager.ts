@@ -167,7 +167,7 @@ const MAX_IDB_CHUNKS = 20 // Above this, Automerge WASM OOM-crashes on loadIncre
  */
 async function checkIdbHealth(dbName: string, storeName: string): Promise<boolean> {
   try {
-    const count = await new Promise<number>((resolve, reject) => {
+    const count = await new Promise<number>((resolve) => {
       const req = indexedDB.open(dbName, 1)
       req.onerror = () => resolve(0)
       req.onupgradeneeded = (event) => {
