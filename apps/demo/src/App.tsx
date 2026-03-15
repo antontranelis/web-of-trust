@@ -591,7 +591,7 @@ function AppRoutes() {
   const { identity, hasStoredIdentity } = useIdentity()
 
   // Benchmark page — accessible without login
-  if (window.location.pathname === '/benchmark') {
+  if (window.location.pathname.endsWith('/benchmark')) {
     return <Benchmark />
   }
 
