@@ -340,8 +340,48 @@ export function Benchmark() {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground mt-6">
-        User Agent: {navigator.userAgent.slice(0, 80)}...
+      {/* Legend */}
+      <div className="mt-8 bg-muted/50 border border-border rounded-lg p-4 space-y-3 text-sm">
+        <h3 className="font-semibold text-foreground">Scenarios</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-muted-foreground">
+          <div>
+            <span className="font-medium text-foreground">Small</span>
+            <br />10 contacts, 5 attestations
+            <br />Typical new user
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Medium</span>
+            <br />100 contacts, 50 attestations
+            <br />Active community member
+          </div>
+          <div>
+            <span className="font-medium text-foreground">Large</span>
+            <br />500 contacts, 1000 attestations
+            <br />Power user / community hub
+          </div>
+        </div>
+
+        <h3 className="font-semibold text-foreground pt-2">Metrics</h3>
+        <div className="space-y-1 text-muted-foreground text-xs">
+          <p><span className="font-medium text-foreground">Init</span> — Load a serialized document into memory (simulates app start)</p>
+          <p><span className="font-medium text-foreground">Mutate 1</span> — Add a single contact</p>
+          <p><span className="font-medium text-foreground">Mutate 100</span> — Add 100 contacts in one transaction</p>
+          <p><span className="font-medium text-foreground">Serialize</span> — Save document to binary (for IndexedDB / network)</p>
+          <p><span className="font-medium text-foreground">Size</span> — Serialized snapshot size in bytes</p>
+          <p><span className="font-medium text-foreground">WASM init</span> — One-time cost to load and compile Automerge's WebAssembly module (Yjs has no WASM)</p>
+        </div>
+
+        <h3 className="font-semibold text-foreground pt-2">About</h3>
+        <p className="text-xs text-muted-foreground">
+          <a href="https://automerge.org" className="underline" target="_blank" rel="noreferrer">Automerge</a> is a Rust-based CRDT compiled to WebAssembly (~1.7MB).{' '}
+          <a href="https://yjs.dev" className="underline" target="_blank" rel="noreferrer">Yjs</a> is a pure JavaScript CRDT (~69KB).{' '}
+          Both are used in the <a href="https://github.com/antontranelis/web-of-trust" className="underline" target="_blank" rel="noreferrer">Web of Trust</a> project
+          for offline-first, end-to-end encrypted personal data.
+        </p>
+      </div>
+
+      <p className="text-xs text-muted-foreground mt-4">
+        {navigator.userAgent}
       </p>
     </div>
   )
