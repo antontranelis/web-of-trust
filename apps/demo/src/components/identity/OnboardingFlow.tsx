@@ -488,6 +488,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 />
                 <button
                   type="button"
+                  tabIndex={-1}
                   onClick={() => setShowPassphrase(!showPassphrase)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 hover:text-muted-foreground"
                 >
