@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { WotIdentity } from '../src/identity/WotIdentity'
+import { WotIdentity } from '@real-life/wot-core'
 import {
   initYjsPersonalDoc,
   getYjsPersonalDoc,
   changeYjsPersonalDoc,
   flushYjsPersonalDoc,
   resetYjsPersonalDoc,
-} from '../src/storage/YjsPersonalDocManager'
+} from '../src/YjsPersonalDocManager'
 
 /**
  * In-memory mock vault (same pattern as VaultIntegration.test.ts).

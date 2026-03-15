@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as Y from 'yjs'
-import { YjsPersonalSyncAdapter } from '../src/adapters/replication/YjsPersonalSyncAdapter'
-import type { MessagingAdapter } from '../src/adapters/interfaces/MessagingAdapter'
-import type { MessageEnvelope, DeliveryReceipt, MessagingState } from '../src/types/messaging'
+import { YjsPersonalSyncAdapter } from '../src/YjsPersonalSyncAdapter'
+import type { MessagingAdapter, MessageEnvelope, DeliveryReceipt, MessagingState } from '@real-life/wot-core'
 
 /**
  * Minimal messaging pair that simulates a relay:

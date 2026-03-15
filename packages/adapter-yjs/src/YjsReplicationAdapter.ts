@@ -11,18 +11,23 @@
  * - No compaction needed (Yjs has built-in GC)
  */
 import * as Y from 'yjs'
-import type { ReplicationAdapter, SpaceHandle, TransactOptions } from '../interfaces/ReplicationAdapter'
-import type { Subscribable } from '../interfaces/Subscribable'
-import type { MessagingAdapter } from '../interfaces/MessagingAdapter'
-import type { MessageEnvelope } from '../../types/messaging'
-import type { SpaceInfo, SpaceMemberChange, ReplicationState } from '../../types/space'
-import { GroupKeyService } from '../../services/GroupKeyService'
-import { EncryptedSyncService } from '../../services/EncryptedSyncService'
-import type { SpaceMetadataStorage } from '../interfaces/SpaceMetadataStorage'
-import type { WotIdentity } from '../../identity/WotIdentity'
-import { VaultClient } from '../../services/VaultClient'
-import { VaultPushScheduler } from '../../services/VaultPushScheduler'
-import { signEnvelope } from '../../crypto/envelope-auth'
+import type {
+  ReplicationAdapter,
+  SpaceHandle,
+  TransactOptions,
+  Subscribable,
+  MessagingAdapter,
+  WotIdentity,
+} from '@real-life/wot-core'
+import type { MessageEnvelope, SpaceInfo, SpaceMemberChange, ReplicationState } from '@real-life/wot-core'
+import {
+  GroupKeyService,
+  EncryptedSyncService,
+  VaultClient,
+  VaultPushScheduler,
+  signEnvelope,
+} from '@real-life/wot-core'
+import type { SpaceMetadataStorage } from '@real-life/wot-core'
 
 /** Duck-typed interface for CompactStorageManager / InMemoryCompactStore */
 export interface YjsCompactStore {

@@ -16,11 +16,16 @@ export default defineConfig({
       fileName: 'index',
     },
     rollupOptions: {
-      external: ['react', 'idb'],
+      external: [
+        'yjs',
+        'y-protocols',
+        'y-protocols/sync',
+        '@real-life/wot-core',
+      ],
     },
   },
   test: {
-    environment: 'happy-dom', // Browser-like environment for IndexedDB
+    environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
   },

@@ -155,19 +155,8 @@ export { InMemoryAuthorizationAdapter } from './adapters/authorization/InMemoryA
 export { PersistenceMetrics, getMetrics, registerDebugApi } from './storage/PersistenceMetrics'
 export type { DebugSnapshot, SpaceMetric, ImplTag, LoadSource, SaveTarget } from './storage/PersistenceMetrics'
 
-// Yjs Personal Document (Default CRDT — pure JavaScript, no WASM)
-export {
-  initYjsPersonalDoc,
-  getYjsPersonalDoc,
-  changeYjsPersonalDoc,
-  onYjsPersonalDocChange,
-  flushYjsPersonalDoc,
-  resetYjsPersonalDoc,
-} from './storage/YjsPersonalDocManager'
-export type { YjsPersonalDoc } from './storage/YjsPersonalDocManager'
-export { YjsPersonalSyncAdapter } from './adapters/replication/YjsPersonalSyncAdapter'
-export { YjsReplicationAdapter } from './adapters/replication/YjsReplicationAdapter'
-export type { YjsCompactStore } from './adapters/replication/YjsReplicationAdapter'
+// Yjs-specific exports have moved to @real-life/adapter-yjs
+// import { initYjsPersonalDoc, YjsReplicationAdapter, ... } from '@real-life/adapter-yjs'
 
 // Automerge-specific exports have moved to @real-life/adapter-automerge
 // import { AutomergeReplicationAdapter, initPersonalDoc, ... } from '@real-life/adapter-automerge'

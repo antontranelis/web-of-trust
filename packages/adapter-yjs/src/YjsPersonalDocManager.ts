@@ -15,20 +15,22 @@
  * that the Automerge version uses.
  */
 import * as Y from 'yjs'
-import type { WotIdentity } from '../identity'
-import type { MessagingAdapter } from '../adapters/interfaces/MessagingAdapter'
-import { CompactStorageManager } from './CompactStorageManager'
-import { VaultPushScheduler } from '../services/VaultPushScheduler'
-import { VaultClient, base64ToUint8 } from '../services/VaultClient'
-import { EncryptedSyncService } from '../services/EncryptedSyncService'
-import { YjsPersonalSyncAdapter } from '../adapters/replication/YjsPersonalSyncAdapter'
-import { getMetrics, registerDebugApi } from './PersistenceMetrics'
+import type { WotIdentity, MessagingAdapter } from '@real-life/wot-core'
+import {
+  CompactStorageManager,
+  VaultPushScheduler,
+  VaultClient,
+  base64ToUint8,
+  EncryptedSyncService,
+  getMetrics,
+  registerDebugApi,
+} from '@real-life/wot-core'
+import { YjsPersonalSyncAdapter } from './YjsPersonalSyncAdapter'
 
-// Re-use the same type definitions from the Automerge PersonalDocManager
 import type {
   PersonalDoc,
   ProfileDoc,
-} from './PersonalDocManager'
+} from './types'
 
 // Re-export for convenience
 export type { PersonalDoc as YjsPersonalDoc }

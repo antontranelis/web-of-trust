@@ -20,7 +20,7 @@ import {
   getYjsPersonalDoc as getPersonalDoc,
   changeYjsPersonalDoc as changePersonalDoc,
   onYjsPersonalDocChange as onPersonalDocChange,
-} from '@real-life/wot-core'
+} from '@real-life/adapter-yjs'
 import type {
   PersonalDoc,
   ContactDoc,

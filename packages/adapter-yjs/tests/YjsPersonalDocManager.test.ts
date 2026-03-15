@@ -7,9 +7,8 @@ import {
   flushYjsPersonalDoc,
   resetYjsPersonalDoc,
   type YjsPersonalDoc,
-} from '../src/storage/YjsPersonalDocManager'
-import { WotIdentity } from '../src/identity'
-import { CompactStorageManager } from '../src/storage/CompactStorageManager'
+} from '../src/YjsPersonalDocManager'
+import { WotIdentity } from '@real-life/wot-core'
 
 // Test helpers
 function createTestIdentity(): WotIdentity {

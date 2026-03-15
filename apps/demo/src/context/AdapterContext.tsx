@@ -5,7 +5,6 @@ import {
   HttpDiscoveryAdapter,
   OfflineFirstDiscoveryAdapter,
   OutboxMessagingAdapter,
-  YjsReplicationAdapter,
   CompactStorageManager,
   GroupKeyService,
   encodeBase64Url,
@@ -24,6 +23,9 @@ import {
   AutomergeReplicationAdapter,
   SyncOnlyStorageAdapter,
 } from '@real-life/adapter-automerge'
+import {
+  YjsReplicationAdapter,
+} from '@real-life/adapter-yjs'
 import {
   ContactService,
   VerificationService,
@@ -48,7 +50,7 @@ import {
   changeYjsPersonalDoc,
   onYjsPersonalDocChange,
   resetYjsPersonalDoc,
-} from '@real-life/wot-core'
+} from '@real-life/adapter-yjs'
 
 const USE_YJS = import.meta.env.VITE_CRDT !== 'automerge'
 import { useIdentity } from './IdentityContext'

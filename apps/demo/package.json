@@ -13,6 +13,7 @@
   "dependencies": {
     "@automerge/automerge": "^3.2.3",
     "@real-life/adapter-automerge": "workspace:*",
+    "@real-life/adapter-yjs": "workspace:*",
     "@real-life/wot-core": "workspace:*",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.562.0",
