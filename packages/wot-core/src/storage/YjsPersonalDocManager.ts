@@ -16,20 +16,17 @@
  */
 import * as Y from 'yjs'
 import type { WotIdentity } from '../identity'
+import type { MessagingAdapter } from '../adapters/interfaces/MessagingAdapter'
 import { CompactStorageManager } from './CompactStorageManager'
 import { VaultPushScheduler } from '../services/VaultPushScheduler'
+import { VaultClient, base64ToUint8 } from '../services/VaultClient'
+import { EncryptedSyncService } from '../services/EncryptedSyncService'
+import { YjsPersonalSyncAdapter } from '../adapters/replication/YjsPersonalSyncAdapter'
 
 // Re-use the same type definitions from the Automerge PersonalDocManager
 import type {
   PersonalDoc,
   ProfileDoc,
-  ContactDoc,
-  VerificationDoc,
-  AttestationDoc,
-  AttestationMetadataDoc,
-  OutboxEntryDoc,
-  SpaceMetadataDoc,
-  GroupKeyDoc,
 } from './PersonalDocManager'
 
 // Re-export for convenience
@@ -38,13 +35,18 @@ export type { PersonalDoc as YjsPersonalDoc }
 // --- Constants ---
 const COMPACT_STORE_DB = 'wot-yjs-compact-store'
 const PERSONAL_DOC_ID = 'personal-doc'
+const VAULT_PERSONAL_DOC_ID = 'personal-doc'
 
 // --- Module State ---
 let ydoc: Y.Doc | null = null
 let compactStore: CompactStorageManager | null = null
 let compactScheduler: VaultPushScheduler | null = null
+let vaultScheduler: VaultPushScheduler | null = null
+let vaultClient: VaultClient | null = null
+let vaultPersonalKey: Uint8Array | null = null
+let vaultSeq = 0
+let syncAdapter: YjsPersonalSyncAdapter | null = null
 let changeListeners = new Set<() => void>()
-let localChangeInProgress = false
 
 // --- Y.Doc Structure ---
 // Top-level Y.Maps that mirror the PersonalDoc interface
@@ -298,9 +300,77 @@ async function pushToCompactStore(): Promise<void> {
   }
 }
 
+async function pushToVault(): Promise<void> {
+  if (!vaultClient || !vaultPersonalKey || !ydoc) return
+
+  try {
+    // Don't push if local doc has no meaningful data
+    const doc = snapshotDoc()
+    const hasData = doc.profile || Object.keys(doc.contacts).length > 0 || Object.keys(doc.spaces).length > 0
+    if (!hasData) {
+      console.debug('[yjs-personal-doc] Skip vault push — no meaningful data yet')
+      return
+    }
+
+    // Yjs: no compaction needed, Y.encodeStateAsUpdate is already compact
+    const docBinary = Y.encodeStateAsUpdate(ydoc)
+    if (!docBinary || docBinary.length === 0) return
+
+    const encrypted = await EncryptedSyncService.encryptChange(
+      docBinary,
+      vaultPersonalKey,
+      VAULT_PERSONAL_DOC_ID,
+      0,
+      '',
+    )
+
+    vaultSeq++
+    await vaultClient.putSnapshot(VAULT_PERSONAL_DOC_ID, encrypted.ciphertext, encrypted.nonce, vaultSeq)
+    console.debug(`[yjs-personal-doc] Vault push: ${docBinary.length}B`)
+  } catch (err) {
+    console.error('[yjs-personal-doc] Vault push failed:', err)
+  }
+}
+
+async function restoreFromVault(): Promise<boolean> {
+  if (!vaultClient || !vaultPersonalKey || !ydoc) return false
+
+  try {
+    const response = await vaultClient.getChanges(VAULT_PERSONAL_DOC_ID, 0)
+    if (!response) return false
+
+    // Restore snapshot if available
+    if (response.snapshot) {
+      const snapshotBytes = base64ToUint8(response.snapshot.data)
+      const decrypted = await EncryptedSyncService.decryptChange(
+        { ciphertext: snapshotBytes, nonce: new Uint8Array(0), spaceId: VAULT_PERSONAL_DOC_ID, generation: 0, fromDid: '' },
+        vaultPersonalKey,
+      )
+      Y.applyUpdate(ydoc, decrypted)
+      vaultSeq = response.snapshot.upToSeq
+      console.debug('[yjs-personal-doc] Restored from vault snapshot')
+    }
+
+    // Apply incremental changes
+    for (const change of response.changes) {
+      const changeBytes = base64ToUint8(change.data)
+      const decrypted = await EncryptedSyncService.decryptChange(
+        { ciphertext: changeBytes, nonce: new Uint8Array(0), spaceId: VAULT_PERSONAL_DOC_ID, generation: 0, fromDid: '' },
+        vaultPersonalKey,
+      )
+      Y.applyUpdate(ydoc, decrypted)
+      vaultSeq = Math.max(vaultSeq, change.seq)
+    }
+
+    return response.snapshot !== null || response.changes.length > 0
+  } catch (err) {
+    console.debug('[yjs-personal-doc] Vault restore failed:', err)
+    return false
+  }
+}
+
 function getStateVectorString(): string | null {
   if (!ydoc) return null
-  // Use base64-encoded state vector as dirty-check key
   const sv = Y.encodeStateVector(ydoc)
   return Array.from(sv).join(',')
 }
@@ -317,13 +387,19 @@ function notifyListeners(): void {
 
 /**
  * Initialize the personal document as a Yjs Y.Doc.
- * Restores from CompactStore if available.
+ *
+ * Load order: CompactStore → Vault → Empty
+ *
+ * @param identity - WotIdentity for key derivation
+ * @param messaging - Optional MessagingAdapter for multi-device sync via relay
+ * @param vaultUrl - Optional vault URL for encrypted backup
  */
-export async function initYjsPersonalDoc(identity: WotIdentity): Promise<PersonalDoc> {
+export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: MessagingAdapter, vaultUrl?: string): Promise<PersonalDoc> {
   // Idempotent
   if (ydoc) return snapshotDoc()
 
   ydoc = new Y.Doc()
+  let loadedFrom: 'compact-store' | 'vault' | 'new' = 'new'
 
   // Open CompactStore
   compactStore = new CompactStorageManager(COMPACT_STORE_DB)
@@ -333,7 +409,23 @@ export async function initYjsPersonalDoc(identity: WotIdentity): Promise<Persona
   const snapshot = await compactStore.load(PERSONAL_DOC_ID)
   if (snapshot) {
     Y.applyUpdate(ydoc, snapshot)
+    loadedFrom = 'compact-store'
     console.debug('[yjs-personal-doc] Restored from CompactStore')
+  }
+
+  // Vault setup
+  if (vaultUrl) {
+    const personalKey = await identity.deriveFrameworkKey('personal-doc-v1')
+    vaultPersonalKey = personalKey
+    vaultClient = new VaultClient(vaultUrl, identity)
+
+    // If CompactStore was empty, try vault
+    if (loadedFrom === 'new') {
+      const restored = await restoreFromVault()
+      if (restored) {
+        loadedFrom = 'vault'
+      }
+    }
   }
 
   // Create CompactStore scheduler (2s debounce)
@@ -343,8 +435,24 @@ export async function initYjsPersonalDoc(identity: WotIdentity): Promise<Persona
     debounceMs: 2000,
   })
 
-  if (snapshot) {
+  if (loadedFrom === 'compact-store') {
     compactScheduler.setLastPushedHeads(getStateVectorString()!)
+  }
+
+  // Create Vault scheduler (5s debounce)
+  if (vaultClient) {
+    vaultScheduler = new VaultPushScheduler({
+      pushFn: pushToVault,
+      getHeadsFn: getStateVectorString,
+      debounceMs: 5000,
+    })
+    if (loadedFrom === 'vault') {
+      vaultScheduler.setLastPushedHeads(getStateVectorString()!)
+    }
+    // If loaded from CompactStore, push to vault (may be newer)
+    if (loadedFrom === 'compact-store') {
+      vaultScheduler.pushDebounced()
+    }
   }
 
   // Listen for remote changes (from multi-device sync)
@@ -355,6 +463,14 @@ export async function initYjsPersonalDoc(identity: WotIdentity): Promise<Persona
     }
   })
 
+  // Multi-device sync via relay
+  if (messaging && vaultPersonalKey) {
+    const did = identity.getDid()
+    syncAdapter = new YjsPersonalSyncAdapter(ydoc, messaging, vaultPersonalKey, did)
+    syncAdapter.start()
+  }
+
+  console.debug(`[yjs-personal-doc] Initialized (loaded from: ${loadedFrom})`)
   return snapshotDoc()
 }
 
@@ -373,22 +489,19 @@ export function getYjsPersonalDoc(): PersonalDoc {
 export function changeYjsPersonalDoc(fn: (doc: PersonalDoc) => void, options?: { background?: boolean }): PersonalDoc {
   if (!ydoc) throw new Error('Yjs personal doc not initialized. Call initYjsPersonalDoc() first.')
 
-  localChangeInProgress = true
-  try {
-    ydoc.transact(() => {
-      const proxy = createDocProxy()
-      fn(proxy)
-    }, 'local')
-  } finally {
-    localChangeInProgress = false
-  }
+  ydoc.transact(() => {
+    const proxy = createDocProxy()
+    fn(proxy)
+  }, 'local')
 
   notifyListeners()
 
   if (options?.background) {
     compactScheduler?.pushDebounced()
+    vaultScheduler?.pushDebounced()
   } else {
     compactScheduler?.pushImmediate()
+    vaultScheduler?.pushImmediate()
   }
 
   return snapshotDoc()
@@ -403,20 +516,25 @@ export function onYjsPersonalDocChange(callback: () => void): () => void {
 }
 
 /**
- * Force-flush to CompactStore immediately.
+ * Force-flush to CompactStore and Vault immediately.
  */
 export async function flushYjsPersonalDoc(): Promise<void> {
   await compactScheduler?.flush()
+  await vaultScheduler?.flush()
 }
 
 /**
  * Reset — shut down and clear all state.
  */
 export async function resetYjsPersonalDoc(): Promise<void> {
+  if (syncAdapter) { syncAdapter.destroy(); syncAdapter = null }
   ydoc?.destroy()
   ydoc = null
   if (compactScheduler) { compactScheduler.destroy(); compactScheduler = null }
+  if (vaultScheduler) { vaultScheduler.destroy(); vaultScheduler = null }
   if (compactStore) { compactStore.close(); compactStore = null }
+  vaultClient = null
+  vaultPersonalKey = null
+  vaultSeq = 0
   changeListeners.clear()
-  localChangeInProgress = false
 }

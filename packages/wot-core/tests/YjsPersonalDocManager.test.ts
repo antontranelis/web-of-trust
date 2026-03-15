@@ -515,6 +515,61 @@ describe('YjsPersonalDocManager', () => {
     })
   })
 
+  describe('Object.values inside changePersonalDoc', () => {
+    beforeEach(async () => {
+      await initYjsPersonalDoc(identity)
+    })
+
+    it('should support Object.values inside change callback', () => {
+      changeYjsPersonalDoc(doc => {
+        doc.contacts['did:key:alice'] = {
+          did: 'did:key:alice', publicKey: 'k1', name: 'Alice',
+          avatar: '', bio: '', status: 'active', verifiedAt: '', createdAt: '', updatedAt: '',
+        }
+        doc.contacts['did:key:bob'] = {
+          did: 'did:key:bob', publicKey: 'k2', name: 'Bob',
+          avatar: '', bio: '', status: 'active', verifiedAt: '', createdAt: '', updatedAt: '',
+        }
+      })
+
+      // Inside a change callback, read via Object.values
+      changeYjsPersonalDoc(doc => {
+        const contacts = Object.values(doc.contacts)
+        expect(contacts).toHaveLength(2)
+        const names = contacts.map((c: any) => c.name)
+        expect(names).toContain('Alice')
+        expect(names).toContain('Bob')
+      })
+    })
+  })
+
+  describe('memberEncryptionKeys (nested Record with arrays)', () => {
+    beforeEach(async () => {
+      await initYjsPersonalDoc(identity)
+    })
+
+    it('should store and retrieve memberEncryptionKeys as number arrays', () => {
+      const keys: Record<string, number[]> = {
+        'did:key:alice': [1, 2, 3, 4, 5],
+        'did:key:bob': [10, 20, 30, 40, 50],
+      }
+      changeYjsPersonalDoc(doc => {
+        doc.spaces['space-1'] = {
+          info: {
+            id: 'space-1', type: 'shared', name: 'Test',
+            members: ['did:key:alice', 'did:key:bob'], createdAt: new Date().toISOString(),
+          },
+          documentId: 'doc-1', documentUrl: 'yjs:doc-1',
+          memberEncryptionKeys: keys,
+        }
+      })
+      const doc = getYjsPersonalDoc()
+      expect(doc.spaces['space-1'].memberEncryptionKeys['did:key:alice']).toEqual([1, 2, 3, 4, 5])
+      expect(doc.spaces['space-1'].memberEncryptionKeys['did:key:bob']).toEqual([10, 20, 30, 40, 50])
+      expect(Array.isArray(doc.spaces['space-1'].memberEncryptionKeys['did:key:alice'])).toBe(true)
+    })
+  })
+
   describe('Edge Cases', () => {
     beforeEach(async () => {
       await initYjsPersonalDoc(identity)
