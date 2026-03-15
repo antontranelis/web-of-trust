@@ -17,6 +17,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@automerge/automerge':
+        specifier: ^3.2.3
+        version: 3.2.3
       '@real-life/wot-core':
         specifier: workspace:*
         version: link:../../packages/wot-core
@@ -38,6 +41,9 @@ importers:
       react-router-dom:
         specifier: ^7.12.0
         version: 7.12.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
