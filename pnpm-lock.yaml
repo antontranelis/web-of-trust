@@ -17,6 +17,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@automerge/automerge':
+        specifier: ^3.2.3
+        version: 3.2.3
       '@real-life/adapter-automerge':
         specifier: workspace:*
         version: link:../../packages/adapter-automerge
