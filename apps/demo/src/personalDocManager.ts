@@ -1,6 +1,6 @@
 /**
- * Re-export from @real-life/wot-core.
- * The PersonalDocManager has been extracted to wot-core for reuse across apps.
+ * Re-export from @real-life/adapter-automerge.
+ * The PersonalDocManager has been extracted to adapter-automerge for reuse across apps.
  */
 export {
   initPersonalDoc,
@@ -11,7 +11,7 @@ export {
   flushPersonalDoc,
   resetPersonalDoc,
   deletePersonalDocDB,
-} from '@real-life/wot-core'
+} from '@real-life/adapter-automerge'
 
 export type {
   PersonalDoc,
@@ -23,4 +23,4 @@ export type {
   OutboxEntryDoc,
   SpaceMetadataDoc,
   GroupKeyDoc,
-} from '@real-life/wot-core'
+} from '@real-life/adapter-automerge'

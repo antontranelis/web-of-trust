@@ -8,12 +8,12 @@ import type {
   SpaceMetadataStorage,
   PersistedSpaceMetadata,
   PersistedGroupKey,
-} from '../interfaces/SpaceMetadataStorage'
+} from '@real-life/wot-core'
 import {
   getPersonalDoc as defaultGetPersonalDoc,
   changePersonalDoc as defaultChangePersonalDoc,
-} from '../../storage/PersonalDocManager'
-import type { PersonalDoc } from '../../storage/PersonalDocManager'
+} from './PersonalDocManager'
+import type { PersonalDoc } from './PersonalDocManager'
 
 export interface SpaceMetadataDocFunctions {
   getPersonalDoc: () => PersonalDoc

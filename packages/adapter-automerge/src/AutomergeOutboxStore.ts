@@ -6,15 +6,15 @@
 import type {
   OutboxStore,
   OutboxEntry,
-} from '../interfaces/OutboxStore'
-import type { MessageEnvelope } from '../../types/messaging'
-import type { Subscribable } from '../interfaces/Subscribable'
+} from '@real-life/wot-core'
+import type { MessageEnvelope } from '@real-life/wot-core'
+import type { Subscribable } from '@real-life/wot-core'
 import {
   getPersonalDoc as defaultGetPersonalDoc,
   changePersonalDoc as defaultChangePersonalDoc,
   onPersonalDocChange as defaultOnPersonalDocChange,
-} from '../../storage/PersonalDocManager'
-import type { PersonalDoc } from '../../storage/PersonalDocManager'
+} from './PersonalDocManager'
+import type { PersonalDoc } from './PersonalDocManager'
 
 export interface PersonalDocFunctions {
   getPersonalDoc: () => PersonalDoc

@@ -1,5 +1,5 @@
 /**
- * Re-export from @real-life/wot-core.
- * The AutomergeSpaceMetadataStorage has been extracted to wot-core for reuse across apps.
+ * Re-export from @real-life/adapter-automerge.
+ * The AutomergeSpaceMetadataStorage has been extracted to adapter-automerge for reuse across apps.
  */
-export { AutomergeSpaceMetadataStorage } from '@real-life/wot-core'
+export { AutomergeSpaceMetadataStorage } from '@real-life/adapter-automerge'

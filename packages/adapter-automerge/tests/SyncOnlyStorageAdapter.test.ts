@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { SyncOnlyStorageAdapter } from '../src/storage/SyncOnlyStorageAdapter'
+import { SyncOnlyStorageAdapter } from '../src/SyncOnlyStorageAdapter'
 
 /**
  * SyncOnlyStorageAdapter sits between automerge-repo and IndexedDB.

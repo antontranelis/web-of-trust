@@ -5,10 +5,8 @@ import {
   HttpDiscoveryAdapter,
   OfflineFirstDiscoveryAdapter,
   OutboxMessagingAdapter,
-  AutomergeReplicationAdapter,
   YjsReplicationAdapter,
   CompactStorageManager,
-  SyncOnlyStorageAdapter,
   GroupKeyService,
   encodeBase64Url,
   getMetrics,
@@ -22,6 +20,10 @@ import {
   type PublicVerificationsData,
   type PublicAttestationsData,
 } from '@real-life/wot-core'
+import {
+  AutomergeReplicationAdapter,
+  SyncOnlyStorageAdapter,
+} from '@real-life/adapter-automerge'
 import {
   ContactService,
   VerificationService,

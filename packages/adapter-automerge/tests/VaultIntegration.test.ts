@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { WotIdentity } from '../src/identity/WotIdentity'
-import { AutomergeReplicationAdapter } from '../src/adapters/replication/AutomergeReplicationAdapter'
-import { InMemoryMessagingAdapter } from '../src/adapters/messaging/InMemoryMessagingAdapter'
-import { GroupKeyService } from '../src/services/GroupKeyService'
-import { InMemorySpaceMetadataStorage } from '../src/adapters/storage/InMemorySpaceMetadataStorage'
-import { VaultClient, base64ToUint8 } from '../src/services/VaultClient'
-import { EncryptedSyncService } from '../src/services/EncryptedSyncService'
-import { createCapability } from '../src/crypto/capabilities'
-import { createResourceRef } from '../src/types/resource-ref'
+import { WotIdentity } from '@real-life/wot-core'
+import { InMemoryMessagingAdapter } from '@real-life/wot-core'
+import { GroupKeyService } from '@real-life/wot-core'
+import { InMemorySpaceMetadataStorage } from '@real-life/wot-core'
+import { VaultClient, base64ToUint8 } from '@real-life/wot-core'
+import { EncryptedSyncService } from '@real-life/wot-core'
+import { createCapability } from '@real-life/wot-core'
+import { createResourceRef } from '@real-life/wot-core'
+import { AutomergeReplicationAdapter } from '../src/AutomergeReplicationAdapter'
 
 // Simple doc schema for testing
 interface TestDoc {

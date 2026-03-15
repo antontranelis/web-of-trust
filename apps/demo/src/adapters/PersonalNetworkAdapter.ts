@@ -1,5 +1,5 @@
 /**
- * Re-export from @real-life/wot-core.
- * The PersonalNetworkAdapter has been extracted to wot-core for reuse across apps.
+ * Re-export from @real-life/adapter-automerge.
+ * The PersonalNetworkAdapter has been extracted to adapter-automerge for reuse across apps.
  */
-export { PersonalNetworkAdapter } from '@real-life/wot-core'
+export { PersonalNetworkAdapter } from '@real-life/adapter-automerge'

@@ -133,15 +133,12 @@ export { VaultClient, base64ToUint8 } from './services/VaultClient'
 export { VaultPushScheduler } from './services/VaultPushScheduler'
 export type { VaultPushSchedulerConfig } from './services/VaultPushScheduler'
 
-// Adapter Implementations
+// Adapter Implementations (CRDT-agnostic)
 export { WebCryptoAdapter } from './adapters/crypto/WebCryptoAdapter'
 export { LocalStorageAdapter } from './adapters/storage/LocalStorageAdapter'
 export { InMemoryMessagingAdapter } from './adapters/messaging/InMemoryMessagingAdapter'
 export { WebSocketMessagingAdapter } from './adapters/messaging/WebSocketMessagingAdapter'
-export { AutomergeReplicationAdapter } from './adapters/replication/AutomergeReplicationAdapter'
-export type { CompactStore } from './adapters/replication/AutomergeReplicationAdapter'
 export { CompactStorageManager } from './storage/CompactStorageManager'
-export { SyncOnlyStorageAdapter } from './storage/SyncOnlyStorageAdapter'
 export { HttpDiscoveryAdapter } from './adapters/discovery/HttpDiscoveryAdapter'
 export { OfflineFirstDiscoveryAdapter } from './adapters/discovery/OfflineFirstDiscoveryAdapter'
 export { InMemoryPublishStateStore } from './adapters/discovery/InMemoryPublishStateStore'
@@ -149,37 +146,16 @@ export { InMemoryGraphCacheStore } from './adapters/discovery/InMemoryGraphCache
 export { OutboxMessagingAdapter } from './adapters/messaging/OutboxMessagingAdapter'
 export { InMemoryOutboxStore } from './adapters/messaging/InMemoryOutboxStore'
 export { InMemorySpaceMetadataStorage } from './adapters/storage/InMemorySpaceMetadataStorage'
+export { InMemoryCompactStore } from './adapters/storage/InMemoryCompactStore'
 export { IndexedDBSpaceMetadataStorage } from './adapters/storage/IndexedDBSpaceMetadataStorage'
 export type { SpaceMetadataStorage, PersistedSpaceMetadata, PersistedGroupKey } from './adapters/interfaces/SpaceMetadataStorage'
-export { EncryptedMessagingNetworkAdapter } from './adapters/replication/EncryptedMessagingNetworkAdapter'
 export { InMemoryAuthorizationAdapter } from './adapters/authorization/InMemoryAuthorizationAdapter'
 
-// Personal Document (multi-device sync, space metadata, outbox)
-export {
-  initPersonalDoc,
-  getPersonalDoc,
-  isPersonalDocInitialized,
-  changePersonalDoc,
-  onPersonalDocChange,
-  flushPersonalDoc,
-  resetPersonalDoc,
-  deletePersonalDocDB,
-} from './storage/PersonalDocManager'
-export type {
-  PersonalDoc,
-  ProfileDoc,
-  ContactDoc,
-  VerificationDoc,
-  AttestationDoc,
-  AttestationMetadataDoc,
-  OutboxEntryDoc,
-  SpaceMetadataDoc,
-  GroupKeyDoc,
-} from './storage/PersonalDocManager'
+// Persistence Metrics (CRDT-agnostic)
 export { PersistenceMetrics, getMetrics, registerDebugApi } from './storage/PersistenceMetrics'
-export { CompactionService } from './storage/CompactionService'
+export type { DebugSnapshot, SpaceMetric, ImplTag, LoadSource, SaveTarget } from './storage/PersistenceMetrics'
 
-// Yjs Personal Document (alternative to Automerge-based PersonalDocManager)
+// Yjs Personal Document (Default CRDT — pure JavaScript, no WASM)
 export {
   initYjsPersonalDoc,
   getYjsPersonalDoc,
@@ -192,7 +168,6 @@ export type { YjsPersonalDoc } from './storage/YjsPersonalDocManager'
 export { YjsPersonalSyncAdapter } from './adapters/replication/YjsPersonalSyncAdapter'
 export { YjsReplicationAdapter } from './adapters/replication/YjsReplicationAdapter'
 export type { YjsCompactStore } from './adapters/replication/YjsReplicationAdapter'
-export type { DebugSnapshot, SpaceMetric, ImplTag, LoadSource, SaveTarget } from './storage/PersistenceMetrics'
-export { PersonalNetworkAdapter } from './adapters/replication/PersonalNetworkAdapter'
-export { AutomergeSpaceMetadataStorage } from './adapters/storage/AutomergeSpaceMetadataStorage'
-export { AutomergeOutboxStore } from './adapters/messaging/AutomergeOutboxStore'
+
+// Automerge-specific exports have moved to @real-life/adapter-automerge
+// import { AutomergeReplicationAdapter, initPersonalDoc, ... } from '@real-life/adapter-automerge'
