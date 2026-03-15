@@ -208,11 +208,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </ol>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="bg-amber-600/10 border border-amber-600/20 rounded-lg p-4">
             <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <strong>{t.onboarding.importantNoticeLabel}</strong> {t.onboarding.importantNoticeText}
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-foreground/70">
+                <strong className="text-amber-500">{t.onboarding.importantNoticeLabel}</strong> {t.onboarding.importantNoticeText}
               </div>
             </div>
           </div>
@@ -245,8 +245,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           }}
         >
           <div className="text-center">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-yellow-600" />
+            <div className="w-16 h-16 bg-amber-600/15 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
             </div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {t.onboarding.magicWordsTitle}
