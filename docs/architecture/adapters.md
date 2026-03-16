@@ -1,149 +1,140 @@
-# Adapter-Architektur v2
+# 7-Adapter Architecture
 
-> 7 Adapter-Interfaces für das Web of Trust Ecosystem
+> Formal specification for the Web of Trust adapter interfaces
 >
-> Erstellt: 2026-02-08 | Aktualisiert: 2026-02-11
-> Basiert auf [Framework-Evaluation v2](framework-evaluation.md)
+> Created: 2026-02-08 | Updated: 2026-03-16
+> Based on [Framework Evaluation v2](../protocols/framework-evaluation.md)
+> Implementation status: [CURRENT_IMPLEMENTATION.md](../CURRENT_IMPLEMENTATION.md)
 
 ## Motivation
 
-Die v1-Architektur hatte 3 Adapter (StorageAdapter, ReactiveStorageAdapter, CryptoAdapter).
-Diese decken lokale Persistenz und Kryptografie ab, aber nicht:
+The v1 architecture had 3 adapters (StorageAdapter, ReactiveStorageAdapter, CryptoAdapter).
+These covered local persistence and cryptography, but not:
 
-- **Cross-User Messaging** — Attestations, Verifications und Items zwischen DIDs zustellen
-- **CRDT Replication** — Gemeinsame Spaces (Kanban, Kalender) mit mehreren Nutzern
-- **Capability-basierte Autorisierung** — Wer darf was lesen/schreiben/delegieren?
-- **Öffentliche Discovery** — Wie finde ich Informationen über eine DID, bevor ich sie kenne?
+- **Cross-user messaging** — delivering attestations, verifications, and items between DIDs
+- **CRDT replication** — shared spaces (kanban, calendar) with multiple users
+- **Capability-based authorization** — who can read, write, or delegate what?
+- **Public discovery** — how do I find information about a DID before I know them?
 
-### Zentrale Erkenntnis: Drei orthogonale Achsen
+### Core Insight: Three Orthogonal Axes
 
+```mermaid
+graph TD
+    classDef axis stroke:#888,fill:none,color:#ccc
+    classDef label stroke:none,fill:none,color:#aaa
+
+    D["Discovery\n(public visibility)\n\n'Who is this DID?'\nbefore any contact\n\n→ DiscoveryAdapter"]
+    M["Messaging\n(delivery between DIDs)\n\n'How does a message\nreach the recipient?'\n\n→ MessagingAdapter"]
+    R["Replication\n(state convergence)\n\n'How does state converge\nacross devices and users?'\n\n→ ReplicationAdapter"]
+
+    D -->|"orthogonal"| M
+    M -->|"orthogonal"| R
+
+    class D,M,R axis
 ```
-  ┌─────────────────────────────────────┐
-  │         Discovery                    │
-  │   (Öffentliche Sichtbarkeit)         │
-  │                                      │
-  │   "Wie finde ich Informationen       │
-  │    über eine DID?"                   │
-  │                                      │
-  │   → DiscoveryAdapter                 │
-  └─────────────────────────────────────┘
-                    │
-                    │  orthogonal
-                    │
-  ┌─────────────────────────────────────┐
-  │         Messaging                    │
-  │   (Zustellung zwischen DIDs)         │
-  │                                      │
-  │   "Wie erreicht eine Nachricht       │
-  │    den Empfänger?"                    │
-  │                                      │
-  │   → MessagingAdapter                 │
-  └─────────────────────────────────────┘
-                    │
-                    │  orthogonal
-                    │
-  ┌─────────────────────────────────────┐
-  │         CRDT / Sync                  │
-  │   (Zustandskonvergenz)               │
-  │                                      │
-  │   "Wie konvergiert der Zustand       │
-  │    über Geräte und Nutzer?"           │
-  │                                      │
-  │   → ReplicationAdapter               │
-  └─────────────────────────────────────┘
 
-Discovery = VOR dem Kontakt (öffentlich, anonym lesbar)
-Messaging = Zustellung ZWISCHEN bekannten DIDs (1:1, privat)
-Replication = Geteilter Zustand INNERHALB einer Gruppe (CRDT)
-
-Jede Achse hat eigene Sicherheitseigenschaften:
-- Discovery: Daten sind öffentlich, aber signiert (Integrität ohne Vertraulichkeit)
-- Messaging: E2EE zwischen Sender und Empfänger
-- Replication: Group-Key-verschlüsselt (alle Members sehen alles)
-```
+| Axis | When | Visibility | Security |
+| --- | --- | --- | --- |
+| **Discovery** | Before contact | Public, anonymous | Signed (JWS), not encrypted |
+| **Messaging** | Between known DIDs | Private (1:1) | E2EE (X25519) |
+| **Replication** | Within a group | Group members | Group key E2EE (AES-256-GCM) |
 
 ---
 
-## Übersicht: 7 Adapter
+## Overview: 7 Adapters
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         WoT Domain Layer                                  │
-│  Identity, Contact, Verification, Attestation, Item, Group                │
+│  Identity, Contact, Verification, Attestation, Item, Space                │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
-│  Lokal (v1, implementiert):                                              │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐       │
-│  │  StorageAdapter    │  │  CryptoAdapter    │  │  Reactive-     │       │
-│  │  (lokale           │  │  (Signing,        │  │  Storage-      │       │
-│  │   Persistenz)      │  │   Encryption,     │  │  Adapter       │       │
-│  │                    │  │   DID, Mnemonic)  │  │  (Live Queries)│       │
-│  └───────────────────┘  └───────────────────┘  └────────────────┘       │
+│  Local:                                                                  │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────────┐   │
+│  │  StorageAdapter    │  │  CryptoAdapter    │  │  ReactiveStorage-  │   │
+│  │  (local           │  │  (signing,        │  │  Adapter           │   │
+│  │   persistence)    │  │   encryption,     │  │  (live queries,    │   │
+│  │                   │  │   DID, mnemonic)  │  │   subscribable)    │   │
+│  └───────────────────┘  └───────────────────┘  └────────────────────┘   │
 │                                                                          │
-│  Netzwerk (v2):                                                          │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────┐       │
-│  │  DiscoveryAdapter  │  │  MessagingAdapter  │  │  Replication-  │       │
-│  │  (Öffentliches     │  │  (Cross-User       │  │  Adapter       │       │
-│  │   Profil +         │  │   Delivery)        │  │  (CRDT Sync +  │       │
-│  │   Discovery)       │  │                    │  │   Spaces)      │       │
-│  │  v2, implementiert │  │  v2, implementiert │  │  v2, NEU       │       │
-│  └───────────────────┘  └───────────────────┘  └────────────────┘       │
+│  Network:                                                                │
+│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────────┐   │
+│  │  DiscoveryAdapter  │  │  MessagingAdapter  │  │  Replication-      │   │
+│  │  (public profile  │  │  (cross-user       │  │  Adapter           │   │
+│  │   lookup)         │  │   delivery)        │  │  (CRDT sync +      │   │
+│  │                   │  │                    │  │   spaces)          │   │
+│  └───────────────────┘  └───────────────────┘  └────────────────────┘   │
 │                                                                          │
-│  Querschnitt:                                                            │
+│  Cross-cutting:                                                          │
 │  ┌────────────────────────────────────────────────────────────────┐      │
-│  │  AuthorizationAdapter (UCAN-like Capabilities)   v2, NEU       │      │
+│  │  AuthorizationAdapter (UCAN-inspired capabilities)              │      │
 │  └────────────────────────────────────────────────────────────────┘      │
 │                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 
-Lebenszyklus einer Beziehung im Web of Trust:
+Relationship lifecycle in the Web of Trust:
 
   Discovery          →       Messaging         →       Replication
-  "Wer bist du?"             "Lass uns                 "Lass uns zusammen-
-  (öffentlich,                verifizieren"              arbeiten"
-   vor Kontakt)              (1:1, nach Kontakt)        (Gruppe, CRDT)
+  "Who are you?"             "Let us verify"            "Let us collaborate"
+  (public,                   (1:1, post-contact)        (group, CRDT)
+   pre-contact)
 ```
 
 ---
 
-## Bestehende Adapter (v1, implementiert)
+## Phase Status
 
-Diese Interfaces sind bereits in `packages/wot-core/src/adapters/interfaces/` definiert
-und haben funktionierende Implementierungen. Der CryptoAdapter wird um `generateSymmetricKey`
-erweitert (v2); StorageAdapter und ReactiveStorageAdapter bleiben unverändert.
+| Phase | Description | Status |
+| --- | --- | --- |
+| **Phase 1** | Identity + Verification: StorageAdapter, CryptoAdapter, MessagingAdapter, DiscoveryAdapter | ✅ Done |
+| **Phase 2** | Attestation Delivery + Encryption: Item-keys, symmetric crypto, AuthorizationAdapter | ✅ Done |
+| **Phase 3** | Replication / Spaces: YjsReplicationAdapter + AutomergeReplicationAdapter | ✅ Done |
+| **Phase 4** | Federation / Matrix: MessagingAdapter → Matrix, distributed discovery | ⏸ Deferred |
 
-### StorageAdapter
+---
 
-Lokale Persistenz für alle WoT-Entitäten. Folgt dem Empfänger-Prinzip.
+## 1. StorageAdapter
 
-**Datei:** `packages/wot-core/src/adapters/interfaces/StorageAdapter.ts`
-**Implementierung:** `EvoluStorageAdapter` (Demo-App)
+Local persistence for all WoT entities. Follows the recipient principle: verifications and
+attestations are stored at the recipient, not the sender.
+
+**File:** `packages/wot-core/src/adapters/interfaces/StorageAdapter.ts`
+
+**Implementations:**
+
+- `YjsStorageAdapter` (Demo App) — backed by `YjsPersonalDocManager`, default
+- `AutomergeStorageAdapter` (Demo App) — backed by `PersonalDocManager`, option via `VITE_CRDT=automerge`
+
+**Status:** Done
 
 ```typescript
 interface StorageAdapter {
-  // Identity (lokal, nie synchronisiert)
+  // Identity (local, never synced)
   createIdentity(did: string, profile: Profile): Promise<Identity>
   getIdentity(): Promise<Identity | null>
   updateIdentity(identity: Identity): Promise<void>
 
-  // Contacts
+  // Contacts (derived from verifications)
   addContact(contact: Contact): Promise<void>
   getContacts(): Promise<Contact[]>
   getContact(did: string): Promise<Contact | null>
   updateContact(contact: Contact): Promise<void>
   removeContact(did: string): Promise<void>
 
-  // Verifications (Empfänger-Prinzip)
+  // Verifications
+  // Both incoming (to=me) and outgoing (from=me) are stored locally.
+  // Recipient principle: the signed verification is sent to the recipient.
   saveVerification(verification: Verification): Promise<void>
-  getReceivedVerifications(): Promise<Verification[]>
+  getReceivedVerifications(): Promise<Verification[]>    // to=me (others verified me)
+  getAllVerifications(): Promise<Verification[]>          // from=me OR to=me
   getVerification(id: string): Promise<Verification | null>
 
-  // Attestations (Empfänger-Prinzip)
+  // Attestations (recipient principle: I receive attestations about me)
   saveAttestation(attestation: Attestation): Promise<void>
   getReceivedAttestations(): Promise<Attestation[]>
   getAttestation(id: string): Promise<Attestation | null>
 
-  // Attestation Metadata (lokal, nicht signiert)
+  // Attestation Metadata (local, not signed, not synced)
   getAttestationMetadata(attestationId: string): Promise<AttestationMetadata | null>
   setAttestationAccepted(attestationId: string, accepted: boolean): Promise<void>
 
@@ -153,33 +144,59 @@ interface StorageAdapter {
 }
 ```
 
-### ReactiveStorageAdapter
+---
 
-Reaktive Erweiterung für Backends mit Live Queries. Mapped auf React's `useSyncExternalStore`.
+## 2. ReactiveStorageAdapter
 
-**Datei:** `packages/wot-core/src/adapters/interfaces/ReactiveStorageAdapter.ts`
+Reactive extension for storage backends with live query support. Maps to React's
+`useSyncExternalStore` pattern via the `Subscribable<T>` primitive.
+
+A single adapter class can implement both `StorageAdapter` and `ReactiveStorageAdapter`.
+
+**File:** `packages/wot-core/src/adapters/interfaces/ReactiveStorageAdapter.ts`
+
+**Implementations:** Same as `StorageAdapter` (`YjsStorageAdapter`, `AutomergeStorageAdapter`)
+
+**Status:** Done
 
 ```typescript
 interface Subscribable<T> {
-  subscribe(callback: (value: T) => void): () => void
+  subscribe(callback: (value: T) => void): () => void  // returns unsubscribe
   getValue(): T
 }
 
 interface ReactiveStorageAdapter {
+  watchIdentity(): Subscribable<Identity | null>
   watchContacts(): Subscribable<Contact[]>
-  watchReceivedVerifications(): Subscribable<Verification[]>
-  watchReceivedAttestations(): Subscribable<Attestation[]>
+  watchReceivedVerifications(): Subscribable<Verification[]>  // to=me
+  watchAllVerifications(): Subscribable<Verification[]>       // from=me OR to=me
+  watchAllAttestations(): Subscribable<Attestation[]>         // from=me OR to=me
+  watchReceivedAttestations(): Subscribable<Attestation[]>    // to=me
 }
 ```
 
-### CryptoAdapter
+---
 
-Alle kryptografischen Operationen. Framework-agnostisch.
+## 3. CryptoAdapter
 
-**Datei:** `packages/wot-core/src/adapters/interfaces/CryptoAdapter.ts`
-**Implementierung:** `WebCryptoAdapter` (noble/ed25519 + Web Crypto API)
+All cryptographic operations. Framework-agnostic.
+
+Note: Mnemonic generation/derivation and DID creation are handled by `WotIdentity` directly, not
+the `CryptoAdapter`. The adapter focuses on key operations needed by services and other adapters.
+
+**File:** `packages/wot-core/src/adapters/interfaces/CryptoAdapter.ts`
+
+**Implementations:** `WebCryptoAdapter` (noble/ed25519 + Web Crypto API)
+
+**Status:** Done
 
 ```typescript
+interface EncryptedPayload {
+  ciphertext: Uint8Array
+  nonce: Uint8Array
+  ephemeralPublicKey?: Uint8Array
+}
+
 interface CryptoAdapter {
   // Key Management
   generateKeyPair(): Promise<KeyPair>
@@ -188,12 +205,7 @@ interface CryptoAdapter {
   exportPublicKey(publicKey: CryptoKey): Promise<string>
   importPublicKey(exported: string): Promise<CryptoKey>
 
-  // Mnemonic / Recovery
-  generateMnemonic(): string
-  deriveKeyPairFromMnemonic(mnemonic: string): Promise<KeyPair>
-  validateMnemonic(mnemonic: string): boolean
-
-  // DID (did:key mit Ed25519)
+  // DID (did:key with Ed25519)
   createDid(publicKey: CryptoKey): Promise<string>
   didToPublicKey(did: string): Promise<CryptoKey>
 
@@ -203,14 +215,8 @@ interface CryptoAdapter {
   signString(data: string, privateKey: CryptoKey): Promise<string>
   verifyString(data: string, signature: string, publicKey: CryptoKey): Promise<boolean>
 
-  // Encryption (X25519 + AES-256-GCM)
-  encrypt(plaintext: Uint8Array, recipientPublicKey: Uint8Array): Promise<EncryptedPayload>
-  decrypt(payload: EncryptedPayload, privateKey: Uint8Array): Promise<Uint8Array>
-
-  // Symmetric Key Generation (NEU in v2 — für Item-Keys und Group-Keys)
-  generateSymmetricKey(): Promise<Uint8Array>  // AES-256-GCM, 32 bytes
-
-  // Symmetric Encryption (für Items und Spaces)
+  // Symmetric Encryption (AES-256-GCM — for group spaces and item keys)
+  generateSymmetricKey(): Promise<Uint8Array>   // 32 bytes
   encryptSymmetric(plaintext: Uint8Array, key: Uint8Array): Promise<{ ciphertext: Uint8Array; nonce: Uint8Array }>
   decryptSymmetric(ciphertext: Uint8Array, nonce: Uint8Array, key: Uint8Array): Promise<Uint8Array>
 
@@ -220,39 +226,39 @@ interface CryptoAdapter {
 }
 ```
 
-> **v2-Erweiterung:** `generateSymmetricKey` + `encryptSymmetric`/`decryptSymmetric` werden
-> in den Interaction-Flows für Item-Keys und Group-Keys genutzt. Die bestehende
-> `encrypt`/`decrypt` (asymmetrisch, X25519) bleibt für 1:1 E2EE.
+> The asymmetric `encrypt`/`decrypt` (X25519 ECIES) used for 1:1 item-key delivery lives in
+> `WotIdentity` and `WebCryptoAdapter` directly. The symmetric operations above are used for
+> group spaces and selective item sharing.
 
 ---
 
-## ResourceRef: Standardisiertes Pointer-Format
+## ResourceRef: Standardized Pointer Format
 
-Nachrichten enthalten NICHT den Zustand, sondern nur einen Pointer (Trigger).
-Capabilities adressieren Resources. Beides braucht ein einheitliches URI-Format.
+Messages contain no state — only pointers (triggers). Capabilities address resources. Both need
+a consistent URI format.
+
+**File:** `packages/wot-core/src/types/resource-ref.ts`
 
 ```typescript
-// ResourceRef ist ein URI-String mit dem Schema "wot:"
-type ResourceRef = string
+// ResourceRef is a branded URI string with the "wot:" scheme
+type ResourceRef = string & { readonly __brand: 'ResourceRef' }
 
 // Format: wot:<type>:<id>[/<sub-path>]
 //
-// Beispiele:
+// Examples:
 //   wot:attestation:abc-123
 //   wot:verification:def-456
-//   wot:space:wg-kalender
-//   wot:space:wg-kalender/item/event-789
-//   wot:space:wg-kalender/module/kanban
+//   wot:space:wg-calendar
+//   wot:space:wg-calendar/item/event-789
 //   wot:contact:did:key:z6Mk...
 //
-// Regeln:
-// - Immer "wot:" Prefix
-// - <type> ist einer der bekannten Entitätstypen
-// - <id> ist die Entity-ID oder Space-ID
-// - Sub-Pfade für Items innerhalb von Spaces
-// - Capabilities können Wildcards nutzen: wot:space:abc/*
+// Rules:
+// - Always "wot:" prefix
+// - <type> is a known entity type
+// - <id> is the entity ID or space ID
+// - Sub-paths for items within spaces
+// - Capabilities can use wildcards: wot:space:abc/*
 
-// Bekannte Resource-Types:
 type ResourceType =
   | 'attestation'
   | 'verification'
@@ -260,170 +266,202 @@ type ResourceType =
   | 'space'
   | 'item'
 
-// Helper (Implementierung in wot-core)
-function createResourceRef(type: ResourceType, id: string, subPath?: string): ResourceRef {
-  return subPath ? `wot:${type}:${id}/${subPath}` : `wot:${type}:${id}`
-}
-
-function parseResourceRef(ref: ResourceRef): { type: ResourceType; id: string; subPath?: string } {
-  // Parse wot:<type>:<id>[/<sub-path>]
-}
+// Helpers (implemented in wot-core)
+function createResourceRef(type: ResourceType, id: string, subPath?: string): ResourceRef
+function parseResourceRef(ref: ResourceRef): { type: ResourceType; id: string; subPath?: string }
 ```
-
-**Warum ein eigenes URI-Format?**
-- DIDs adressieren Identitäten, ResourceRefs adressieren Daten
-- Capabilities brauchen eindeutige Resource-Identifier
-- Messages referenzieren Ressourcen (z.B. "Item-Key für wot:space:abc/item/123")
-- Konsistenz über alle Adapter hinweg
 
 ---
 
-## Neue Adapter (v2)
+## 4. MessagingAdapter
 
-### MessagingAdapter
+Cross-user delivery between DIDs. Responsible for:
 
-Cross-User Delivery zwischen DIDs. Zuständig für:
-- Attestation/Verification Zustellung (Empfänger-Prinzip)
-- Item-Key Delivery (selektive Sichtbarkeit)
-- Contact Requests
-- Space-Einladungen und Group Key Rotation
-- Beliebige DID-zu-DID Nachrichten
+- Attestation/verification delivery (recipient principle)
+- Item-key delivery (selective visibility)
+- Contact requests
+- Space invitations and group key rotation
+- Arbitrary DID-to-DID messages
 
-**Designprinzipien:**
-- Adressierung über DIDs (nicht Server-IDs, nicht Pubkeys)
-- Nachrichten als signierte Envelopes (Signatur getrennt vom Payload)
-- Mehrstufige Delivery Receipts (accepted → delivered → acknowledged)
-- Offline-Queue: Nachrichten warten auf den Empfänger
-- Transport-Resolution getrennt vom Messaging-Concern
+**Design principles:**
+
+- Addressing via DIDs (not server IDs, not pubkeys)
+- Messages as signed envelopes (signature separate from payload)
+- Multi-stage delivery receipts: `accepted → delivered → acknowledged`
+- Offline queue: messages wait for the recipient
+- Transport resolution separated from messaging concerns
+
+**File:** `packages/wot-core/src/adapters/interfaces/MessagingAdapter.ts`
+
+**Implementations:**
+
+- `WebSocketMessagingAdapter` — WebSocket client, heartbeat (ping/pong), message buffer for early messages
+- `OutboxMessagingAdapter` — Decorator, queues messages until relay is reachable
+- `InMemoryMessagingAdapter` — Shared bus for tests
+
+**Status:** Done
 
 ```typescript
-// Message Types die das WoT braucht
+// Message types used by WoT
 type MessageType =
-  | 'verification'         // "Ich verifiziere dich" (QR-Code Austausch)
-  | 'attestation'          // "Ich attestiere dir X" (Empfänger-Prinzip)
-  | 'contact-request'      // "Ich möchte dich als Kontakt"
-  | 'item-key'             // "Hier ist der Schlüssel für Item X" (selektiv)
-  | 'space-invite'         // "Tritt diesem Space bei" (mit Group Key)
-  | 'group-key-rotation'   // "Neuer Group Key für Space X"
-  | 'ack'                  // "Nachricht verarbeitet" (Application-Level)
-  | 'content'              // Generischer Payload
+  | 'verification'         // "I verify you" (QR code exchange)
+  | 'attestation'          // "I attest X about you" (recipient principle)
+  | 'contact-request'      // "I want to add you as a contact"
+  | 'item-key'             // "Here is the key for item X" (selective sharing)
+  | 'space-invite'         // "Join this space" (with group key)
+  | 'group-key-rotation'   // "New group key for space X"
+  | 'ack'                  // "Message processed" (application-level)
+  | 'content'              // Generic payload
 
-// Standardisiertes Envelope-Format für alle Nachrichten.
-// Signatur ist getrennt vom Payload → unabhängig verifizierbar.
+// Standardized envelope format for all messages.
+// Signature is separate from payload → independently verifiable.
 interface MessageEnvelope {
-  v: 1                     // Protokoll-Version
+  v: 1                     // Protocol version
   id: string               // UUID
   type: MessageType
   fromDid: string
   toDid: string
   createdAt: string        // ISO 8601
   encoding: 'json' | 'cbor' | 'base64'
-  payload: string          // Encoded Payload (je nach encoding)
-  signature: string        // Ed25519 Signatur über kanonische Felder
-  ref?: ResourceRef        // Optionaler Pointer auf die Ressource (siehe ResourceRef)
+  payload: string          // Encoded payload (per encoding)
+  signature: string        // Ed25519 signature over canonical fields
+  ref?: ResourceRef        // Optional pointer to the resource
 }
 
-// Mehrstufige Delivery Receipts:
-// - accepted: Relay hat die Nachricht angenommen
-// - delivered: Empfänger-Device hat sie empfangen
-// - acknowledged: Empfänger-App hat sie verarbeitet (z.B. Attestation gespeichert)
+// Multi-stage delivery receipts:
+// - accepted:     Relay has queued the message
+// - delivered:    Recipient device received it
+// - acknowledged: Recipient app processed it (e.g. attestation saved)
 interface DeliveryReceipt {
   messageId: string
   status: 'accepted' | 'delivered' | 'acknowledged' | 'failed'
   timestamp: string
-  reason?: string          // Bei 'failed': Fehlergrund
+  reason?: string          // On 'failed': error reason
 }
 
 type MessagingState = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 interface MessagingAdapter {
-  // Connection Lifecycle
+  // Connection lifecycle
   connect(myDid: string): Promise<void>
   disconnect(): Promise<void>
   getState(): MessagingState
 
-  // Sending — nimmt ein Envelope entgegen, gibt Receipt zurück
+  // Sending — takes an envelope, returns receipt
   send(envelope: MessageEnvelope): Promise<DeliveryReceipt>
 
-  // Receiving — Callback erhält verifiziertes Envelope
-  onMessage(callback: (envelope: MessageEnvelope) => void): () => void
+  // Receiving — callback may be async (ACK is deferred until callback resolves)
+  onMessage(callback: (envelope: MessageEnvelope) => void | Promise<void>): () => void
 
-  // Receipt Updates (async: delivered/acknowledged kommen später)
+  // Receipt updates (async: delivered/acknowledged come later)
   onReceipt(callback: (receipt: DeliveryReceipt) => void): () => void
 
-  // Transport Resolution (wie findet man den Empfänger?)
-  // Bewusst getrennt vom DID-Konzept: hier geht es um Transport-Adressen,
-  // nicht um DID-Resolution. Bei Matrix-Migration wird das zu Room-IDs.
+  // Transport resolution (how to find the recipient?)
+  // Separate from DID concept: this is about transport addresses,
+  // not DID resolution. In Matrix migration this becomes Room IDs.
   registerTransport(did: string, transportAddress: string): Promise<void>
   resolveTransport(did: string): Promise<string | null>
 }
 ```
 
-> **Hinweis:** `registerTransport`/`resolveTransport` sind Transport-Concerns, keine
-> DID-Resolution. In der Matrix-Implementierung wird `transportAddress` eine Room-ID,
-> beim Custom WS Relay eine WebSocket-URL. Langfristig könnte ein separater
-> `DidResolverAdapter` sinnvoll werden (DID Document → Service Endpoints).
-
-**POC-Implementierung:** Custom WebSocket Relay
+### Current Implementation: Custom WebSocket Relay
 
 ```
-Client A ───WebSocket──→ Relay Server ←──WebSocket─── Client B
+Client A ──WebSocket──→ Relay Server ←──WebSocket── Client B
                            │
-                           ├── DID → WebSocket Mapping
-                           ├── Offline Queue (messages warten)
-                           └── Kein Zugriff auf Payload (E2EE)
+                           ├── DID → WebSocket mapping
+                           ├── Offline queue (messages wait)
+                           ├── Delivery ACK (persisted until client ACK)
+                           └── No payload access (E2EE)
 
-Relay ist:
-- Stateless (kennt nur DID → Connection Mapping)
-- Self-hostable (Node.js, ein Dutzend Zeilen)
-- Blind (Payload ist E2E-verschlüsselt)
+Relay is:
+- Blind (payload is E2E encrypted)
+- Self-hostable (Node.js + SQLite)
+- Live: wss://relay.utopia-lab.org
 ```
 
-**Langfrist-Implementierung:** Matrix
+### Target Implementation: Matrix (Phase 4, Deferred)
 
 ```
-Client A ───HTTPS──→ Homeserver A ←──Federation──→ Homeserver B ←── Client B
-                         │                              │
-                         └──── DID-mapped Rooms ────────┘
+Client A ──HTTPS──→ Homeserver A ←──Federation──→ Homeserver B ←── Client B
+                        │                              │
+                        └──── DID-mapped rooms ────────┘
 
-Vorteile gegenüber Custom WS:
-- Megolm für Gruppen-E2EE (auditiert)
-- Federation (kein Single Point of Failure)
-- Bridges zu Signal, Slack, etc.
-- Key Verification (Emoji/QR Cross-Signing)
+Advantages over custom WS:
+- Megolm for group E2EE (audited)
+- Federation (no single point of failure)
+- Bridges to Signal, Slack, etc.
+- Key verification (emoji / QR cross-signing)
 ```
 
 ---
 
-### ReplicationAdapter
+## 5. ReplicationAdapter
 
-CRDT Sync für Multi-Device und Multi-User Spaces. Zuständig für:
-- Personal Space: Eigene Daten über Geräte synchronisieren
-- Shared Spaces: Gemeinsame Daten (Kanban, Kalender, Karte) in Gruppen
+CRDT sync for multi-device and multi-user spaces.
 
-**Designprinzipien:**
-- Spaces als Container für kollaborative Daten
-- SpaceHandle als Zugriffs-API (abstrahiert CRDT-Engine)
-- Membership-Management (wer ist in welchem Space?)
-- Zustand konvergiert automatisch (CRDTs)
-- Unabhängig von Messaging (orthogonale Achse)
-- Events wenn Remote-State ankommt (UI weiß wann refetchen)
+**Scope:**
 
-**Boundary zu StorageAdapter:**
-- StorageAdapter = lokale Persistenz (Contacts, Verifications, Attestations, Identity)
-- ReplicationAdapter = CRDT State + Sync (Space-Daten: Kanban-Tasks, Events, etc.)
-- App spricht Domain-Commands über SpaceHandle
-- ReplicationAdapter managed CRDT-Doc + Sync intern
-- StorageAdapter kann Snapshots persistieren (z.B. für Offline-Startup)
+- Personal space: sync own data across devices
+- Shared spaces: collaborative data (kanban, calendar, map) in groups
+
+**Design principles:**
+
+- Spaces as containers for collaborative data
+- `SpaceHandle<T>` as the access API (abstracts the CRDT engine)
+- Membership management (who is in which space?)
+- State converges automatically (CRDTs)
+- Independent of messaging (orthogonal axis)
+- Events when remote state arrives (UI knows when to re-render)
+
+**Boundary with StorageAdapter:**
+
+- `StorageAdapter` = local persistence (contacts, verifications, attestations, identity)
+- `ReplicationAdapter` = CRDT state + sync (space data: kanban tasks, events, etc.)
+
+**File:** `packages/wot-core/src/adapters/interfaces/ReplicationAdapter.ts`
+
+**Implementations:**
+
+- `YjsReplicationAdapter` — Yjs + `EncryptedSyncService` + `GroupKeyService`, **default**
+- `AutomergeReplicationAdapter` — Automerge + `EncryptedSyncService` + `GroupKeyService`, option
+
+**Status:** Done (both adapters)
 
 ```typescript
 type ReplicationState = 'idle' | 'syncing' | 'error'
 
+interface TransactOptions {
+  /** Use debounced vault push instead of immediate. For streaming input (e.g. text editing). */
+  stream?: boolean
+}
+
+// SpaceHandle abstracts access to the CRDT state of a space.
+// Typed via generic T — the concrete doc schema.
+interface SpaceHandle<T = unknown> {
+  readonly id: string
+  info(): SpaceInfo
+
+  /** Get the current document state (read-only snapshot). */
+  getDoc(): T
+
+  /** Apply a transactional change. Encrypts + broadcasts to members. */
+  transact(fn: (doc: T) => void, options?: TransactOptions): void
+
+  /** Fires when remote changes arrive and are applied. */
+  onRemoteUpdate(callback: () => void): () => void
+
+  /** Close this handle (unsubscribe from updates). */
+  close(): void
+}
+
 interface SpaceInfo {
   id: string
   type: 'personal' | 'shared'
-  members: string[]          // DIDs der Mitglieder
+  members: string[]          // Member DIDs
   createdAt: string
+  name?: string
+  description?: string
 }
 
 interface SpaceMemberChange {
@@ -432,606 +470,443 @@ interface SpaceMemberChange {
   action: 'added' | 'removed'
 }
 
-// SpaceHandle abstrahiert den Zugriff auf den CRDT-State eines Space.
-// Bei Automerge wäre das ein Automerge-Doc Handle,
-// bei Evolu ein Evolu-Query-Kontext.
-interface SpaceHandle {
-  id: string
-  info(): SpaceInfo
-
-  // Transaktionale Änderungen am Space-State
-  // Die konkrete Implementierung bestimmt das Schema (Automerge Doc, Evolu Table, etc.)
-  transact<T>(fn: (doc: unknown) => T): T
-
-  // Event: neuer Remote-State angekommen (UI soll refetchen)
-  onRemoteUpdate(callback: () => void): () => void
-
-  // Lifecycle
-  close(): void
-}
-
 interface ReplicationAdapter {
   // Lifecycle
   start(): Promise<void>
   stop(): Promise<void>
   getState(): ReplicationState
-  onStateChange(callback: (state: ReplicationState) => void): () => void
 
   // Space Management
-  createSpace(type: 'personal' | 'shared'): Promise<SpaceInfo>
-  joinSpace(spaceId: string, inviteToken: string): Promise<SpaceInfo>
-  leaveSpace(spaceId: string): Promise<void>
+  createSpace<T>(type: 'personal' | 'shared', initialDoc: T, meta?: { name?: string; description?: string }): Promise<SpaceInfo>
   getSpaces(): Promise<SpaceInfo[]>
   getSpace(spaceId: string): Promise<SpaceInfo | null>
+  watchSpaces(): Subscribable<SpaceInfo[]>
 
-  // Space Access — öffnet einen Handle für Lesen/Schreiben
-  openSpace(spaceId: string): Promise<SpaceHandle>
+  // Space Access — opens a typed handle for reading/writing
+  openSpace<T>(spaceId: string): Promise<SpaceHandle<T>>
 
   // Membership
-  addMember(spaceId: string, memberDid: string): Promise<void>
+  addMember(spaceId: string, memberDid: string, memberEncryptionPublicKey: Uint8Array): Promise<void>
   removeMember(spaceId: string, memberDid: string): Promise<void>
   onMemberChange(callback: (change: SpaceMemberChange) => void): () => void
 
   // Sync
-  syncNow(spaceId?: string): Promise<void>
+  requestSync(spaceId: string): Promise<void>
 
-  // Event: irgendein Space hat Remote-Updates bekommen
-  onSpaceUpdated(callback: (spaceId: string) => void): () => void
+  // Key info (for testing/debugging)
+  getKeyGeneration(spaceId: string): number
 }
 ```
 
-**POC-Implementierung:** Evolu (Single-Owner = Personal Space only)
+**Encryption model:** Encrypt-then-sync. CRDT updates are encrypted with the space's group key
+*before* being sent to the relay. The relay only ever sees ciphertext. Inspired by
+Keyhive/NextGraph.
 
-```
-Evolu synct aktuell nur innerhalb desselben Owners:
-- Personal Space: ✅ (Multi-Device via Evolu Relay)
-- Shared Spaces: ❌ (SharedOwner nicht funktional)
+**CRDT choice:**
 
-Für den POC reicht Personal Space.
-Shared Spaces kommen in Phase 3.
-```
-
-**Langfrist-Implementierung:** Automerge
-
-```
-Automerge-Dokument pro Space:
-- Jeder Space = ein Automerge Doc
-- Members synchronisieren via Automerge Sync Protocol
-- Group Key encrypts das Automerge Doc
-- Bei Member-Removal: Key Rotation
-
-Automerge ist empfohlen weil:
-- Bewährtes CRDT (Ink & Switch)
-- JSON-like API (einfach für Module)
-- automerge-repo für Networking
-```
+| CRDT | Language | Bundle | Mobile init (163KB) | Status |
+| --- | --- | --- | --- | --- |
+| **Yjs** | Pure JS | 69KB | ~85ms | Default |
+| Automerge | Rust→WASM | 1.7MB | ~6.4s | Option (`VITE_CRDT=automerge`) |
 
 ---
 
-### AuthorizationAdapter
+## 6. AuthorizationAdapter
 
-UCAN-ähnliches Capability-System. Zuständig für:
-- Wer darf was in welchem Space?
-- Delegierbare, einschränkbare Berechtigungen
-- Read/Write/Delete/Delegate Granularität
+UCAN-inspired capability system. Responsible for:
 
-**Designprinzipien:**
-- Capabilities sind signierte Tokens (wie UCANs)
-- Jede Delegation kann nur einschränken, nie erweitern (Attenuation)
-- Proof Chains: Alice → Bob → Carl (nachvollziehbar)
-- Offline-verifizierbar (keine zentrale Autorität)
-- Inspiriert von Willow/Meadowcap und UCAN
-- Resources adressiert über ResourceRef (standardisiertes URI-Format)
-- Expiration wird im POC ernst genommen (keine ewigen Tokens)
+- Who can do what in which space?
+- Delegatable, attenuatable permissions
+- Read/Write/Delete/Delegate granularity
 
-**Revocation-Strategie:**
+**Design principles:**
 
-Revocation ist der schwierigste Teil bei offline-verifizierbaren Capabilities.
-Die Truth-Source für Revocation ist **der Space selbst** (via CRDT):
+- Capabilities are signed tokens (JWS, like UCANs)
+- Every delegation can only restrict, never expand (attenuation)
+- Proof chains: Alice → Bob → Carl (verifiable)
+- Offline-verifiable (no central authority)
+- Inspired by Willow/Meadowcap and UCAN
+- Resources addressed via `ResourceRef`
+- Expiration is mandatory (no eternal tokens)
+- `SignFn` pattern: the private key stays encapsulated in `WotIdentity`
 
-```
-Stufen:
-1. POC:     Nur Expiration (kein aktives Revoke nötig)
-2. Phase 2: Revocation List pro Space (im CRDT State)
-3. Phase 3: Bloom-Filter für effiziente Prüfung über viele Spaces
-4. Phase 4: CRL-ähnliches Gossip über MessagingAdapter
-```
+**Files:**
+
+- Interface: `packages/wot-core/src/adapters/interfaces/AuthorizationAdapter.ts`
+- Primitives: `packages/wot-core/src/crypto/capabilities.ts`
+
+**Implementations:**
+
+- `InMemoryAuthorizationAdapter` — for tests and POC
+
+**Status:** Done
 
 ```typescript
+// From crypto/capabilities.ts — the protocol layer
 type Permission = 'read' | 'write' | 'delete' | 'delegate'
 
 interface Capability {
   id: string
-  issuer: string           // DID des Ausstellers
-  audience: string         // DID des Empfängers
-  resource: ResourceRef    // Standardisierte Resource-Referenz
+  issuer: string          // DID of the granter
+  audience: string        // DID of the recipient
+  resource: ResourceRef   // wot:<type>:<id>[/<sub-path>]
   permissions: Permission[]
-  expiration: string       // ISO 8601 — Pflichtfeld! Keine ewigen Tokens.
-  proof?: string           // ID der Parent-Capability (für Delegation)
-  signature: string        // Ed25519 Signatur des Issuers
+  expiration: string      // ISO 8601 — mandatory
+  proof?: string          // JWS of the parent capability (for delegation chains)
 }
 
-// Kontext für Verification — ermöglicht Revocation-Check
-interface VerificationContext {
-  spaceId?: string         // Für Space-scoped Revocation Lists
-  checkRevocation?: boolean // Default: true
-  now?: string             // Override für Tests (ISO 8601)
-}
+type CapabilityJws = string  // Capability encoded as JWS (signed by issuer)
 
+type CapabilityVerificationResult =
+  | { valid: true; capability: Capability; chain: Capability[] }
+  | { valid: false; error: string }
+
+// SignFn — provided by WotIdentity.signJws.bind(identity)
+// Private key never leaves WotIdentity.
+type SignFn = (payload: unknown) => Promise<string>
+
+// AuthorizationAdapter — stateful layer for capability management
+// (storage, queries, revocation). Crypto primitives live in capabilities.ts.
 interface AuthorizationAdapter {
   // Granting
   grant(
     resource: ResourceRef,
     toDid: string,
     permissions: Permission[],
-    expiration: string       // ISO 8601 — Pflicht
-  ): Promise<Capability>
+    expiration: string,       // ISO 8601 — required
+  ): Promise<CapabilityJws>
 
-  // Revoking — schreibt in die Revocation List des zugehörigen Space
-  revoke(capabilityId: string): Promise<void>
-
-  // Delegation (Attenuation: kann nur einschränken)
+  // Delegation (attenuation: can only restrict)
   delegate(
-    parentCapabilityId: string,
+    parentCapabilityJws: CapabilityJws,
     toDid: string,
-    permissions: Permission[],  // Subset der Parent-Permissions
-    expiration?: string         // Muss <= Parent-Expiration sein
-  ): Promise<Capability>
+    permissions: Permission[],  // Must be subset of parent
+    expiration?: string,        // Must be <= parent expiration
+  ): Promise<CapabilityJws>
 
-  // Verification — prüft Signatur, Expiration, Chain UND Revocation
-  verify(
-    capability: Capability,
-    context?: VerificationContext
-  ): Promise<boolean>
-  getCapabilityChain(capabilityId: string): Promise<Capability[]>
+  // Verification — signature, expiration, chain, and revocation
+  verify(capabilityJws: CapabilityJws): Promise<CapabilityVerificationResult>
 
-  // Querying
-  getMyCapabilities(resource?: ResourceRef): Promise<Capability[]>
-  getGrantedCapabilities(resource?: ResourceRef): Promise<Capability[]>
+  // Access check — convenience method, searches stored capabilities
   canAccess(
     did: string,
     resource: ResourceRef,
     permission: Permission,
-    context?: VerificationContext
   ): Promise<boolean>
+
+  // Revocation — only the issuer can revoke
+  revoke(capabilityId: string): Promise<void>
+  isRevoked(capabilityId: string): Promise<boolean>
+
+  // Storage / Queries
+  store(capabilityJws: CapabilityJws): Promise<void>
+  getMyCapabilities(resource?: ResourceRef): Promise<CapabilityJws[]>
+  getGrantedCapabilities(resource?: ResourceRef): Promise<CapabilityJws[]>
 }
 ```
 
-**Beispiel: Delegation Chain**
+**Delegation example:**
 
 ```
-1. Alice erstellt Space "WG-Kalender"
-   → Alice hat automatisch: { resource: "space:wg-kalender", permissions: [read, write, delete, delegate] }
+1. Alice creates space "wg-calendar"
+   → Alice automatically holds: { resource: "wot:space:wg-calendar", permissions: [read, write, delete, delegate] }
 
-2. Alice gibt Bob Schreib-Rechte:
-   → grant("space:wg-kalender", bob.did, [read, write])
-   → Bob kann lesen und schreiben, aber NICHT delegieren oder löschen
+2. Alice grants Bob write access:
+   grant("wot:space:wg-calendar", bob.did, [read, write], expiration)
+   → Bob can read and write, but NOT delegate or delete
 
-3. Bob versucht Carl einzuladen:
-   → delegate(bobsCapability, carl.did, [read])
-   → FEHLER: Bob hat kein 'delegate' Permission
+3. Bob tries to invite Carl:
+   delegate(bobsCapability, carl.did, [read])
+   → ERROR: Bob does not have the 'delegate' permission
 
-4. Alice gibt Bob Delegate-Recht:
-   → grant("space:wg-kalender", bob.did, [read, write, delegate])
+4. Alice grants Bob the delegate permission:
+   grant("wot:space:wg-calendar", bob.did, [read, write, delegate], expiration)
 
-5. Bob delegiert an Carl (Attenuation!):
-   → delegate(bobsCapability, carl.did, [read])
-   → Carl kann NUR lesen (Bob kann nicht mehr geben als er hat)
+5. Bob delegates to Carl (attenuation):
+   delegate(bobsCapability, carl.did, [read])
+   → Carl can ONLY read (Bob cannot grant more than he has)
 
-Proof Chain: Alice → Bob → Carl
-Jeder Schritt ist signiert und offline-verifizierbar.
+Proof chain: Alice → Bob → Carl
+Every step is signed and offline-verifiable.
 ```
 
-**POC-Implementierung:** Einfache lokale Prüfung
+**Revocation strategy:**
 
 ```
-Für den POC reicht:
-- Space Creator = Admin (alle Rechte)
-- Einladung = implizites read+write
-- Keine Delegation
-
-Capabilities werden erst relevant wenn:
-- Selektive Sichtbarkeit (Phase 2)
-- Gruppen mit unterschiedlichen Rollen (Phase 3)
-```
-
-**Langfrist-Implementierung:** UCAN-kompatibel
-
-```
-- UCAN Spec folgen für Interoperabilität
-- JWT-ähnliches Token-Format
-- Capability Storage in IndexedDB
-- Revocation via CRL (Certificate Revocation List) oder Bloom Filter
+Stages:
+1. POC:     Expiration only (no active revoke needed)
+2. Phase 2: Revocation list per space (in CRDT state)
+3. Phase 3: Bloom filter for efficient checks across many spaces
+4. Phase 4: CRL-like gossip via MessagingAdapter
 ```
 
 ---
 
-### DiscoveryAdapter
+## 7. DiscoveryAdapter
 
-Öffentliche Discovery — wie finde ich Informationen über eine DID?
+Public discovery — how do I find information about a DID?
 
-Dieser Adapter löst ein Problem, das die anderen 6 Adapter nicht adressieren:
-**Alle anderen Adapter setzen voraus, dass man die Gegenstelle bereits kennt.**
-Der DiscoveryAdapter ist der Einstiegspunkt — er beantwortet die Frage
-"Wer ist diese DID?" **bevor** man mit der Person in Kontakt ist.
+This adapter solves a problem the other six do not address:
+**All other adapters assume you already know the other party.**
+The DiscoveryAdapter is the entry point — it answers the question
+"Who is this DID?" *before* any contact exists.
 
-**Warum ein eigener Adapter?**
+**Why a dedicated adapter?**
 
-Discovery ist eine fundamentale, eigenständige Aufgabe:
-- Es ist kein Messaging (kein Empfänger, keine Zustellung)
-- Es ist kein CRDT/Sync (kein Merge, keine Konflikte)
-- Es ist kein lokaler Storage (die Daten sind öffentlich)
-- Es hat eigene Sicherheitseigenschaften (signiert, aber nicht verschlüsselt)
+Discovery is a fundamentally separate concern:
 
-**Designprinzipien:**
-- Adressierung über DIDs
-- Alle Daten sind Ed25519-signiert (JWS) — Integrität ohne Vertraulichkeit
-- Der Inhaber kontrolliert, was öffentlich ist (Empfänger-Prinzip)
-- Anonym lesbar — kein Login nötig zum Abrufen
-- Keine Authentifizierung — die kryptographische Signatur IST die Autorisierung
-- Server ist ein dummer Cache — Wahrheit lebt lokal
+- It is not messaging (no recipient, no delivery)
+- It is not CRDT/sync (no merge, no conflicts)
+- It is not local storage (data is public)
+- It has its own security properties (signed, not encrypted)
 
-**Abgrenzung zu den anderen Adaptern:**
+**Design principles:**
 
-```
-                        Sichtbarkeit    Voraussetzung       Sicherheit
-                        ──────────────  ──────────────────  ───────────────
-DiscoveryAdapter        Öffentlich      Keine (anonym)      Signiert (JWS)
-MessagingAdapter        Privat (1:1)    DID des Empfängers  E2EE
-ReplicationAdapter      Gruppe          Space-Membership    Group Key E2EE
-```
+- Addressing via DIDs
+- All data is Ed25519-signed (JWS) — integrity without confidentiality
+- The owner controls what is public (recipient principle)
+- Anonymously readable — no login required to fetch
+- No authentication — the cryptographic signature IS the authorization
+- Server is a dumb cache — truth lives locally
 
-**Was wird veröffentlicht?**
+**File:** `packages/wot-core/src/adapters/interfaces/DiscoveryAdapter.ts`
 
-Drei Kategorien öffentlicher Daten, jeweils als JWS signiert:
+**Implementations:**
 
-1. **Profil** — Name, Bio, Avatar (vom Inhaber selbst)
-2. **Verifikationen** — "Diese DIDs haben mich verifiziert" (Empfänger publiziert)
-3. **Attestationen** — "Diese Aussagen wurden über mich gemacht" (nur akzeptierte)
+- `HttpDiscoveryAdapter` — HTTP REST against wot-profiles server
+- `OfflineFirstDiscoveryAdapter` — Cache wrapper with dirty flags + local fallback
 
-Jede Kategorie ist ein eigenes JWS-Dokument. Der Inhaber entscheidet,
-welche Attestationen veröffentlicht werden (`accepted`-Flag, lokale Metadaten).
+**Status:** Done
 
 ```typescript
-interface PublicProfileData {
-  did: string
-  name: string
-  bio?: string
-  avatar?: string
-  updatedAt: string
-}
-
 interface PublicVerificationsData {
   did: string
-  verifications: Verification[]    // Jede mit eigener proof (Ed25519)
+  verifications: Verification[]    // Each with its own proof (Ed25519)
   updatedAt: string
 }
 
 interface PublicAttestationsData {
   did: string
-  attestations: Attestation[]      // Nur accepted, jede mit eigener proof
+  attestations: Attestation[]      // Accepted only, each with its own proof
   updatedAt: string
 }
 
+interface ProfileSummary {
+  did: string
+  name: string | null
+  verificationCount: number
+  attestationCount: number
+}
+
+interface ProfileResolveResult {
+  profile: PublicProfile | null
+  fromCache: boolean
+}
+
 interface DiscoveryAdapter {
-  // Eigene öffentliche Daten publizieren (als JWS signiert)
-  publishProfile(data: PublicProfileData, identity: WotIdentity): Promise<void>
+  // Publish own public data (signed as JWS)
+  publishProfile(data: PublicProfile, identity: WotIdentity): Promise<void>
   publishVerifications(data: PublicVerificationsData, identity: WotIdentity): Promise<void>
   publishAttestations(data: PublicAttestationsData, identity: WotIdentity): Promise<void>
 
-  // Öffentliche Daten einer DID abrufen und JWS verifizieren
-  resolveProfile(did: string): Promise<PublicProfileData | null>
+  // Resolve public data for a DID (verifies JWS signature)
+  resolveProfile(did: string): Promise<ProfileResolveResult>
   resolveVerifications(did: string): Promise<Verification[]>
   resolveAttestations(did: string): Promise<Attestation[]>
+
+  // Optional: batch summary for multiple DIDs (unsigned, server-derived counts)
+  resolveSummaries?(dids: string[]): Promise<ProfileSummary[]>
 }
 ```
 
-**Doppelte Verifikation:**
+**Dual verification:**
 
-Jedes Dokument hat zwei Signatur-Ebenen:
+Each published document has two signature layers:
 
-1. **JWS-Hülle:** "Bob hat diese Liste veröffentlicht"
-   → Signiert vom Inhaber der DID
-2. **Einzelne Proofs:** "Alice hat diese Attestation/Verification signiert"
-   → Signiert vom jeweiligen Ersteller
+1. **JWS envelope:** "Bob published this list" — signed by the DID owner
+2. **Individual proofs:** "Alice signed this attestation/verification" — signed by the creator
 
-Der Client kann beides unabhängig verifizieren.
+The client can verify both independently.
 
-**POC-Implementierung:** `HttpDiscoveryAdapter` (wot-profiles)
+**Current implementation: `HttpDiscoveryAdapter` (wot-profiles)**
 
 ```
-Client ───fetch()──→ wot-profiles (HTTP + SQLite)
+Client ──fetch()──→ wot-profiles (HTTP + SQLite)
 
-PUT /p/{did}      Profil-JWS speichern
-GET /p/{did}      Profil-JWS abrufen
-PUT /p/{did}/v    Verifikationen-JWS speichern
-GET /p/{did}/v    Verifikationen-JWS abrufen
-PUT /p/{did}/a    Attestationen-JWS speichern
-GET /p/{did}/a    Attestationen-JWS abrufen
+PUT /p/{did}      Save profile JWS
+GET /p/{did}      Fetch profile JWS
+PUT /p/{did}/v    Save verifications JWS
+GET /p/{did}/v    Fetch verifications JWS
+PUT /p/{did}/a    Save attestations JWS
+GET /p/{did}/a    Fetch attestations JWS
+GET /p/batch      Batch profile summaries
 
-Server prüft:
-1. JWS-Signatur gültig
-2. DID im Payload = DID in URL
-→ Kein Account-System, keine Auth-Tokens
+Server checks:
+1. JWS signature valid
+2. DID in payload = DID in URL
+→ No account system, no auth tokens
+Live: https://profiles.utopia-lab.org
 ```
 
-**Mögliche alternative Implementierungen:**
+**Possible alternative implementations:**
 
-```
-HttpDiscoveryAdapter      HTTP REST + SQLite (aktuell, wot-profiles)
-AutomergeDiscoveryAdapter Öffentlicher CRDT-Space pro DID (Automerge Auto-Groups)
-IpfsDiscoveryAdapter      IPNS-Records, Content-adressiert
-DhtDiscoveryAdapter       Kademlia DHT (wie BitTorrent/IPFS)
-NostrDiscoveryAdapter     NIP-01 Events (kind 0 = Profile)
-ActivityPubDiscoveryAdapter  Actor-Objekte (Fediverse)
-```
-
-Jede Implementierung hat unterschiedliche Trade-offs:
-
-| Implementierung | Zentral | Dezentral | Offline | Einfach |
-|-----------------|---------|-----------|---------|---------|
-| HTTP (aktuell)  | Ja      | Nein      | Nein    | Ja      |
-| Automerge       | Nein    | Ja        | Ja      | Mittel  |
-| IPFS/IPNS       | Nein    | Ja        | Teilw.  | Komplex |
-| Nostr           | Relays  | Teilweise | Nein    | Mittel  |
+| Implementation | Centralized | Decentralized | Offline | Complexity |
+| --- | --- | --- | --- | --- |
+| HTTP (current) | Yes | No | No | Low |
+| Automerge Auto-Groups | No | Yes | Yes | Medium |
+| IPFS/IPNS | No | Yes | Partial | High |
+| Nostr (kind:0) | Relays | Partial | No | Medium |
 
 ---
 
-## Interaktion der Adapter
+## Adapter Interactions
 
-### Flow: Öffentliches Profil abrufen (Discovery)
+### Flow: Fetch a Public Profile (Discovery)
 
-```text
-Carl hat Bobs DID (z.B. aus einem Link, QR-Code oder einer Attestation).
-Carl kennt Bob noch nicht und ist nicht als Kontakt verbunden.
+```mermaid
+sequenceDiagram
+    participant Carl
+    participant Discovery as DiscoveryAdapter
+    participant Server as wot-profiles
 
-1. DiscoveryAdapter.resolveProfile(bobDid)
-   → PublicProfileData { did, name: "Bob", bio: "...", avatar: "..." }
-   → JWS-Signatur wird verifiziert (DID → PublicKey → Ed25519)
+    Note over Carl: Has Bob's DID (from QR code, link, or attestation)
+    Note over Carl: Does NOT know Bob yet
 
-2. DiscoveryAdapter.resolveVerifications(bobDid)
-   → [Verification { from: aliceDid, to: bobDid, proof: ... }, ...]
-   → JWS-Hülle verifiziert (Bob hat diese Liste publiziert)
-   → Einzelne Proofs verifizierbar (Alice hat diese Verification signiert)
+    Carl->>Discovery: resolveProfile(bobDid)
+    Discovery->>Server: GET /p/{bobDid}
+    Server-->>Discovery: JWS document
+    Discovery->>Discovery: verify JWS (DID → PublicKey → Ed25519)
+    Discovery-->>Carl: ProfileResolveResult { profile, fromCache }
 
-3. DiscoveryAdapter.resolveAttestations(bobDid)
-   → [Attestation { from: aliceDid, to: bobDid, claim: "Zuverlässig", proof: ... }]
-   → Nur Attestationen die Bob als "accepted" markiert hat
+    Carl->>Discovery: resolveVerifications(bobDid)
+    Discovery-->>Carl: Verification[] (JWS envelope + individual proofs)
 
-4. Carl sieht Bobs öffentliches Profil:
-   → Name, Bio, Avatar
-   → "Verifiziert von 3 Personen"
-   → "2 Attestationen: 'Zuverlässig', 'Kann gut kochen'"
+    Carl->>Discovery: resolveAttestations(bobDid)
+    Discovery-->>Carl: Attestation[] (only accepted ones)
 
-5. Carl entscheidet sich, Bob zu verifizieren:
-   → Wechsel von Discovery-Achse zu Messaging-Achse
-   → In-Person Verification (QR-Code) über MessagingAdapter
+    Note over Carl: Decides to verify Bob in person
+    Note over Carl: Switches from Discovery axis → Messaging axis
 ```
 
-### Flow: Eigenes Profil publizieren
+### Flow: Publish Own Profile
 
-```text
-Bob aktualisiert sein Profil und publiziert es.
-
-1. StorageAdapter.getIdentity() → lokales Profil
-2. StorageAdapter.getReceivedVerifications() → Verifications über Bob
-3. StorageAdapter.getReceivedAttestations() → alle Attestations
-   + StorageAdapter.getAttestationMetadata(id) → nur accepted filtern
+```
+1. StorageAdapter.getIdentity()           → local profile
+2. StorageAdapter.getReceivedVerifications() → verifications about me
+3. StorageAdapter.getReceivedAttestations()  → all attestations
+   + StorageAdapter.getAttestationMetadata(id) → filter accepted only
 
 4. DiscoveryAdapter.publishProfile(profileData, identity)
    → identity.signJws(profileData) → JWS
-   → Upload zum Discovery-Backend
+   → upload to wot-profiles
 
 5. DiscoveryAdapter.publishVerifications(vData, identity)
-   → Verifikationen als JWS signiert publiziert
+   → verifications published as JWS
 
 6. DiscoveryAdapter.publishAttestations(aData, identity)
-   → Nur akzeptierte Attestationen als JWS signiert publiziert
+   → accepted attestations published as JWS
 
-Trigger für Re-Publish:
-- Profil geändert (Name, Bio, Avatar)
-- Neue Verification empfangen (ReactiveStorageAdapter)
-- Attestation accepted/rejected (manuell)
+Re-publish triggers:
+- Profile changed (name, bio, avatar)
+- New verification received (ReactiveStorageAdapter)
+- Attestation accepted/rejected (manual)
 ```
 
-### Flow: Attestation erstellen und zustellen
+### Flow: Attestation Delivery
 
-```text
-Alice will Bob eine Attestation senden: "Bob ist zuverlässig"
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Relay as wot-relay (WebSocket)
+    participant Bob
 
-1. Alice erstellt Attestation-Payload (JSON)
-   → { claim: "Bob ist zuverlässig", fromDid: aliceDid, toDid: bobDid, ... }
+    Alice->>Alice: build attestation payload (JSON)
+    Alice->>Alice: CryptoAdapter.signString(payload, privateKey)
+    Alice->>Alice: build MessageEnvelope { type: 'attestation', ref: 'wot:attestation:...' }
 
-2. CryptoAdapter.signString(canonicalPayload, alicePrivateKey)
-   → Signatur (Base64)
+    Alice->>Relay: MessagingAdapter.send(envelope)
+    Relay-->>Alice: DeliveryReceipt { status: 'accepted' }
 
-3. Alice baut MessageEnvelope:
-   → { v: 1, id: uuid(), type: 'attestation', fromDid: aliceDid, toDid: bobDid,
-       encoding: 'json', payload: canonicalPayload, signature: sig,
-       ref: 'wot:attestation:<id>' }
+    Note over Relay: Persists until Bob ACKs
 
-4. MessagingAdapter.send(envelope)
-   → DeliveryReceipt { status: 'accepted', messageId: envelope.id }
+    Relay->>Bob: MessagingAdapter.onMessage callback
+    Bob->>Bob: CryptoAdapter.verifyString(payload, signature, alicePublicKey)
+    Bob->>Bob: StorageAdapter.saveAttestation(parsed)
 
-5. [Bei Bob] MessagingAdapter.onMessage(callback)
-   → MessageEnvelope { type: 'attestation', fromDid: aliceDid, ... }
-
-6. [Bei Bob] CryptoAdapter.verifyString(envelope.payload, envelope.signature, alicePublicKey)
-   → true (Signatur gültig, fromDid stimmt)
-
-7. [Bei Bob] StorageAdapter.saveAttestation(parsedAttestation)
-   → Gespeichert beim Empfänger (Empfänger-Prinzip!)
-
-8. [Bei Bob] Optional: sendet 'ack' Envelope zurück
-   → Alice erhält via onReceipt: { status: 'acknowledged' }
+    Bob->>Relay: send ACK envelope
+    Relay-->>Alice: DeliveryReceipt { status: 'acknowledged' }
 ```
 
-### Flow: Item selektiv teilen
+### Flow: Selective Item Sharing
 
-```text
-Alice teilt Kalender-Event mit Bob und Carl, aber NICHT mit Dora.
+```
+Alice shares a calendar event with Bob and Carl, but NOT with Dora.
 
 1. CryptoAdapter.generateSymmetricKey()
-   → AES-256-GCM Item-Key (32 bytes)
+   → AES-256-GCM item key (32 bytes)
 
 2. CryptoAdapter.encryptSymmetric(eventData, itemKey)
    → { ciphertext, nonce }
 
 3. StorageAdapter.saveItem(encryptedEvent)
-   → Lokal gespeichert
+   → stored locally
 
-4. Für jeden Empfänger (Bob, Carl):
-   a. CryptoAdapter.encrypt(itemKey, recipientPublicKey)
-      → EncryptedPayload (asymmetrisch verschlüsselter Item-Key)
+4. For each recipient (Bob, Carl):
+   a. Encrypt item key asymmetrically for recipient
    b. MessagingAdapter.send({
-        v: 1, id: uuid(), type: 'item-key',
+        type: 'item-key',
         fromDid: aliceDid, toDid: recipientDid,
-        encoding: 'base64', payload: encryptedItemKey,
-        signature: sig, ref: 'wot:item:<event-id>'
+        payload: encryptedItemKey,
+        ref: 'wot:item:<event-id>'
       })
-      → DeliveryReceipt { status: 'accepted' }
 
-5. [Bei Bob] MessagingAdapter.onMessage → empfängt item-key Envelope
-6. [Bei Bob] CryptoAdapter.decrypt(encryptedItemKey, bobPrivateKey)
-   → Klartext Item-Key (32 bytes)
-7. [Bei Bob] CryptoAdapter.decryptSymmetric(ciphertext, nonce, itemKey)
-   → Klartext Kalender-Event
+5. [At Bob] MessagingAdapter.onMessage → receives item-key envelope
+6. [At Bob] Decrypt item key with Bob's private key
+7. [At Bob] CryptoAdapter.decryptSymmetric(ciphertext, nonce, itemKey)
+   → plaintext calendar event
 
-Dora hat keinen Item-Key → kann das Event nicht entschlüsseln.
+Dora has no item key → cannot decrypt the event.
 ```
 
-### Flow: Gruppe mit gemeinsamen Space
+### Flow: Shared Group Space
 
-```text
-Alice erstellt eine WG-Gruppe mit Bob und Carl.
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant Relay as wot-relay
+    participant Bob
 
-1. ReplicationAdapter.createSpace('shared')
-   → SpaceInfo { id: 'space-abc', type: 'shared', members: [aliceDid] }
+    Alice->>Alice: ReplicationAdapter.createSpace('shared', initialDoc)
+    Alice->>Alice: GroupKeyService.generateGroupKey()
 
-2. CryptoAdapter.generateSymmetricKey()
-   → AES-256-GCM Group Key (32 bytes)
+    Alice->>Relay: MessagingAdapter.send({ type: 'space-invite', toDid: bobDid, payload: { spaceId, encryptedGroupKey } })
 
-3. ReplicationAdapter.addMember('space-abc', bobDid)
+    Relay->>Bob: deliver invite
+    Bob->>Bob: ReplicationAdapter receives invite, stores group key
+    Bob->>Bob: space is now open
 
-4. MessagingAdapter.send({
-     v: 1, id: uuid(), type: 'space-invite',
-     fromDid: aliceDid, toDid: bobDid,
-     encoding: 'json', payload: JSON.stringify({ spaceId: 'space-abc', groupKey: encryptedGroupKey }),
-     signature: sig, ref: 'wot:space:space-abc'
-   })
-   → Bob empfängt Einladung + verschlüsselten Group Key
+    Bob->>Bob: handle.transact(doc => { doc.tasks.push({ title: 'Shopping' }) })
+    Note over Bob: Encrypts CRDT update with group key
+    Bob->>Relay: encrypted CRDT update
 
-5. [Bei Bob] ReplicationAdapter.joinSpace('space-abc', inviteToken)
-   → Bob synct jetzt mit dem Space
+    Relay->>Alice: forward encrypted update
+    Alice->>Alice: decrypt + apply CRDT merge
+    Alice->>Alice: handle.onRemoteUpdate() fires → UI re-renders
 
-6. Bob öffnet Space und erstellt Kanban-Task:
-   const handle = await ReplicationAdapter.openSpace('space-abc')
-   handle.transact(doc => { doc.tasks.push({ title: 'Einkaufen' }) })
-   → CRDT-Operation → synct automatisch zu Alice und Carl
-   → Alice/Carl erhalten via handle.onRemoteUpdate() → UI refresht
-
-7. Carl wird entfernt:
-   ReplicationAdapter.removeMember('space-abc', carlDid)
-   → Group Key Rotation: CryptoAdapter.generateSymmetricKey() → neuer Key
-   → MessagingAdapter.send({
-       type: 'group-key-rotation', toDid: bobDid,
-       ref: 'wot:space:space-abc', ...
-     })
-   → Nur noch Alice + Bob haben den neuen Key
+    Note over Alice: Carl removed from space
+    Alice->>Alice: ReplicationAdapter.removeMember(spaceId, carlDid)
+    Alice->>Alice: GroupKeyService.rotateKey() → new group key
+    Alice->>Relay: MessagingAdapter.send({ type: 'group-key-rotation', toDid: bobDid })
+    Note over Relay: Carl can no longer decrypt future updates
 ```
 
 ---
 
-## Implementierungs-Phasen
+## Related Documents
 
-### Phase 1: Fundament (jetzt)
-
-| Adapter | Status | Implementierung |
-|---------|--------|----------------|
-| StorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
-| ReactiveStorageAdapter | ✅ Implementiert | EvoluStorageAdapter |
-| CryptoAdapter | ✅ Implementiert | WebCryptoAdapter |
-| MessagingAdapter | ✅ Implementiert | WebSocketMessagingAdapter + wot-relay |
-| DiscoveryAdapter | ✅ Implementiert | HttpDiscoveryAdapter (wot-profiles) |
-| ReplicationAdapter | Interface definieren | NoOp (nur Evolu Personal) |
-| AuthorizationAdapter | Interface definieren | NoOp (Creator = Admin) |
-
-**Ziel Phase 1:** Attestations und Verifications zwischen zwei DIDs zustellen. Öffentliche Profile abrufbar.
-
-**Done-Kriterien Phase 1:**
-
-```text
-1. Sender erstellt MessageEnvelope (type: 'attestation')
-   → CryptoAdapter signiert → Envelope hat gültige Signatur
-
-2. MessagingAdapter.send(envelope) → DeliveryReceipt { status: 'accepted' }
-   → Relay hat die Nachricht angenommen und queued
-
-3. Empfänger erhält Envelope via onMessage(callback)
-   → Envelope ist vollständig (v, id, type, fromDid, toDid, payload, signature)
-
-4. Empfänger verifiziert Signatur via CryptoAdapter.verifyString()
-   → true (Signatur gültig, fromDid stimmt)
-
-5. Empfänger persistiert via StorageAdapter.saveAttestation()
-   → Attestation ist lokal gespeichert (Empfänger-Prinzip)
-
-6. Optional: Empfänger sendet 'ack' zurück
-   → Sender erhält DeliveryReceipt { status: 'acknowledged' }
-
-Testbar als Integration Test:
-  Alice.send(attestation) → Bob.onMessage → Bob.verify → Bob.save → Alice.onReceipt(ack)
-```
-
-### Phase 2: Selektives Teilen
-
-| Adapter | Erweiterung |
-|---------|-------------|
-| CryptoAdapter | Item-Key-Generierung + per-Recipient Encryption |
-| MessagingAdapter | Item-Key Delivery |
-| AuthorizationAdapter | Basis-Capabilities (read/write pro Item) |
-
-**Ziel Phase 2:** Items mit N ausgewählten Kontakten teilen.
-
-### Phase 3: Gruppen
-
-| Adapter | Erweiterung |
-|---------|-------------|
-| ReplicationAdapter | Automerge für Shared Spaces |
-| AuthorizationAdapter | UCAN Delegation Chains |
-| MessagingAdapter | Group Key Rotation |
-
-**Ziel Phase 3:** Gemeinsame Spaces mit Modulen (Kanban, Kalender, Karte).
-
-### Phase 4: Skalierung
-
-| Adapter | Migration |
-|---------|-----------|
-| MessagingAdapter | Custom WS → Matrix |
-| ReplicationAdapter | Evolu → Automerge (Cross-User) |
-| AuthorizationAdapter | Volle UCAN-Kompatibilität |
-| DiscoveryAdapter | HTTP → Automerge Auto-Groups oder DHT |
-
-**Ziel Phase 4:** Federation, Bridges, größere Gruppen. Dezentrale Discovery.
-
----
-
-## Abgrenzung: Was sich NICHT ändert
-
-| Bereich | Warum unverändert |
-|---------|-------------------|
-| `wot-core` Types | Identity, Contact, Verification, Attestation bleiben gleich |
-| WotIdentity Klasse | BIP39, Ed25519, HKDF, did:key — alles stabil |
-| WebCryptoAdapter | Signing, Encryption, DID-Konvertierung — funktioniert |
-| EvoluStorageAdapter | Lokale Persistenz + Reactive Queries — funktioniert |
-| Empfänger-Prinzip | Fundamentales Design-Prinzip, bestätigt durch Architektur |
-
----
-
-## Verwandte Dokumente
-
-- [Framework-Evaluation v2](framework-evaluation.md) — Warum kein einzelnes Framework reicht
-- [Verschlüsselung](verschluesselung.md) — Item-Key-Modell, E2EE Details
-- [Architektur](../architecture/overview.md) — Schichtenmodell (wird aktualisiert)
-- [Entitäten](../architecture/entities.md) — Datenmodell
+- [CURRENT_IMPLEMENTATION.md](../CURRENT_IMPLEMENTATION.md) — implementation status, test counts, file structure
+- [Framework Evaluation v2](../protocols/framework-evaluation.md) — why no single framework suffices
+- [Encryption](../concepts/encryption.md) — item key model, E2EE details
+- [Vault Sync Architecture](../concepts/vault-sync-architektur.md) — vault sync patterns
+- [Entities](entities.md) — data model
 - [Social Recovery](../concepts/social-recovery.md) — Shamir Secret Sharing
