@@ -592,8 +592,8 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    Attestation["Attestation\n(signed, immutable)"]
-    Metadata["AttestationMetadata\n(local, mutable)"]
+    Attestation["Attestation<br/>(signed, immutable)"]
+    Metadata["AttestationMetadata<br/>(local, mutable)"]
     Attestation -->|"attestationId FK"| Metadata
 ```
 
@@ -601,9 +601,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Space["Space\n(id: space-abc)"]
-    GK0["GroupKey gen=0\n(founding members)"]
-    GK1["GroupKey gen=1\n(after member removed)"]
+    Space["Space<br/>(id: space-abc)"]
+    GK0["GroupKey gen=0<br/>(founding members)"]
+    GK1["GroupKey gen=1<br/>(after member removed)"]
     Space --> GK0
     Space --> GK1
 ```

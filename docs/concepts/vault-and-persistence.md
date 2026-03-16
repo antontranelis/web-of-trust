@@ -23,9 +23,9 @@ Every change flows through the first three layers in order:
 ```mermaid
 flowchart LR
   A[App change] --> B[CRDT mutate]
-  B --> C[CompactStore\nIDB · immediate]
-  B --> D[Relay\nencrypted · immediate]
-  B --> E[Vault\nencrypted · 5 s debounce]
+  B --> C[CompactStore<br/>IDB · immediate]
+  B --> D[Relay<br/>encrypted · immediate]
+  B --> E[Vault<br/>encrypted · 5 s debounce]
 
   style A stroke:#888,fill:none,color:inherit
   style B stroke:#888,fill:none,color:inherit
@@ -59,13 +59,13 @@ sequenceDiagram
   participant B as Bob
 
   A->>A: Mutate CRDT doc
-  A->>A: Serialize update\n(Yjs: encodeStateAsUpdate\nAutomerge: sync message)
-  A->>A: AES-256-GCM encrypt\n(group key)
-  A->>R: WebSocket envelope\n(Ed25519 signed)
+  A->>A: Serialize update<br/>(Yjs: encodeStateAsUpdate<br/>Automerge: sync message)
+  A->>A: AES-256-GCM encrypt<br/>(group key)
+  A->>R: WebSocket envelope<br/>(Ed25519 signed)
   R->>B: Forward (opaque ciphertext)
   B->>B: Decrypt + CRDT merge
 
-  note over R: Relay sees only ciphertext.\nNo plaintext, no CRDT structure.
+  note over R: Relay sees only ciphertext.<br/>No plaintext, no CRDT structure.
 ```
 
 - **Updates are small** — only the diff, not the full state
@@ -90,11 +90,11 @@ sequenceDiagram
   VPS->>VPS: Reset 5 s debounce timer
   note over VPS: Timer fires after 5 s of inactivity
   VPS->>App: getHeadsFn() — dirty check
-  App->>VPS: Serialize full doc\n(Yjs: encodeStateAsUpdate\nAutomerge: save())
+  App->>VPS: Serialize full doc<br/>(Yjs: encodeStateAsUpdate<br/>Automerge: save())
   App->>VPS: Encrypt (AES-256-GCM)
   VPS->>VC: push snapshot
-  VC->>V: PUT /docs/{id}/snapshot\n{ data: base64, upToSeq: N }
-  V->>V: UPSERT snapshot\ndelete old changes (seq ≤ N)
+  VC->>V: PUT /docs/{id}/snapshot<br/>{ data: base64, upToSeq: N }
+  V->>V: UPSERT snapshot<br/>delete old changes (seq ≤ N)
   V-->>VC: 200 OK
 ```
 
@@ -115,13 +115,13 @@ On startup (new device, app reinstall, or cold boot), the Vault is consulted bef
 ```mermaid
 flowchart TD
   A[initPersonalDoc] --> B{Vault reachable?}
-  B -- yes --> C[GET /docs/{id}/changes\nSnapshot + any newer changes]
+  B -- yes --> C[GET /docs/{id}/changes<br/>Snapshot + any newer changes]
   C --> D[Decrypt + CRDT load]
   D --> G[Doc ready]
-  B -- no --> E[CompactStore\nIndexedDB snapshot]
+  B -- no --> E[CompactStore<br/>IndexedDB snapshot]
   E --> F{Found?}
   F -- yes --> G
-  F -- no --> H[Empty doc\nor migration path]
+  F -- no --> H[Empty doc<br/>or migration path]
 
   style A stroke:#888,fill:none,color:inherit
   style B stroke:#888,fill:none,color:inherit
@@ -152,7 +152,7 @@ sequenceDiagram
   Alice->>R: Send snapshot to Carla (WebSocket)
   R->>Carla: Forward
   Carla->>Carla: Decrypt + CRDT load
-  note over Carla: Carla now has full space state\nwithout Alice needing to stay online
+  note over Carla: Carla now has full space state<br/>without Alice needing to stay online
 ```
 
 This pattern fills the offline-join gap: even if Alice goes offline after sending the invite, Carla can bootstrap from the snapshot she received. After that, the Vault takes over as the persistent fallback.
@@ -369,16 +369,16 @@ The Vault architecture is **CRDT-agnostic**. The Vault stores encrypted bytes; i
 flowchart TD
   subgraph Client["Client (Alice)"]
     A[App mutation] --> B[CRDT doc]
-    B --> CS[CompactStore\nIDB snapshot\nimmediate]
-    B --> RS[EncryptedSyncService\nserialize + encrypt]
-    RS --> WS[WebSocketMessagingAdapter\n→ wot-relay\nimmediate]
-    B --> VP[VaultPushScheduler\n5 s debounce]
-    VP --> VC[VaultClient\nHTTP PUT /snapshot]
+    B --> CS[CompactStore<br/>IDB snapshot<br/>immediate]
+    B --> RS[EncryptedSyncService<br/>serialize + encrypt]
+    RS --> WS[WebSocketMessagingAdapter<br/>→ wot-relay<br/>immediate]
+    B --> VP[VaultPushScheduler<br/>5 s debounce]
+    VP --> VC[VaultClient<br/>HTTP PUT /snapshot]
   end
 
   subgraph Server["Infrastructure"]
-    WS --> REL[wot-relay\nWebSocket\nSQLite ACK]
-    VC --> VAULT[wot-vault\nHTTP\nSQLite]
+    WS --> REL[wot-relay<br/>WebSocket<br/>SQLite ACK]
+    VC --> VAULT[wot-vault<br/>HTTP<br/>SQLite]
   end
 
   subgraph Peer["Bob (another device or user)"]

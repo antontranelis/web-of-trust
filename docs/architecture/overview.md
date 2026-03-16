@@ -148,9 +148,9 @@ The architecture supports three fundamentally different ways to share data:
 
 ```mermaid
 graph LR
-    A1[Group Spaces] -->|ReplicationAdapter| B1[CRDT Sync\nGroup Key\nAll members see all data]
-    A2[Selective Sharing] -->|MessagingAdapter| B2[Item-Key per item\nEncrypted per recipient\nOnly chosen recipients]
-    A3[1:1 Delivery] -->|MessagingAdapter| B3[E2EE with recipient pubkey\nReceiver Principle\nAttestation / Verification]
+    A1[Group Spaces] -->|ReplicationAdapter| B1[CRDT Sync<br/>Group Key<br/>All members see all data]
+    A2[Selective Sharing] -->|MessagingAdapter| B2[Item-Key per item<br/>Encrypted per recipient<br/>Only chosen recipients]
+    A3[1:1 Delivery] -->|MessagingAdapter| B3[E2EE with recipient pubkey<br/>Receiver Principle<br/>Attestation / Verification]
 
     style A1 stroke:#888,fill:none
     style A2 stroke:#888,fill:none
