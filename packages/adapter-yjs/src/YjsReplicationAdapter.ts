@@ -589,22 +589,13 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     if (!this.metadataStorage) return
 
     const allMeta = await this.metadataStorage.loadAllSpaceMetadata()
-    console.debug(`[YjsReplication] restoreSpacesFromMetadata: ${allMeta.length} spaces found`)
     for (const meta of allMeta) {
-      if (this.spaces.has(meta.info.id)) {
-        console.debug(`[YjsReplication] skip ${meta.info.id} (already loaded)`)
-        continue
-      }
-      if (this.spaceFilter && !this.spaceFilter(meta.info)) {
-        console.debug(`[YjsReplication] skip ${meta.info.id} (filtered out, appTag=${meta.info.appTag})`)
-        continue
-      }
+      if (this.spaces.has(meta.info.id)) continue
+      if (this.spaceFilter && !this.spaceFilter(meta.info)) continue
 
       // Restore group keys
       const keys = await this.metadataStorage.loadGroupKeys(meta.info.id)
-      console.debug(`[YjsReplication] space ${meta.info.id}: ${keys.length} group keys found`)
       for (const k of keys) {
-        console.debug(`[YjsReplication]   key gen=${k.generation} len=${k.key.length}`)
         this.groupKeyService.importKey(k.spaceId, k.key, k.generation)
       }
 
