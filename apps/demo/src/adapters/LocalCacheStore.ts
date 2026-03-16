@@ -79,6 +79,30 @@ export class LocalCacheStore {
     })
   }
 
+  /** Get all entries whose key starts with the given prefix. */
+  async getByPrefix<T>(prefix: string): Promise<Array<{ key: string; value: T }>> {
+    const db = this.getDb()
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.storeName, 'readonly')
+      const store = tx.objectStore(this.storeName)
+      const req = store.openCursor()
+      const results: Array<{ key: string; value: T }> = []
+      req.onsuccess = () => {
+        const cursor = req.result
+        if (cursor) {
+          const key = cursor.key as string
+          if (key.startsWith(prefix)) {
+            results.push({ key, value: cursor.value as T })
+          }
+          cursor.continue()
+        } else {
+          resolve(results)
+        }
+      }
+      req.onerror = () => reject(req.error)
+    })
+  }
+
   /** Subscribe to any change. Returns unsubscribe function. */
   onChange(callback: Listener): () => void {
     this.listeners.add(callback)

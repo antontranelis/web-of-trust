@@ -27,12 +27,12 @@ import {
   AttestationService,
 } from '../services'
 import {
-  PersonalDocOutboxStore,
   PersonalDocSpaceMetadataStorage,
 } from '@real-life/wot-core'
 import { AutomergePublishStateStore } from '../adapters/AutomergePublishStateStore'
 import { AutomergeGraphCacheStore } from '../adapters/AutomergeGraphCacheStore'
 import { LocalCacheStore } from '../adapters/LocalCacheStore'
+import { LocalOutboxStore } from '../adapters/LocalOutboxStore'
 // Yjs and Automerge adapters are dynamically imported to keep WASM out of the default bundle
 
 const USE_YJS = import.meta.env.VITE_CRDT !== 'automerge'
@@ -50,7 +50,7 @@ interface AdapterContextValue {
   replication: AutomergeReplicationAdapter | YjsReplicationAdapter
   publishStateStore: AutomergePublishStateStore
   graphCacheStore: AutomergeGraphCacheStore
-  outboxStore: PersonalDocOutboxStore
+  outboxStore: LocalOutboxStore
   messagingState: MessagingState
   contactService: ContactService
   verificationService: VerificationService
@@ -160,7 +160,10 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             onPersonalDocChange,
           }
         }
-        const outboxStore = new PersonalDocOutboxStore(docFns)
+        const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
+        localCacheStore = new LocalCacheStore('wot-local-cache')
+        await localCacheStore.open()
+        const outboxStore = new LocalOutboxStore(localCacheStore)
         outboxAdapter = new OutboxMessagingAdapter(wsAdapter, outboxStore, {
           // content = Automerge CRDT sync messages (high volume, auto-resync on reconnect)
           // personal-sync = multi-device personal doc sync (same reason)
@@ -168,9 +171,6 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           skipTypes: ['content', 'profile-update', 'attestation-ack', 'personal-sync'],
           sendTimeoutMs: 15_000,
         })
-        const httpDiscovery = new HttpDiscoveryAdapter(PROFILE_SERVICE_URL)
-        localCacheStore = new LocalCacheStore('wot-local-cache')
-        await localCacheStore.open()
 
         // One-time migration: copy cachedGraph + publishState from PersonalDoc to LocalCacheStore
         // (Automerge-only — Yjs docs don't have these legacy fields)
