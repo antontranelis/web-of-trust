@@ -566,3 +566,16 @@ export async function resetYjsPersonalDoc(): Promise<void> {
   vaultSeq = 0
   changeListeners.clear()
 }
+
+/**
+ * Delete — reset + delete IndexedDB databases.
+ * Used on logout to fully clear persisted state.
+ */
+export async function deleteYjsPersonalDocDB(): Promise<void> {
+  await resetYjsPersonalDoc()
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(COMPACT_STORE_DB)
+    req.onsuccess = () => resolve()
+    req.onerror = () => resolve()
+  })
+}
