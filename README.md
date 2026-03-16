@@ -25,7 +25,7 @@ A decentralized trust infrastructure for real-life communities. People meet in p
 ## Live Demo
 
 - **Demo App:** [web-of-trust.de/demo](https://web-of-trust.de/demo)
-- **CRDT Benchmark:** [web-of-trust.de/demo/benchmark](https://web-of-trust.de/demo/benchmark) — measure Yjs vs Automerge on your device
+- **CRDT Benchmark:** [web-of-trust.de/benchmark](https://web-of-trust.de/benchmark) — measure Yjs vs Automerge on your device
 - **Relay:** `wss://relay.utopia-lab.org`
 - **Profiles:** `https://profiles.utopia-lab.org`
 
@@ -90,7 +90,7 @@ Data is also persisted locally in IndexedDB (CompactStore) for offline access.
 | [**adapter-yjs**](packages/adapter-yjs/README.md) | Yjs | Pure JavaScript (69KB) | Default. Fast on all devices. |
 | [**adapter-automerge**](packages/adapter-automerge/README.md) | Automerge | Rust → WASM (1.7MB) | Alternative. Heavier on mobile. |
 
-Switch at startup with `VITE_CRDT=automerge`. Both pass the same 11 end-to-end tests. Try the [in-browser benchmark](https://web-of-trust.de/demo/benchmark) to compare on your device.
+Switch at startup with `VITE_CRDT=automerge`. Both pass the same 11 end-to-end tests. Try the [in-browser benchmark](https://web-of-trust.de/benchmark) to compare on your device.
 
 ### Identity
 
