@@ -1,52 +1,54 @@
-# Quorum-Konzept für Gruppenverwaltung
+# Quorum Concept for Group Governance
 
-> Alternatives Konzept ohne Admin-Rolle - für spätere Implementierung
+> Alternative to admin roles — for later implementation
 
-**Status:** Konzept dokumentiert, nicht implementiert
-**Priorität:** Phase 2 (nach CRDT-Framework-Entscheidung)
+**Status:** Concept documented, not implemented
+**Priority:** Phase 2
+**CRDT framework:** Decided — Yjs is the default CRDT (since 2026-03-15). The conflict resolution details below can now be designed with Yjs semantics in mind, though the quorum logic itself is CRDT-agnostic.
 
 ---
 
 ## Motivation
 
-Das Admin-Modell hat Schwächen:
-- Single Point of Failure (Admin verliert Gerät)
-- Machtkonzentration
-- Admin kann Gruppe "kapern"
+The admin model has weaknesses:
 
-Das Quorum-Modell löst diese Probleme durch demokratische Entscheidungen.
+- Single point of failure (admin loses their device)
+- Concentration of power
+- Admin can "hijack" the group
 
----
-
-## Grundprinzip
-
-**Keine Admin-Rolle.** Alle Mitglieder sind gleichberechtigt.
-
-Kritische Aktionen erfordern Zustimmung mehrerer Mitglieder (Quorum).
+The quorum model solves these problems through democratic decision-making.
 
 ---
 
-## Quorum-Berechnung
+## Core Principle
 
-### Basis-Quorum
+**No admin role.** All members are equal.
 
-| Mitglieder | Quorum |
-|------------|--------|
+Critical actions require the consent of multiple members (a quorum).
+
+---
+
+## Quorum Calculation
+
+### Base Quorum
+
+| Members | Quorum |
+|---------|--------|
 | 2 | 1 |
 | 3 | 2 |
 | 4 | 2 |
-| 5+ | **3** (Maximum) |
+| 5+ | **3** (maximum) |
 
 ```javascript
 function getBaseQuorum(memberCount) {
   if (memberCount <= 4) return Math.ceil(memberCount / 2);
-  return 3;  // Maximum wegen Inaktivität
+  return 3;  // Maximum to account for inactivity
 }
 ```
 
-### Gegenstimmen erhöhen Quorum
+### Rejections Raise the Quorum
 
-Jede Gegenstimme erhöht das benötigte Quorum um 1.
+Each rejection increases the required quorum by 1.
 
 ```javascript
 function getQuorum(memberCount, rejectCount) {
@@ -55,35 +57,35 @@ function getQuorum(memberCount, rejectCount) {
 }
 ```
 
-**Beispiele (10 Mitglieder):**
+**Examples (10 members):**
 
-| Rejects | Effektives Quorum |
-|---------|-------------------|
+| Rejects | Effective Quorum |
+|---------|-----------------|
 | 0 | 3 |
 | 2 | 5 |
 | 5 | 8 |
 
 ---
 
-## Aktionen und Quorum
+## Actions and Quorum
 
-| Aktion | Quorum | Key-Operation |
+| Action | Quorum | Key Operation |
 |--------|--------|---------------|
-| Gruppe erstellen | - | Neuer Key |
-| Mitglied einladen | **1** | Key verteilen |
-| Mitglied entfernen | Basis + Rejects | Key Rotation |
-| Gruppe verlassen | - | Key Rotation |
-| Gruppe umbenennen | Basis + Rejects | - |
-| Modul aktivieren | **1** | - |
-| Modul ausblenden | **1** | - |
+| Create group | — | New key |
+| Invite member | **1** | Distribute key |
+| Remove member | Base + rejects | Key rotation |
+| Leave group | — | Key rotation |
+| Rename group | Base + rejects | — |
+| Activate module | **1** | — |
+| Hide module | **1** | — |
 
-**Prinzip:** Konstruktive/reversible Aktionen = 1 Person. Destruktive Aktionen = Quorum.
+**Principle:** Constructive/reversible actions = 1 person. Destructive actions = quorum.
 
 ---
 
-## Proposal-Flow
+## Proposal Flow
 
-### Ablauf
+### Process
 
 ```mermaid
 sequenceDiagram
@@ -92,29 +94,29 @@ sequenceDiagram
     participant C as Clara
     participant D as David
 
-    Note over A,D: 4 Mitglieder, Quorum = 2
+    Note over A,D: 4 members, quorum = 2
 
-    A->>Sync: Proposal: "David entfernen" + Vote: Approve
+    A->>Sync: Proposal: "Remove David" + Vote: Approve
 
-    B->>B: Sieht Proposal
-    B->>B: Stimmt zu → 2/4 = Quorum erreicht!
-    B->>B: Führt Key Rotation durch
-    B->>Sync: Vote: Approve + KeyRotation-Event
+    B->>B: Sees proposal
+    B->>B: Approves — 2/4, quorum reached!
+    B->>B: Executes key rotation
+    B->>Sync: Vote: Approve + KeyRotation event
 
-    Note over A,C: Neuer Key ohne David
+    Note over A,C: New key without David
 ```
 
-### Entscheidend: Quorum-Erreicher führt aus
+### Key Point: The Quorum-Completer Executes
 
-Wer die entscheidende Stimme abgibt, führt sofort die Aktion aus.
+Whoever casts the decisive vote immediately executes the action.
 
-- Keine Wartezeit
-- Kein separater "Executor"
-- Kein Offline-Problem
+- No waiting time
+- No separate "executor"
+- No offline problem
 
 ---
 
-## Proposal-Status
+## Proposal Status
 
 ```javascript
 function getProposalStatus(proposal, memberCount) {
@@ -124,18 +126,18 @@ function getProposalStatus(proposal, memberCount) {
 
   const quorum = getQuorum(memberCount, rejects);
 
-  // Erfolg: Quorum erreicht
+  // Success: quorum reached
   if (approves >= quorum) {
     return 'approved';
   }
 
-  // Gescheitert: Mathematisch unmöglich
+  // Failed: mathematically impossible
   const maxPossibleApproves = approves + notVoted;
   if (maxPossibleApproves < quorum) {
     return 'rejected';
   }
 
-  // Gescheitert: Timeout
+  // Expired: timeout
   const daysSinceCreated = (Date.now() - proposal.createdAt) / 86400000;
   if (daysSinceCreated > 7) {
     return 'expired';
@@ -145,16 +147,16 @@ function getProposalStatus(proposal, memberCount) {
 }
 ```
 
-| Status | Bedingung |
+| Status | Condition |
 |--------|-----------|
-| **approved** | Approves ≥ Quorum |
-| **rejected** | Mathematisch unmöglich |
-| **expired** | 7 Tage ohne Ergebnis |
-| **pending** | Noch offen |
+| **approved** | Approves >= quorum |
+| **rejected** | Mathematically impossible |
+| **expired** | 7 days without result |
+| **pending** | Still open |
 
 ---
 
-## Datenstrukturen
+## Data Structures
 
 ### Proposal
 
@@ -172,7 +174,7 @@ function getProposalStatus(proposal, memberCount) {
 }
 ```
 
-### Vote (mit optionaler Key-Operation)
+### Vote (with optional key operation)
 
 ```json
 {
@@ -198,131 +200,135 @@ function getProposalStatus(proposal, memberCount) {
 
 ---
 
-## Key-Operationen
+## Key Operations
 
-### Mitglied entfernen → Key Rotation
+### Remove Member — Key Rotation
 
-Entferntes Mitglied hat den alten Key noch. Daher:
-1. Neuen Group Key generieren
-2. Neuen Key an verbleibende Mitglieder verteilen
-3. Neue Inhalte mit neuem Key verschlüsseln
+The removed member still has the old key. Therefore:
 
-Entferntes Mitglied kann alte Inhalte noch lesen, aber keine neuen.
+1. Generate a new group key
+2. Distribute new key to remaining members
+3. Encrypt new content with the new key
 
-### Mitglied hinzufügen → Key verteilen
+The removed member can still read old content, but not new content.
 
-Kein neuer Key nötig. Neues Mitglied bekommt bestehenden Key.
+### Add Member — Key Distribution
+
+No new key needed. The new member receives the existing key.
 
 ```mermaid
 sequenceDiagram
     participant A as Alice
     participant B as Bob
-    participant E as Eve (neu)
+    participant E as Eve (new)
 
-    A->>A: Proposal "Eve hinzufügen" mit Eves Public Key
+    A->>A: Proposal "Add Eve" with Eve's public key
     A->>Sync: Proposal + Approve
 
-    Note over A: Quorum = 1 für Einladen
+    Note over A: Quorum = 1 for invitations
 
-    A->>A: Verschlüsselt Group Key für Eve
-    A->>Sync: KeyDistribution-Event
+    A->>A: Encrypts group key for Eve
+    A->>Sync: KeyDistribution event
 
-    E->>E: Entschlüsselt Group Key
+    E->>E: Decrypts group key
 
-    Note over E: Eve ist Mitglied
+    Note over E: Eve is a member
 ```
 
 ---
 
-## CRDT-Herausforderungen
+## CRDT Challenges
 
-### Problem: Parallele Votes
+### Problem: Parallel Votes
 
 ```
-Alice: 1 Approve
-Bob stimmt zu (offline) → 2 Approves → Key Rotation Y₁
-Clara stimmt zu (offline) → 2 Approves → Key Rotation Y₂
+Alice: 1 approve
+Bob votes (offline)  → 2 approves → key rotation Y1
+Clara votes (offline) → 2 approves → key rotation Y2
 ```
 
-Beide haben unabhängig Quorum erreicht und Key Rotation gemacht.
+Both independently reached quorum and performed key rotation.
 
-### Lösung: Deterministischer Gewinner
+### Solution: Deterministic Winner
 
 ```javascript
 function resolveKeyRotationConflict(rotation1, rotation2) {
-  // Älterer Timestamp gewinnt
+  // Earlier timestamp wins
   if (rotation1.timestamp < rotation2.timestamp) return rotation1;
   if (rotation2.timestamp < rotation1.timestamp) return rotation2;
 
-  // Bei gleichem Timestamp: kleinere DID gewinnt
+  // Tie-break: smaller DID wins
   return rotation1.voter < rotation2.voter ? rotation1 : rotation2;
 }
 ```
 
-### Problem: Race Conditions bei Proposals
+With Yjs as the CRDT, this deterministic resolution can be implemented as a custom conflict handler on the shared Y.Map for votes. Yjs's last-write-wins semantics for maps pair well with the timestamp-based tie-breaking above.
 
-Was wenn zwei gegensätzliche Proposals gleichzeitig?
+### Problem: Race Conditions Between Proposals
+
+What if two conflicting proposals appear simultaneously?
 
 ```
-Alice: "Entferne David"
-David: "Entferne Alice"
+Alice: "Remove David"
+David: "Remove Alice"
 ```
 
-**Lösung:** Proposals blockieren sich gegenseitig oder CRDT-Konfliktauflösung (ältestes gewinnt).
+**Solution:** Proposals block each other, or CRDT conflict resolution (oldest wins).
 
 ---
 
-## Warum nicht jetzt implementieren?
+## Why Not Implement Now?
 
-1. **CRDT-Framework noch nicht gewählt**
-   - Konfliktauflösung hängt vom Framework ab
-   - Manche Frameworks haben besseren Support für solche Patterns
+1. **Complexity**
+   - The admin model is significantly simpler
+   - Solves 90% of cases
 
-2. **Komplexität**
-   - Admin-Modell ist deutlich einfacher
-   - Löst 90% der Fälle
+2. **UI effort**
+   - Proposal list
+   - Voting interface
+   - Status display
 
-3. **UI-Aufwand**
-   - Proposal-Liste
-   - Voting-Interface
-   - Status-Anzeige
+3. **Need validation**
+   - Democratic groups need to be validated as a real user requirement before investing the implementation effort
 
 ---
 
-## Migrationspfad
+## Migration Path
 
-### Phase 1 (jetzt)
-Gruppen haben Admins (klassisches Modell)
+### Phase 1 (current)
 
-### Phase 2 (später)
-Option "Demokratischer Modus" pro Gruppe:
-- Admin-Rolle wird abgeschafft
-- Quorum-Logik greift
-- Bestehende Admins werden zu normalen Mitgliedern
+Groups have admins (classic model).
+
+### Phase 2 (later)
+
+Optional "democratic mode" per group:
+
+- Admin role is abolished
+- Quorum logic takes over
+- Existing admins become regular members
 
 ```json
 {
   "groupDid": "did:key:...",
-  "governanceMode": "democratic",  // oder "admin"
-  "admins": []  // leer bei democratic
+  "governanceMode": "democratic",
+  "admins": []
 }
 ```
 
 ---
 
-## Offene Fragen für Phase 2
+## Open Questions for Phase 2
 
-1. **Timeout-Dauer:** 7 Tage optimal? Konfigurierbar?
-2. **Cooldown:** Nach abgelehntem Proposal wie lange warten bis neues?
-3. **Proposal-Konflikte:** Wie handhaben wenn mehrere Proposals gleichzeitig?
-4. **UI/UX:** Wie Voting-Aufforderungen anzeigen ohne zu nerven?
+1. **Timeout duration:** Is 7 days optimal? Should it be configurable?
+2. **Cooldown:** How long to wait after a rejected proposal before a new one?
+3. **Proposal conflicts:** How to handle multiple simultaneous proposals?
+4. **UI/UX:** How to surface voting prompts without being intrusive?
 
 ---
 
-## Fazit
+## Conclusion
 
-Das Quorum-Konzept ist durchdacht und löst echte Probleme des Admin-Modells. Die Implementierung sollte aber warten bis:
+The quorum concept is well thought-out and solves real problems with the admin model. Implementation should wait until:
 
-- CRDT-Framework gewählt und verstanden
-- Admin-Modell in Produktion getestet
-- Bedarf für demokratische Gruppen validiert
+- The admin model has been tested in production
+- The need for democratic groups has been validated with real users

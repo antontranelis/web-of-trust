@@ -1,32 +1,32 @@
-# Ausblenden-Flow (Nutzer-Perspektive)
+# Hide Flow (User Perspective)
 
-> Wie ein Kontakt ausgeblendet wird
+> How a contact is hidden
 
-## Was bedeutet "Ausblenden"?
+## What does "hide" mean?
 
-Ausblenden ist eine **sanfte Trennung** von einem Kontakt. Die Verifizierung bleibt bestehen, aber der Kontakt wird aus deinem aktiven Netzwerk entfernt.
+Hiding is a **soft separation** from a contact. The verification remains intact, but the contact is removed from your active network.
 
-| Ausblenden | Blockieren (gibt es nicht) |
-| ---------- | -------------------------- |
-| Sanft, reversibel | Hart, permanent |
-| Verifizierung bleibt | - |
-| Kein neuer Content | - |
-| Rückgängig möglich | - |
+| Hide | Block (does not exist) |
+| ---- | ---------------------- |
+| Soft, reversible | Hard, permanent |
+| Verification stays | — |
+| No new content | — |
+| Can be undone | — |
 
 ---
 
-## Was passiert beim Ausblenden?
+## What happens when you hide someone?
 
 ```mermaid
 flowchart TD
-    Hide(["Kontakt ausblenden"]) --> Effects["Auswirkungen"]
+    Hide(["Hide contact"]) --> Effects["Effects"]
 
-    Effects --> E1["Du siehst keinen neuen Content von dieser Person"]
-    Effects --> E2["Diese Person sieht keinen neuen Content von dir"]
-    Effects --> E3["Bestehende Verifizierung bleibt gültig"]
-    Effects --> E4["Alte Attestationen bleiben sichtbar"]
+    Effects --> E1["You no longer see new content from this person"]
+    Effects --> E2["This person no longer sees new content from you"]
+    Effects --> E3["Existing verification remains valid"]
+    Effects --> E4["Old attestations remain visible"]
 
-    E1 --> Note["Kann jederzeit rückgängig gemacht werden"]
+    E1 --> Note["Can be undone at any time"]
     E2 --> Note
     E3 --> Note
     E4 --> Note
@@ -34,106 +34,105 @@ flowchart TD
 
 ---
 
-## Hauptflow: Kontakt ausblenden
+## Main flow: Hide a contact
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant App as App
 
-    A->>App: Öffnet Bens Profil
-    A->>App: Tippt auf Drei-Punkte-Menü
-    A->>App: Wählt "Ausblenden"
+    A->>App: Opens Ben's profile
+    A->>App: Taps three-dot menu
+    A->>App: Selects "Hide"
 
-    App->>A: Bestätigungsdialog
+    App->>A: Confirmation dialog
 
-    A->>App: Bestätigt
+    A->>App: Confirms
 
-    App->>App: Status ändern: active → hidden
-    App->>App: Aus Auto-Gruppe entfernen
-    App->>App: Sync
+    App->>App: Update PersonalDoc: contact status → hidden
+    App->>App: Remove from auto-group in PersonalDoc
+    App->>App: Sync via Relay
 
-    App->>A: Ben wurde ausgeblendet
+    App->>A: Ben has been hidden
 ```
 
 ---
 
-## Was der Nutzer sieht
+## What the user sees
 
-### Kontakt-Menü
+### Contact menu
 
 ```
 ┌─────────────────────────────────┐
-│         📷 [Profilbild]         │
+│         [Profile photo]         │
 │          Ben Schmidt            │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 👤 Profil ansehen       │    │
+│  │ View profile            │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
-│  │ 📜 Attestationen        │    │
+│  │ Attestations            │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
-│  │ ✍️ Attestation erstellen│    │
+│  │ Create attestation      │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 👁️ Ausblenden           │    │
+│  │ Hide                    │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Bestätigungsdialog
+### Confirmation dialog
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  👁️ Ben ausblenden?             │
+│  Hide Ben?                      │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Was passiert:                  │
+│  What happens:                  │
 │                                 │
-│  • Du siehst keinen neuen       │
-│    Content von Ben              │
+│  • You will no longer see       │
+│    new content from Ben         │
 │                                 │
-│  • Ben sieht keinen neuen       │
-│    Content von dir              │
+│  • Ben will no longer see       │
+│    new content from you         │
 │                                 │
-│  • Eure Verifizierung bleibt    │
-│    bestehen                     │
+│  • Your verification stays      │
+│    intact                       │
 │                                 │
-│  • Alte Attestationen bleiben   │
-│    sichtbar                     │
+│  • Old attestations remain      │
+│    visible                      │
 │                                 │
-│  Du kannst das jederzeit        │
-│  rückgängig machen.             │
+│  You can undo this at any time. │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  [ Abbrechen ]                  │
+│  [ Cancel ]                     │
 │                                 │
-│  [ Ausblenden ]                 │
+│  [ Hide ]                       │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Erfolgsmeldung
+### Success message
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ✅ Ben wurde ausgeblendet      │
+│  ✅ Ben has been hidden         │
 │                                 │
-│  Du siehst keinen neuen         │
-│  Content mehr von Ben.          │
+│  You will no longer see         │
+│  new content from Ben.          │
 │                                 │
-│  [ Rückgängig machen ]          │
+│  [ Undo ]                       │
 │                                 │
 │  [ OK ]                         │
 │                                 │
@@ -142,35 +141,35 @@ sequenceDiagram
 
 ---
 
-## Ausgeblendete Kontakte verwalten
+## Manage hidden contacts
 
-### Einstellungen
+### Settings
 
 ```
 ┌─────────────────────────────────┐
-│  ⚙️ Einstellungen               │
+│  Settings                       │
 ├─────────────────────────────────┤
 │                                 │
-│  👥 Kontakte                    │
+│  Contacts                       │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  Ausgeblendete Kontakte (2)     │
+│  Hidden contacts (2)            │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 👨 Ben Schmidt          │    │
-│  │    Ausgeblendet am       │    │
-│  │    08.01.25              │    │
+│  │ Ben Schmidt             │    │
+│  │    Hidden on            │    │
+│  │    08.01.2026           │    │
 │  │                         │    │
-│  │    [ Wiederherstellen ] │    │
+│  │    [ Restore ]          │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 👩 Carla Braun          │    │
-│  │    Ausgeblendet am       │    │
-│  │    05.01.25              │    │
+│  │ Carla Braun             │    │
+│  │    Hidden on            │    │
+│  │    05.01.2026           │    │
 │  │                         │    │
-│  │    [ Wiederherstellen ] │    │
+│  │    [ Restore ]          │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
@@ -178,162 +177,161 @@ sequenceDiagram
 
 ---
 
-## Kontakt wiederherstellen
+## Restore a contact
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant App as App
 
-    A->>App: Öffnet Einstellungen
-    A->>App: Ausgeblendete Kontakte
-    A->>App: Tippt "Wiederherstellen" bei Ben
+    A->>App: Opens Settings
+    A->>App: Hidden contacts
+    A->>App: Taps "Restore" next to Ben
 
-    App->>A: Bestätigungsdialog
+    App->>A: Confirmation dialog
 
-    A->>App: Bestätigt
+    A->>App: Confirms
 
-    App->>App: Status ändern: hidden → active
-    App->>App: Zur Auto-Gruppe hinzufügen
-    App->>App: Item Keys für Ben neu verschlüsseln
-    App->>App: Sync
+    App->>App: Update PersonalDoc: contact status → active
+    App->>App: Add back to auto-group in PersonalDoc
+    App->>App: Re-encrypt item keys for Ben
+    App->>App: Sync via Relay
 
-    App->>A: Ben wurde wiederhergestellt
+    App->>A: Ben has been restored
 ```
 
-### Bestätigungsdialog Wiederherstellen
+### Restore confirmation dialog
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  🔄 Ben wiederherstellen?       │
+│  Restore Ben?                   │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Was passiert:                  │
+│  What happens:                  │
 │                                 │
-│  • Du siehst wieder Content     │
-│    von Ben                      │
+│  • You will see new content     │
+│    from Ben again               │
 │                                 │
-│  • Ben sieht wieder deinen      │
-│    Content                      │
+│  • Ben will see your new        │
+│    content again                │
 │                                 │
-│  • Neuer Content wird geteilt   │
-│    (alter Content aus der       │
-│    "Ausblenden-Zeit" nicht)     │
+│  • New content will be shared   │
+│    (content created during the  │
+│    "hidden period" will not)    │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  [ Abbrechen ]                  │
+│  [ Cancel ]                     │
 │                                 │
-│  [ Wiederherstellen ]           │
+│  [ Restore ]                    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Sichtbarkeits-Matrix
+## Visibility matrix
 
-### Was sieht wer nach dem Ausblenden?
+### What does who see after hiding?
 
-| Content | Anna sieht | Ben sieht |
-| ------- | ---------- | --------- |
-| Bens alter Content (vor Ausblenden) | Ja (lokal vorhanden) | - |
-| Bens neuer Content (nach Ausblenden) | Nein | - |
-| Annas alter Content | - | Ja (lokal vorhanden) |
-| Annas neuer Content | - | Nein |
-| Alte Attestationen | Ja | Ja |
-| Neue Attestationen | Ja (kann erstellt werden) | Ja (erhält sie) |
+| Content | Anna sees | Ben sees |
+| ------- | --------- | -------- |
+| Ben's old content (before hiding) | Yes (locally stored) | — |
+| Ben's new content (after hiding) | No | — |
+| Anna's old content | — | Yes (locally stored) |
+| Anna's new content | — | No |
+| Old attestations | Yes | Yes |
+| New attestations | Yes (can be created) | Yes (receives them) |
 
-### Nach Wiederherstellen
+### After restore
 
-| Content | Anna sieht | Ben sieht |
-| ------- | ---------- | --------- |
-| Content während "Ausblenden-Zeit" | Nein | Nein |
-| Neuer Content (nach Wiederherstellen) | Ja | Ja |
+| Content | Anna sees | Ben sees |
+| ------- | --------- | -------- |
+| Content during "hidden period" | No | No |
+| New content (after restore) | Yes | Yes |
 
 ---
 
 ## Personas
 
-### Anna blendet einen nervigen Kontakt aus
+### Anna hides an annoying contact
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant App as App
 
-    Note over A: Max postet zu viel uninteressantes
+    Note over A: Max posts too much uninteresting content
 
-    A->>App: Öffnet Max' Profil
-    A->>App: Tippt "Ausblenden"
-    A->>App: Bestätigt
+    A->>App: Opens Max's profile
+    A->>App: Taps "Hide"
+    A->>App: Confirms
 
-    Note over A: Max' neue Posts erscheinen nicht mehr
+    Note over A: Max's new posts no longer appear
 
-    Note over A: 3 Monate später
+    Note over A: 3 months later
 
-    Note over A: Max hat sich geändert
+    Note over A: Max has changed
 
-    A->>App: Einstellungen → Ausgeblendete
-    A->>App: Max wiederherstellen
+    A->>App: Settings → Hidden contacts
+    A->>App: Restore Max
 
-    Note over A: Max' neue Posts erscheinen wieder
+    Note over A: Max's new posts appear again
 ```
 
-### Kemal nach einem Streit
+### Kemal after an argument
 
 ```mermaid
 sequenceDiagram
     participant K as Kemal
     participant B as Ben
 
-    Note over K,B: Streit beim Reparatur-Café
+    Note over K,B: Argument at the repair café
 
-    K->>K: Blendet Ben aus
-    B->>B: Blendet Kemal aus
+    K->>K: Hides Ben
+    B->>B: Hides Kemal
 
-    Note over K,B: Beide sehen nichts mehr voneinander
+    Note over K,B: Both see nothing from each other
 
-    Note over K,B: Ein Jahr später, versöhnt
+    Note over K,B: One year later, reconciled
 
-    K->>K: Stellt Ben wieder her
-    B->>B: Stellt Kemal wieder her
+    K->>K: Restores Ben
+    B->>B: Restores Kemal
 
-    Note over K,B: Verbindung wiederhergestellt
+    Note over K,B: Connection restored
 ```
 
 ---
 
-## Unterschied zu anderen Systemen
+## Comparison with other systems
 
-| System | "Entfreunden" bedeutet |
-| ------ | --------------------- |
-| Facebook | Beziehung gelöscht, muss neu hinzugefügt werden |
-| WhatsApp | Blockieren verhindert alle Nachrichten |
-| Web of Trust | Ausblenden ist temporär, Verifizierung bleibt |
+| System | "Unfriend" means |
+| ------ | ---------------- |
+| Facebook | Relationship deleted, must be re-added |
+| WhatsApp | Block prevents all messages |
+| Web of Trust | Hide is temporary, verification stays |
 
-### Warum so?
+### Why this design?
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  💡 Design-Entscheidung         │
+│  Design decision                │
 │                                 │
-│  Die Verifizierung ist eine     │
-│  Aussage über die Vergangenheit:│
+│  Verification is a statement    │
+│  about the past:                │
 │                                 │
-│  "Ich habe diese Person am      │
-│   08.01.25 persönlich getroffen"│
+│  "I met this person in person   │
+│   on 08.01.2026"                │
 │                                 │
-│  Das kann nicht "ungeschehen"   │
-│  gemacht werden.                │
+│  That cannot be "undone".       │
 │                                 │
-│  Ausblenden bedeutet nur:       │
-│  "Ich möchte gerade keinen      │
-│   Content mit dieser Person     │
-│   teilen."                      │
+│  Hide only means:               │
+│  "I don't want to share         │
+│   content with this person      │
+│   right now."                   │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -342,17 +340,17 @@ sequenceDiagram
 
 ## FAQ
 
-**Sieht der andere, dass ich ihn ausgeblendet habe?**
-Nicht direkt. Aber wenn er bemerkt, dass er deinen neuen Content nicht mehr sieht, kann er es vermuten.
+**Can the other person see that I hid them?**
+Not directly. But if they notice they no longer see your new content, they may suspect it.
 
-**Kann ich noch Attestationen für ausgeblendete Kontakte erstellen?**
-Ja. Attestationen sind unabhängig vom Ausblend-Status. Ben erhält die Attestation auch wenn er ausgeblendet ist.
+**Can I still create attestations for hidden contacts?**
+Yes. Attestations are independent of hide status. Ben receives the attestation even when hidden.
 
-**Was passiert mit Gruppen wenn ich jemanden ausblende?**
-Ihr seid beide weiterhin in gemeinsamen Gruppen. Aber dein "für alle Kontakte" Content erreicht diese Person nicht mehr.
+**What happens with groups when I hide someone?**
+You both remain in shared groups. But your "for all contacts" content no longer reaches this person.
 
-**Kann ich jemanden dauerhaft entfernen?**
-Nein. Die Verifizierung bleibt bestehen. Du kannst nur ausblenden.
+**Can I permanently remove someone?**
+No. The verification stays. You can only hide.
 
-**Was wenn beide sich gegenseitig ausblenden?**
-Dann sieht keiner mehr Content vom anderen. Beide können unabhängig wiederherstellen.
+**What if both sides hide each other?**
+Then neither sees content from the other. Both can independently restore the connection.

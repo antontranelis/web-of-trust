@@ -1,8 +1,8 @@
-# Attestation-Flow (Technische Perspektive)
+# Attestation Flow (Technical Perspective)
 
-> Wie Attestationen erstellt, signiert und verteilt werden
+> How attestations are created, signed, and delivered
 
-## Datenmodell
+## Data Model
 
 ```mermaid
 erDiagram
@@ -14,13 +14,18 @@ erDiagram
 
     ATTESTATION {
         string id PK "UUID"
-        string fromDid FK "Signiert von"
-        string toDid FK "Gespeichert bei"
-        string claim "Freitext"
+        string fromDid FK "Signed by"
+        string toDid FK "Stored at"
+        string claim "Free text"
         string contextGroupId FK "Optional"
         datetime createdAt
-        boolean hidden "Opt-out durch Empfaenger"
-        string proof "Ed25519 Signatur"
+        string proof "Ed25519 signature"
+    }
+
+    ATTESTATION_METADATA {
+        string attestationId FK
+        boolean accepted "Opt-out by recipient (default: true)"
+        string deliveryStatus "pending, delivered, failed"
     }
 
     TAG {
@@ -33,81 +38,103 @@ erDiagram
         string name
     }
 
-    USER ||--o{ ATTESTATION : "empfaengt (to)"
-    ATTESTATION }o--o{ TAG : "hat"
-    ATTESTATION }o--o| GROUP : "im Kontext von"
+    USER ||--o{ ATTESTATION : "receives (to)"
+    ATTESTATION ||--|| ATTESTATION_METADATA : "has"
+    ATTESTATION }o--o{ TAG : "has"
+    ATTESTATION }o--o| GROUP : "in context of"
 ```
 
-> **Empfänger-Prinzip:** Attestationen werden beim Empfänger (`to`) gespeichert. Anna attestiert Ben → Attestation liegt bei **Ben**.
+> **Recipient principle:** Attestations are stored at the recipient (`to`). Anna attests Ben → attestation lives in **Ben's** PersonalDoc CRDT (Y.Map).
 
-## Attestation-Dokument Struktur
+> **`attestationMetadata.accepted`** replaces the old `hidden` field. Ben can set `accepted = false` to hide an attestation from his public profile.
 
-Wird beim **Empfänger** (`to`) gespeichert:
+## Attestation Document Structure
+
+Stored in the **recipient's** PersonalDoc CRDT (`attestations` Y.Map):
 
 ```json
 {
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "Attestation",
   "id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
-  "from": "did:wot:anna123",
-  "to": "did:wot:ben456",
-  "claim": "Hat 3 Stunden im Gemeinschaftsgarten geholfen",
-  "tags": ["garten", "helfen"],
-  "context": "did:wot:group:gemeinschaftsgarten",
+  "from": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "to": "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuias8sisDArDJF6K2",
+  "claim": "Helped for 3 hours in the community garden",
+  "tags": ["garden", "helping"],
+  "context": "did:key:z6MkGroup...",
   "createdAt": "2025-01-08T14:32:00Z",
-  "hidden": false,
   "proof": {
     "type": "Ed25519Signature2020",
-    "verificationMethod": "did:wot:anna123#key-1",
+    "verificationMethod": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#key-1",
     "proofPurpose": "assertionMethod",
     "proofValue": "z58DAdFfa9SkqZMVPxAQpic7ndTEcnUn..."
   }
 }
 ```
 
-| Feld | Beschreibung |
-|------|--------------|
-| `from` | Wer hat attestiert (signiert) |
-| `to` | Wer erhält die Attestation (Speicherort) |
-| `hidden` | Empfänger kann ausblenden (Default: false) |
+Stored separately in `attestationMetadata` Y.Map (mutable by recipient only):
 
-## Hauptflow: Attestation erstellen
+```json
+{
+  "attestationId": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
+  "accepted": true,
+  "deliveryStatus": "delivered"
+}
+```
+
+| Field | Description |
+| --- | --- |
+| `from` | Who attested (signer) |
+| `to` | Who receives the attestation (storage location) |
+| `attestationMetadata.accepted` | Recipient can hide (default: `true`) |
+
+## Main Flow: Creating an Attestation
 
 ```mermaid
 flowchart TD
-    Start(["Nutzer tippt Attestation erstellen"]) --> CheckContact{"Kontakt verifiziert?"}
+    Start(["User taps Create Attestation"]) --> CheckContact{"Contact verified?"}
 
-    CheckContact -->|Nein| Error["Fehler: Nur fuer verifizierte Kontakte"]
-    CheckContact -->|Ja| ShowForm["Zeige Formular"]
+    CheckContact -->|No| Error["Error: Only for verified contacts"]
+    CheckContact -->|Yes| ShowForm["Show form"]
 
-    ShowForm --> Input["Nutzer gibt ein: Claim, Tags, Gruppe"]
+    ShowForm --> Input["User enters: claim, tags, group"]
 
-    Input --> Validate{"Eingaben valide?"}
+    Input --> Validate{"Input valid?"}
 
-    Validate -->|Nein| ShowForm
-    Validate -->|Ja| BuildDoc["Baue Attestation-Dokument (from=ich, to=kontakt)"]
+    Validate -->|No| ShowForm
+    Validate -->|Yes| BuildDoc["Build attestation document (from=me, to=contact)"]
 
-    BuildDoc --> Sign["Signiere mit Private Key"]
+    BuildDoc --> Sign["Sign with private key"]
 
-    Sign --> Queue["Sende an Empfaenger (to)"]
+    Sign --> Encrypt["Encrypt with recipient's public key"]
 
-    Queue --> Notify["Erstelle Benachrichtigung fuer Empfaenger"]
+    Encrypt --> Outbox["Queue in Outbox (OutboxMessagingAdapter)"]
 
-    Notify --> Done(["Fertig"])
+    Outbox --> Deliver["AttestationDeliveryService sends via Relay"]
+
+    Deliver --> Notify["Recipient receives and stores in PersonalDoc CRDT"]
+
+    Notify --> Done(["Done"])
+
+    style Start stroke:#888,fill:none,color:inherit
+    style Done stroke:#888,fill:none,color:inherit
+    style Error stroke:#e55,fill:none,color:inherit
+    style CheckContact stroke:#888,fill:none,color:inherit
+    style Validate stroke:#888,fill:none,color:inherit
 ```
 
-> **Hinweis:** Die Attestation wird direkt an den Empfänger gesendet und dort gespeichert. Der Sender behält keine lokale Kopie.
+> **Note:** The attestation is encrypted for the recipient and sent via the Relay (WebSocket). The sender does not retain a local copy. Delivery is tracked via `attestationMetadata.deliveryStatus`.
 
-## Sequenzdiagramm: Attestation erstellen und verteilen
+## Sequence Diagram: Create and Deliver Attestation
 
 ```mermaid
 sequenceDiagram
     participant A_UI as Anna UI
     participant A_App as Anna App
-    participant Sync as Sync Server
+    participant Outbox as Outbox
+    participant Relay as Relay (WebSocket)
     participant B_App as Ben App
-    participant B_Store as Ben Local Store
-    participant B_UI as Ben UI
+    participant B_Doc as Ben PersonalDoc CRDT
 
     A_UI->>A_App: openAttestationForm(ben.did)
     A_App->>A_App: checkContactStatus(ben.did)
@@ -120,47 +147,102 @@ sequenceDiagram
     Note over A_App: id, from, to, claim, tags, context, createdAt
 
     A_App->>A_App: signAttestation(privateKey)
-    Note over A_App: Fuegt proof-Objekt hinzu
+    Note over A_App: Adds proof object
 
-    A_App->>Sync: pushAttestation(to=ben)
-    Note over A_App: Attestation wird an Ben gesendet
+    A_App->>A_App: encryptAttestation(ben.publicKey)
+    Note over A_App: X25519 ECIES + AES-256-GCM
+
+    A_App->>Outbox: enqueue(encryptedAttestation, to=ben)
+    Note over Outbox: Persisted in Anna's PersonalDoc outbox Y.Map
 
     A_App->>A_UI: showSuccess()
 
-    Sync->>B_App: notifyNewAttestation()
-    B_App->>Sync: pullAttestation()
+    Outbox->>Relay: send(envelope) via WebSocketMessagingAdapter
+    Note over Relay: Persists until Ben ACKs
+
+    Relay->>B_App: deliver(envelope) on reconnect or immediately
+
+    B_App->>B_App: decryptAttestation(ben.privateKey)
     B_App->>B_App: verifySignature(anna.publicKey)
-    B_App->>B_Store: storeAttestation(hidden=false)
-    Note over B_Store: Ben speichert die Attestation
-    B_App->>B_UI: showNotification()
+    B_App->>B_Doc: attestations.set(id, attestation)
+    B_App->>B_Doc: attestationMetadata.set(id, {accepted: true, deliveryStatus: "delivered"})
+    Note over B_Doc: Stored in Ben's PersonalDoc CRDT (Y.Map)
+
+    B_App->>Relay: ACK(messageId)
+    B_App->>B_App: showNotification()
 ```
 
-> **Empfänger-Prinzip:** Anna sendet die Attestation an Ben. Ben speichert sie in seinem Datenspeicher und kontrolliert die Sichtbarkeit (`hidden`).
+> **Recipient principle:** Anna sends the attestation to Ben. Ben stores it in his PersonalDoc CRDT (Y.Map) and controls visibility via `attestationMetadata.accepted`.
 
-## Detailflow: Signatur erstellen
+## Storage: PersonalDoc CRDT
+
+Attestations are stored in the recipient's **PersonalDoc CRDT** using Yjs (default) or Automerge (option), not in a SQL/Dexie database.
+
+```typescript
+// PersonalDoc structure (simplified)
+PersonalDoc {
+  attestations:        Y.Map<string, AttestationDoc>
+  attestationMetadata: Y.Map<string, { accepted: boolean, deliveryStatus: string }>
+  outbox:              Y.Map<string, OutboxEntryDoc>
+}
+```
+
+Access pattern:
+
+```typescript
+// Store received attestation (Ben's PersonalDoc)
+doc.attestations[attestation.id] = attestation;
+doc.attestationMetadata[attestation.id] = {
+  accepted: true,
+  deliveryStatus: "delivered",
+};
+
+// Hide an attestation (Ben opts out)
+doc.attestationMetadata[attestation.id] = {
+  ...doc.attestationMetadata[attestation.id],
+  accepted: false,
+};
+
+// Query all accepted attestations for a DID
+const received = Object.values(doc.attestations)
+  .filter(a => a.to === ben.did)
+  .filter(a => doc.attestationMetadata[a.id]?.accepted !== false);
+```
+
+The PersonalDoc is persisted via **CompactStore (IDB)**, synced in real-time via **Relay (WebSocket)**, and backed up via **Vault (HTTP)**.
+
+## Detail Flow: Creating the Signature
 
 ```mermaid
 flowchart TD
-    Doc["Attestation-Dokument ohne proof"] --> Canonical["Kanonisiere JSON"]
-    
-    Canonical --> Hash["SHA-256 Hash"]
-    
-    Hash --> Sign["Ed25519 Sign mit Private Key"]
-    
-    Sign --> Encode["Base58 Encode"]
-    
-    Encode --> Proof["Erstelle proof-Objekt"]
-    
-    Proof --> Final["Fuege proof zu Dokument hinzu"]
+    Doc["Attestation document without proof"] --> Canonical["Canonicalize JSON"]
+
+    Canonical --> Hash["SHA-256 hash"]
+
+    Hash --> Sign["Ed25519 sign with private key"]
+
+    Sign --> Encode["Base58 encode"]
+
+    Encode --> Proof["Create proof object"]
+
+    Proof --> Final["Append proof to document"]
+
+    style Doc stroke:#888,fill:none,color:inherit
+    style Canonical stroke:#888,fill:none,color:inherit
+    style Hash stroke:#888,fill:none,color:inherit
+    style Sign stroke:#888,fill:none,color:inherit
+    style Encode stroke:#888,fill:none,color:inherit
+    style Proof stroke:#888,fill:none,color:inherit
+    style Final stroke:#5a5,fill:none,color:inherit
 ```
 
-### Kanonisierung
+### Canonicalization
 
-Bevor signiert wird, muss das JSON kanonisiert werden:
+Before signing, the JSON must be canonicalized:
 
-1. Keys alphabetisch sortieren
-2. Keine Whitespace ausser in Strings
-3. UTF-8 Encoding
+1. Sort keys alphabetically
+2. No whitespace except within strings
+3. UTF-8 encoding
 
 ```javascript
 const canonical = JSON.stringify(doc, Object.keys(doc).sort());
@@ -169,310 +251,307 @@ const signature = ed25519.sign(hash, privateKey);
 const proofValue = base58.encode(signature);
 ```
 
-## Detailflow: Signatur verifizieren
+## Detail Flow: Verifying the Signature
 
 ```mermaid
 flowchart TD
-    Receive["Empfange Attestation"] --> Extract["Extrahiere proof-Objekt"]
-    
-    Extract --> GetDoc["Dokument ohne proof"]
-    
-    GetDoc --> Canonical["Kanonisiere JSON"]
-    
-    Canonical --> Hash["SHA-256 Hash"]
-    
-    Hash --> Decode["Base58 Decode proofValue"]
-    
-    Decode --> GetKey["Hole Public Key von from-DID"]
-    
-    GetKey --> Verify{"Ed25519 Verify"}
-    
-    Verify -->|Gueltig| Accept["Attestation akzeptieren"]
-    Verify -->|Ungueltig| Reject["Attestation ablehnen"]
+    Receive["Receive attestation"] --> Extract["Extract proof object"]
+
+    Extract --> GetDoc["Document without proof"]
+
+    GetDoc --> Canonical["Canonicalize JSON"]
+
+    Canonical --> Hash["SHA-256 hash"]
+
+    Hash --> Decode["Base58 decode proofValue"]
+
+    Decode --> GetKey["Resolve public key from from-DID"]
+
+    GetKey --> Verify{"Ed25519 verify"}
+
+    Verify -->|Valid| Accept["Accept attestation"]
+    Verify -->|Invalid| Reject["Reject attestation"]
+
+    style Receive stroke:#888,fill:none,color:inherit
+    style Extract stroke:#888,fill:none,color:inherit
+    style GetDoc stroke:#888,fill:none,color:inherit
+    style Canonical stroke:#888,fill:none,color:inherit
+    style Hash stroke:#888,fill:none,color:inherit
+    style Decode stroke:#888,fill:none,color:inherit
+    style GetKey stroke:#888,fill:none,color:inherit
+    style Verify stroke:#888,fill:none,color:inherit
+    style Accept stroke:#5a5,fill:none,color:inherit
+    style Reject stroke:#e55,fill:none,color:inherit
 ```
 
-## Verschluesselung und Verteilung
+## Delivery: AttestationDeliveryService + Outbox
 
-### Wer bekommt die Attestation?
-
-Mit dem Empfänger-Prinzip ist die Verteilung einfacher:
+The **AttestationDeliveryService** handles the full delivery lifecycle:
 
 ```mermaid
 flowchart TD
-    A["Anna erstellt Attestation fuer Ben"] --> Sign["Signiere mit Annas Private Key"]
+    Create["Attestation created + signed"] --> Encrypt["Encrypt with recipient public key"]
 
-    Sign --> Encrypt["Verschluessele mit Bens Public Key"]
+    Encrypt --> Enqueue["Enqueue in Outbox (PersonalDoc outbox Y.Map)"]
 
-    Encrypt --> Send["Sende an Ben"]
+    Enqueue --> Online{"Relay reachable?"}
 
-    Send --> BenReceives["Ben empfaengt und speichert"]
+    Online -->|Yes| Send["Send immediately via WebSocketMessagingAdapter"]
+    Online -->|No| Wait["Wait in outbox — persist across restarts"]
 
-    BenReceives --> BenShares["Ben teilt mit seiner Auto-Gruppe"]
+    Wait -->|Relay reconnects| Send
+
+    Send --> RelayPersist["Relay persists until ACK"]
+
+    RelayPersist --> Redeliver["Redelivery on recipient reconnect"]
+
+    Redeliver --> RecipientACK["Recipient ACKs → Relay removes message"]
+
+    RecipientACK --> UpdateStatus["Update deliveryStatus in attestationMetadata"]
+
+    style Create stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Enqueue stroke:#888,fill:none,color:inherit
+    style Online stroke:#888,fill:none,color:inherit
+    style Send stroke:#5a5,fill:none,color:inherit
+    style Wait stroke:#a80,fill:none,color:inherit
+    style RelayPersist stroke:#888,fill:none,color:inherit
+    style Redeliver stroke:#888,fill:none,color:inherit
+    style RecipientACK stroke:#5a5,fill:none,color:inherit
+    style UpdateStatus stroke:#5a5,fill:none,color:inherit
 ```
 
-### Sichtbarkeit nach Empfang
+> **Offline-first:** If the sender is offline when creating an attestation, it is queued in the Outbox (stored in the PersonalDoc CRDT). On reconnect, the OutboxMessagingAdapter flushes the queue automatically.
 
-Ben kontrolliert, wer die Attestation sieht:
+## Encryption and Distribution
+
+### Who receives the attestation?
 
 ```mermaid
 flowchart TD
-    Receive["Ben empfaengt Attestation"] --> Store["Speichere lokal"]
+    A["Anna creates attestation for Ben"] --> Sign["Sign with Anna's private key"]
 
-    Store --> Default["hidden=false (Standard)"]
+    Sign --> Encrypt["Encrypt with Ben's public key (X25519 ECIES)"]
 
-    Default --> Share["Teile mit Auto-Gruppe"]
+    Encrypt --> Send["Send via Relay (WebSocket)"]
 
-    Share --> Visible["Sichtbar in Bens Profil"]
+    Send --> BenReceives["Ben receives, decrypts, stores in PersonalDoc CRDT"]
 
-    Store --> Hide["Ben setzt hidden=true"]
+    BenReceives --> BenShares["Ben controls visibility via attestationMetadata.accepted"]
 
-    Hide --> Private["Nur Ben sieht die Attestation"]
+    style A stroke:#888,fill:none,color:inherit
+    style Sign stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Send stroke:#888,fill:none,color:inherit
+    style BenReceives stroke:#5a5,fill:none,color:inherit
+    style BenShares stroke:#5a5,fill:none,color:inherit
 ```
 
-### Item-Key Verschluesselung (beim Empfänger)
+### Visibility after receipt
 
-Nachdem Ben die Attestation empfangen hat, teilt er sie mit seiner Auto-Gruppe:
-
-```mermaid
-flowchart LR
-    Attestation["Attestation bei Ben"] --> SymKey["Generiere Item Key AES-256"]
-
-    SymKey --> EncContent["Verschluessele Attestation"]
-
-    SymKey --> EncKey1["Item Key fuer Ben selbst"]
-    SymKey --> EncKey2["Item Key fuer Bens Kontakt 1"]
-    SymKey --> EncKey3["Item Key fuer Bens Kontakt 2"]
-    SymKey --> EncKeyN["..."]
-
-    EncContent --> Store["In Bens Sync-Queue"]
-    EncKey1 --> Store
-    EncKey2 --> Store
-    EncKey3 --> Store
-```
-
-> **Hinweis:** Die Verschlüsselung erfolgt beim Empfänger (Ben), nicht beim Sender (Anna). Ben entscheidet, mit wem er die Attestation teilt.
-
-## Tags und Suche
-
-### Tag-Verwaltung
+Ben controls who sees the attestation:
 
 ```mermaid
 flowchart TD
-    Input["Nutzer gibt Tags ein"] --> Check{"Tag existiert?"}
-    
-    Check -->|Ja| Use["Verwende existierenden Tag"]
-    Check -->|Nein| Create["Erstelle neuen Tag lokal"]
-    
-    Use --> Attach["Fuege Tag zu Attestation hinzu"]
+    Receive["Ben receives attestation"] --> Store["Store in PersonalDoc CRDT"]
+
+    Store --> Default["attestationMetadata.accepted = true (default)"]
+
+    Default --> Visible["Visible in Ben's profile"]
+
+    Store --> Hide["Ben sets accepted = false"]
+
+    Hide --> Private["Only Ben sees the attestation"]
+
+    style Receive stroke:#888,fill:none,color:inherit
+    style Store stroke:#888,fill:none,color:inherit
+    style Default stroke:#5a5,fill:none,color:inherit
+    style Visible stroke:#5a5,fill:none,color:inherit
+    style Hide stroke:#a55,fill:none,color:inherit
+    style Private stroke:#888,fill:none,color:inherit
+```
+
+## Tags and Search
+
+### Tag Management
+
+```mermaid
+flowchart TD
+    Input["User enters tags"] --> Check{"Tag exists?"}
+
+    Check -->|Yes| Use["Use existing tag"]
+    Check -->|No| Create["Create new tag locally"]
+
+    Use --> Attach["Add tag to attestation"]
     Create --> Attach
-    
-    Attach --> Index["Aktualisiere lokalen Such-Index"]
+
+    Attach --> Index["Update local search index"]
+
+    style Input stroke:#888,fill:none,color:inherit
+    style Check stroke:#888,fill:none,color:inherit
+    style Use stroke:#888,fill:none,color:inherit
+    style Create stroke:#888,fill:none,color:inherit
+    style Attach stroke:#888,fill:none,color:inherit
+    style Index stroke:#888,fill:none,color:inherit
 ```
 
-### Vordefinierte Tags
+### Predefined Tags
 
 ```json
 {
   "predefinedTags": [
-    {"id": "helfen", "emoji": "🤝", "label": "Helfen"},
-    {"id": "garten", "emoji": "🌱", "label": "Garten"},
-    {"id": "handwerk", "emoji": "🔧", "label": "Handwerk"},
-    {"id": "transport", "emoji": "🚗", "label": "Transport"},
-    {"id": "beratung", "emoji": "💬", "label": "Beratung"},
-    {"id": "kochen", "emoji": "🍳", "label": "Kochen"},
-    {"id": "kinderbetreuung", "emoji": "👶", "label": "Kinderbetreuung"},
-    {"id": "technik", "emoji": "💻", "label": "Technik"}
+    {"id": "helping",      "emoji": "🤝", "label": "Helping"},
+    {"id": "garden",       "emoji": "🌱", "label": "Garden"},
+    {"id": "crafts",       "emoji": "🔧", "label": "Crafts"},
+    {"id": "transport",    "emoji": "🚗", "label": "Transport"},
+    {"id": "advice",       "emoji": "💬", "label": "Advice"},
+    {"id": "cooking",      "emoji": "🍳", "label": "Cooking"},
+    {"id": "childcare",    "emoji": "👶", "label": "Childcare"},
+    {"id": "tech",         "emoji": "💻", "label": "Tech"}
   ]
 }
 ```
 
-## Gruppen-Kontext
+## Group Context
 
-### Attestation mit Gruppen-Kontext
+### Attestation with Group Context
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant App as App
-    participant G as Gruppe Gemeinschaftsgarten
+    participant G as Group Community Garden
 
-    A->>App: Erstelle Attestation fuer Ben
-    A->>App: Waehle Gruppe Gemeinschaftsgarten
-    
-    App->>App: Pruefe: Ist Anna Mitglied der Gruppe?
-    App->>App: Pruefe: Ist Ben Mitglied der Gruppe?
-    
-    alt Beide Mitglieder
-        App->>App: Fuege context-Feld hinzu
-        Note over App: context: did:wot:group:gemeinschaftsgarten
-    else Nicht beide Mitglieder
-        App->>A: Warnung: Gruppen-Kontext nicht moeglich
+    A->>App: Create attestation for Ben
+    A->>App: Select group Community Garden
+
+    App->>App: Check: Is Anna a member of the group?
+    App->>App: Check: Is Ben a member of the group?
+
+    alt Both members
+        App->>App: Add context field
+        Note over App: context: did:key:z6MkGroup...
+    else Not both members
+        App->>A: Warning: group context not possible
     end
 ```
 
-### Gruppen-Kontext Bedeutung
+### Group Context Meaning
 
-| Mit Kontext | Ohne Kontext |
-|-------------|--------------|
-| Attestation ist im Rahmen der Gruppe entstanden | Allgemeine Attestation |
-| Sichtbar fuer alle Gruppen-Mitglieder | Nur fuer direkte Kontakte |
-| Kann in Gruppen-Statistiken auftauchen | Nur in persoenlichem Profil |
+| With context | Without context |
+| --- | --- |
+| Attestation arose within the group | General attestation |
+| Visible to all group members | Only to direct contacts |
+| Can appear in group statistics | Only in personal profile |
 
-## Benachrichtigungen
+## Notifications
 
-### Benachrichtigung fuer Empfaenger
+### Notification for Recipient
 
 ```json
 {
   "type": "attestation_received",
-  "from": "did:wot:anna123",
+  "from": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
   "fromName": "Anna Mueller",
   "attestationId": "urn:uuid:550e8400...",
-  "preview": "Hat 3 Stunden im Gemeinschaftsgarten geholfen",
+  "preview": "Helped for 3 hours in the community garden",
   "createdAt": "2025-01-08T14:32:00Z"
 }
 ```
 
-### Benachrichtigungs-Flow
+### Notification Flow
 
 ```mermaid
 flowchart TD
-    Create["Attestation erstellt"] --> Notify["Erstelle Notification-Objekt"]
-    
-    Notify --> Encrypt["Verschluessele nur fuer Empfaenger"]
-    
-    Encrypt --> Push["Push zum Server"]
-    
-    Push --> Server["Server speichert"]
-    
-    Server --> Pull["Empfaenger App pullt"]
-    
-    Pull --> Decrypt["Entschluesseln"]
-    
-    Decrypt --> Show["Zeige Benachrichtigung"]
+    Create["Attestation created"] --> Notify["Create notification payload"]
+
+    Notify --> Encrypt["Encrypt for recipient only"]
+
+    Encrypt --> Outbox["Queue in Outbox"]
+
+    Outbox --> Relay["Send via Relay (WebSocket)"]
+
+    Relay --> Deliver["Recipient app delivers"]
+
+    Deliver --> Decrypt["Decrypt"]
+
+    Decrypt --> Show["Show notification"]
+
+    style Create stroke:#888,fill:none,color:inherit
+    style Notify stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Outbox stroke:#888,fill:none,color:inherit
+    style Relay stroke:#888,fill:none,color:inherit
+    style Deliver stroke:#888,fill:none,color:inherit
+    style Decrypt stroke:#888,fill:none,color:inherit
+    style Show stroke:#5a5,fill:none,color:inherit
 ```
 
-## Validierung
+## Validation
 
-### Eingabe-Validierung
+### Input Validation
 
-| Feld | Validierung |
-|------|-------------|
-| claim | Min 5 Zeichen, Max 500 Zeichen |
-| tags | Min 0, Max 5 Tags |
-| context | Muss existierende Gruppe sein oder leer |
+| Field | Validation |
+| --- | --- |
+| claim | Min 5 chars, max 500 chars |
+| tags | Min 0, max 5 tags |
+| context | Must be an existing group or empty |
 
-### Signatur-Validierung beim Empfang
+### Signature Validation on Receipt
 
 ```mermaid
 flowchart TD
-    Receive["Attestation empfangen"] --> V1{"from-DID bekannt?"}
-    
-    V1 -->|Nein| Reject1["Ablehnen: Unbekannter Ersteller"]
-    V1 -->|Ja| V2{"to-DID ist eigene DID oder Kontakt?"}
-    
-    V2 -->|Nein| Reject2["Ablehnen: Nicht relevant"]
-    V2 -->|Ja| V3{"Signatur gueltig?"}
-    
-    V3 -->|Nein| Reject3["Ablehnen: Ungueltige Signatur"]
-    V3 -->|Ja| V4{"Timestamp plausibel?"}
-    
-    V4 -->|Nein| Reject4["Ablehnen: Timestamp in Zukunft oder zu alt"]
-    V4 -->|Ja| Accept["Akzeptieren und speichern"]
+    Receive["Attestation received"] --> V1{"from-DID known?"}
+
+    V1 -->|No| Reject1["Reject: Unknown creator"]
+    V1 -->|Yes| V2{"to-DID is own DID?"}
+
+    V2 -->|No| Reject2["Reject: Not addressed to me"]
+    V2 -->|Yes| V3{"Signature valid?"}
+
+    V3 -->|No| Reject3["Reject: Invalid signature"]
+    V3 -->|Yes| V4{"Timestamp plausible?"}
+
+    V4 -->|No| Reject4["Reject: Timestamp in future or too old"]
+    V4 -->|Yes| Accept["Accept and store in PersonalDoc CRDT"]
+
+    style Receive stroke:#888,fill:none,color:inherit
+    style V1 stroke:#888,fill:none,color:inherit
+    style V2 stroke:#888,fill:none,color:inherit
+    style V3 stroke:#888,fill:none,color:inherit
+    style V4 stroke:#888,fill:none,color:inherit
+    style Accept stroke:#5a5,fill:none,color:inherit
+    style Reject1 stroke:#e55,fill:none,color:inherit
+    style Reject2 stroke:#e55,fill:none,color:inherit
+    style Reject3 stroke:#e55,fill:none,color:inherit
+    style Reject4 stroke:#e55,fill:none,color:inherit
 ```
 
-## Speicher-Schema
+## Security Considerations
 
-### Lokale Datenbank
+### Spam Protection
 
-```sql
-CREATE TABLE attestations (
-    id TEXT PRIMARY KEY,
-    from_did TEXT NOT NULL,
-    to_did TEXT NOT NULL,
-    claim TEXT NOT NULL,
-    context_group_id TEXT,
-    created_at DATETIME NOT NULL,
-    signature TEXT NOT NULL,
-    raw_json TEXT NOT NULL,
-    received_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE attestation_tags (
-    attestation_id TEXT,
-    tag_id TEXT,
-    PRIMARY KEY (attestation_id, tag_id)
-);
-
-CREATE TABLE tags (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    emoji TEXT,
-    is_predefined BOOLEAN DEFAULT FALSE
-);
-
-CREATE INDEX idx_attestations_to ON attestations(to_did);
-CREATE INDEX idx_attestations_from ON attestations(from_did);
-CREATE INDEX idx_attestations_context ON attestations(context_group_id);
-```
-
-## Abfragen
-
-### Attestationen fuer eine Person
-
-```javascript
-// Alle Attestationen die Ben empfangen hat
-const attestations = await db.attestations
-  .where('to_did')
-  .equals(ben.did)
-  .toArray();
-```
-
-### Attestationen nach Tag filtern
-
-```javascript
-// Alle Attestationen mit Tag "garten"
-const gartenAttestations = await db.attestation_tags
-  .where('tag_id')
-  .equals('garten')
-  .toArray();
-```
-
-### Attestationen im Gruppen-Kontext
-
-```javascript
-// Alle Attestationen im Kontext der Gartengruppe
-const groupAttestations = await db.attestations
-  .where('context_group_id')
-  .equals('did:wot:group:gemeinschaftsgarten')
-  .toArray();
-```
-
-## Sicherheitsueberlegungen
-
-### Spam-Schutz
-
-| Massnahme | Beschreibung |
-|-----------|--------------|
-| Nur fuer Kontakte | Attestationen nur fuer verifizierte Kontakte |
-| Rate Limiting | Max 10 Attestationen pro Stunde (Client-seitig) |
-| Soziale Kontrolle | Wer spammt verliert Glaubwuerdigkeit |
+| Measure | Description |
+| --- | --- |
+| Verified contacts only | Attestations only for verified contacts |
+| Rate limiting | Max 10 attestations per hour (client-side) |
+| Social control | Spammers lose credibility |
 
 ### Manipulation
 
-| Angriff | Schutz |
-|---------|--------|
-| Attestation faelschen | Signatur mit Private Key des Erstellers |
-| Attestation aendern | Jede Aenderung invalidiert Signatur |
-| Attestation loeschen | Empfaenger hat eigene Kopie |
-| Falsche Behauptung | Nur soziale Konsequenzen moeglich |
+| Attack | Protection |
+| --- | --- |
+| Forge attestation | Signature with creator's private key |
+| Alter attestation | Any change invalidates signature |
+| Delete attestation | Recipient has own copy in PersonalDoc CRDT |
+| False claim | Only social consequences possible |
 
-### Unveraenderlichkeit
+### Immutability
 
-Attestationen sind bewusst **unveraenderlich**:
+Attestations are deliberately **immutable**:
 
-1. **Signatur:** Jede Aenderung wuerde die Signatur brechen
-2. **Verteilt:** Mehrere Kopien existieren bei verschiedenen Nutzern
-3. **Design:** Eine Aussage ueber die Vergangenheit kann nicht ungeschehen gemacht werden
+1. **Signature:** Any change breaks the signature
+2. **Distributed:** Stored in recipient's CRDT, replicated across devices
+3. **Design:** A statement about the past cannot be undone
 
-Bei Fehlern: Neue korrigierende Attestation erstellen.
+On errors: create a new correcting attestation.

@@ -1,118 +1,146 @@
-# Framework-Evaluation
+# Framework Evaluation
 
-> Analyse von Local-First, CRDT, P2P und Messaging Frameworks für das Web of Trust
+> Analysis of Local-First, CRDT, P2P, and Messaging frameworks for the Web of Trust
 >
-> **Version 2** — Aktualisiert 2026-02-08 nach Erkenntnis, dass ein einzelnes Framework nicht ausreicht.
-
-## Motivation
-
-Das Web of Trust benötigt:
-- **Offline-First**: Alle Operationen funktionieren ohne Verbindung
-- **E2E-Verschlüsselung**: Server sieht nur verschlüsselte Daten
-- **CRDTs**: Automatische, deterministische Konfliktauflösung
-- **DID-Kompatibilität**: Interoperabilität mit W3C Standards (did:key, Ed25519)
-- **Cross-User Messaging**: Attestations, Verifications und Items zwischen DIDs zustellen
-- **Gruppen-Collaboration**: Gemeinsame Spaces (Kanban, Kalender, Karte) mit E2EE
-- **Selektive Sichtbarkeit**: Items gezielt mit N von M Kontakten teilen (Item-Key-Modell)
-- **Capability-basierte Autorisierung**: UCAN-ähnliche delegierbare Berechtigungen
-- **React Native**: Mobile-First Entwicklung
-
-### Zentrale Erkenntnis (v2)
-
-> **Ein einzelnes Framework kann unsere Anforderungen nicht erfüllen.**
->
-> Während der Evolu-Integration wurde offensichtlich: Evolu synchronisiert nur innerhalb
-> desselben Owners (Single-User, Multi-Device). Es gibt kein Konzept für Cross-User-Messaging.
-> SharedOwner-API existiert, ist aber nicht funktional (Stand Feb 2026, Discussion #558).
->
-> **Die Lösung: Zwei orthogonale Achsen:**
->
-> | Achse | Funktion | Beispiel-Implementierung |
-> |-------|----------|-------------------------|
-> | **CRDT/Sync** | Zustandskonvergenz, Multi-Device/Multi-User | Automerge, Evolu, Yjs |
-> | **Messaging** | Zustellung zwischen DIDs, Delivery Receipts | Matrix, Nostr, WebSocket |
->
-> Eine Nachricht enthält NICHT den Zustand, sondern nur den Trigger/Pointer.
-> Der Zustand lebt im CRDT und konvergiert unabhängig.
-
-Diese Evaluation untersucht Kandidaten für beide Achsen und definiert eine 6-Adapter-Architektur.
+> **Version 2** — Updated 2026-02-08 after recognizing that no single framework is sufficient.
 
 ---
 
-## Evaluierte Frameworks
+> ## Update 2026-03-15: Yjs Migration Complete
+>
+> **Yjs is now the default CRDT.** Automerge remains available via `VITE_CRDT=automerge`.
+>
+> The original evaluation (below) recommended Automerge for the CRDT axis. This was correct at the time
+> of writing. After implementation and mobile benchmarking, Automerge (Rust→WASM) proved untenable on
+> mobile: 30+ seconds of UI freeze on Android for a 163KB document.
+>
+> **Yjs (pure JavaScript) solves the problem:**
+>
+> | Metric | Yjs | Automerge | Speedup |
+> |--------|-----|-----------|---------|
+> | Init Android (163KB) | 85ms | 6.4s | **76x** |
+> | Mutate 100 items | 3ms | 1.9s | **632x** |
+> | Serialize | 112ms | 819ms | 7x |
+> | Bundle size | 69KB | 1.7MB | 25x |
+>
+> The adapter architecture described below made this migration straightforward — only the
+> `ReplicationAdapter` and `StorageAdapter` implementations changed. All business logic, crypto,
+> and messaging remained untouched.
+>
+> The evaluation history is preserved below because it documents the reasoning at each step.
 
-### Übersicht
+---
 
-#### CRDT/Sync-Achse (Zustandskonvergenz)
+## Motivation
 
-| Framework | E2EE | CRDT | Cross-User | React/Web | Reife |
-|-----------|------|------|------------|-----------|-------|
-| [Evolu](#evolu) | ✅ Native | SQLite + LWW | ❌ Single-Owner | ✅ Erstklassig | Produktiv |
-| [NextGraph](#nextgraph) | ✅ Native | Yjs + Automerge + Graph | ✅ Overlays | ⚠️ SDK kommt | Alpha |
-| [Jazz](#jazz) | ✅ Native | CoJSON | ✅ Groups | ✅ Dokumentiert | Beta |
-| [DXOS](#dxos) | ✅ Native | Automerge | ✅ Spaces | ❌ Web only | Produktiv |
-| [p2panda](#p2panda) | ✅ Double Ratchet | Beliebig (BYOC) | ✅ Groups | ❌ Kein JS SDK | Pre-1.0 |
-| [Automerge](#automerge) | ❌ Selbst | ✅ Eigenes | ❌ Selbst bauen | ⚠️ WASM | Produktiv |
-| [Yjs](#yjs) | ❌ Selbst | ✅ Eigenes | ❌ Selbst bauen | ✅ | Produktiv |
-| [Loro](#loro) | ❌ Selbst | ✅ Eigenes | ❌ Selbst bauen | ✅ WASM+Swift | Produktiv |
+The Web of Trust requires:
 
-#### Messaging-Achse (Cross-User Delivery)
+- **Offline-First**: All operations work without a connection
+- **E2E Encryption**: Server sees only encrypted data
+- **CRDTs**: Automatic, deterministic conflict resolution
+- **DID Compatibility**: Interoperability with W3C standards (did:key, Ed25519)
+- **Cross-User Messaging**: Deliver attestations, verifications, and items between DIDs
+- **Group Collaboration**: Shared spaces (Kanban, calendar, map) with E2EE
+- **Selective Visibility**: Share items with N of M contacts (item-key model)
+- **Capability-based Authorization**: UCAN-like delegatable permissions
+- **React Native**: Mobile-first development
 
-| Framework | E2EE | DID | Offline-Queue | Gruppen | Reife |
-|-----------|------|-----|---------------|---------|-------|
-| [Nostr](#nostr) | ⚠️ NIP-44 | ❌ secp256k1 | ✅ Relays | ⚠️ Channels | Produktiv |
-| [Matrix](#matrix) | ✅ Megolm/Vodozemac | ❌ | ✅ Homeserver | ✅ Rooms | Produktiv |
-| [DIDComm](#didcomm) | ✅ Native | ✅ did:key | ❌ Mediator nötig | ❌ | Spec fertig, Libs stale |
-| [ActivityPub](#activitypub) | ❌ | ❌ | ✅ Inbox | ⚠️ | Produktiv |
-| [Iroh](#iroh) | ✅ QUIC | ❌ | ❌ Direkt | ❌ | Beta |
+### Key Insight (v2)
 
-#### Sonstige (nicht kategorisierbar)
+> **No single framework can satisfy our requirements.**
+>
+> During the Evolu integration it became clear: Evolu only synchronizes within the same owner
+> (single-user, multi-device). There is no concept for cross-user messaging.
+> The SharedOwner API exists but is not functional (as of Feb 2026, Discussion #558).
+>
+> **The solution: Two orthogonal axes:**
+>
+> | Axis | Function | Example Implementation |
+> |------|----------|-----------------------|
+> | **CRDT/Sync** | State convergence, multi-device/multi-user | Automerge, Evolu, Yjs |
+> | **Messaging** | Delivery between DIDs, delivery receipts | Matrix, Nostr, WebSocket |
+>
+> A message does NOT carry state — it carries only the trigger/pointer.
+> State lives in the CRDT and converges independently.
 
-| Framework | Rolle | Reife |
-|-----------|-------|-------|
-| [Willow/Earthstar](#willow--earthstar) | Protokoll + Capabilities (Meadowcap) | Beta/Stagnierend |
-| [Secsync](#secsync) | Architektur-Referenz für E2EE CRDTs | Beta |
-| [Keyhive](#keyhive) | Gruppen-Key-Management (BeeKEM) | Pre-Alpha |
-| [Subduction](#subduction) | Verschlüsselter P2P-Sync (Sedimentree) | Pre-Alpha |
+This evaluation examines candidates for both axes and defines a 6-adapter architecture.
 
-### Kategorisierung (aktualisiert v2)
+---
+
+## Evaluated Frameworks
+
+### Overview
+
+#### CRDT/Sync Axis (State Convergence)
+
+| Framework | E2EE | CRDT | Cross-User | React/Web | Maturity |
+|-----------|------|------|------------|-----------|----------|
+| [Evolu](#evolu) | Native | SQLite + LWW | Single-Owner only | First-class | Production |
+| [NextGraph](#nextgraph) | Native | Yjs + Automerge + Graph | Overlays | SDK coming | Alpha |
+| [Jazz](#jazz) | Native | CoJSON | Groups | Documented | Beta |
+| [DXOS](#dxos) | Native | Automerge | Spaces | Web only | Production |
+| [p2panda](#p2panda) | Double Ratchet | Any (BYOC) | Groups | No JS SDK | Pre-1.0 |
+| [Automerge](#automerge--yjs) | Self-built | Own | Self-built | WASM | Production |
+| [Yjs](#automerge--yjs) | Self-built | Own | Self-built | Yes | Production |
+| [Loro](#loro) | Self-built | Own | Self-built | WASM + Swift | Production |
+
+#### Messaging Axis (Cross-User Delivery)
+
+| Framework | E2EE | DID | Offline Queue | Groups | Maturity |
+|-----------|------|-----|---------------|--------|----------|
+| [Nostr](#nostr) | NIP-44 | secp256k1 only | Relays | Channels | Production |
+| [Matrix](#matrix) | Megolm/Vodozemac | No native | Homeserver | Rooms | Production |
+| [DIDComm](#didcomm) | Native | did:key | Mediator needed | No | Spec done, libs stale |
+| [ActivityPub](#activitypub) | No | No | Inbox | Partial | Production |
+| [Iroh](#iroh) | QUIC | No | No (direct) | No | Beta |
+
+#### Other (not categorized)
+
+| Framework | Role | Maturity |
+|-----------|------|----------|
+| [Willow/Earthstar](#willow--earthstar) | Protocol + Capabilities (Meadowcap) | Beta/Stagnating |
+| [Secsync](#secsync) | Architecture reference for E2EE CRDTs | Beta |
+| [Keyhive](#keyhive) | Group key management (BeeKEM) | Pre-Alpha |
+| [Subduction](#subduction) | Encrypted P2P sync (Sedimentree) | Pre-Alpha |
+
+### Categorization (updated v2)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │              Local-First + E2EE + Messaging Landscape                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ACHSE 1: CRDT/SYNC (Zustandskonvergenz)                                  │
+│  AXIS 1: CRDT/SYNC (State Convergence)                                     │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ Evolu         │ SQLite, LWW, React, Custom Keys, Single-Owner      │   │
 │  │ Automerge     │ JSON-like, Ink & Switch, WASM                      │   │
-│  │ Yjs           │ Größte Community, viele Bindings                    │   │
+│  │ Yjs           │ Largest community, many bindings                    │   │
 │  │ Loro          │ High-Performance, Rust + WASM + Swift               │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│  ACHSE 2: MESSAGING (Cross-User Delivery)                                  │
+│  AXIS 2: MESSAGING (Cross-User Delivery)                                   │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
 │  │ Matrix        │ E2EE Rooms, Homeserver, Federation, Bridges        │   │
-│  │ Nostr         │ Relays, Pubkeys, NIPs, großes Ökosystem            │   │
-│  │ DIDComm       │ DID-native, Spec fertig, JS-Libs veraltet          │   │
-│  │ Custom WS     │ Minimaler WebSocket-Relay für POC                  │   │
+│  │ Nostr         │ Relays, Pubkeys, NIPs, large ecosystem              │   │
+│  │ DIDComm       │ DID-native, spec done, JS libs stale               │   │
+│  │ Custom WS     │ Minimal WebSocket relay for POC                    │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│  FULL-STACK (beide Achsen, aber Einschränkungen):                          │
+│  FULL-STACK (both axes, but with constraints):                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ NextGraph     │ DID, RDF, 3 CRDTs, Broker — aber Alpha             │   │
-│  │ Jazz          │ CoJSON, Groups — aber proprietär                    │   │
-│  │ DXOS          │ Spaces, HALO — aber P-256 Keys, Web-only           │   │
-│  │ p2panda       │ Echtes P2P, Double Ratchet — aber kein JS SDK      │   │
+│  │ NextGraph     │ DID, RDF, 3 CRDTs, Broker — but Alpha              │   │
+│  │ Jazz          │ CoJSON, Groups — but proprietary                    │   │
+│  │ DXOS          │ Spaces, HALO — but P-256 keys, Web-only            │   │
+│  │ p2panda       │ True P2P, Double Ratchet — but no JS SDK           │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
-│  BAUSTEINE (ergänzend):                                                    │
+│  BUILDING BLOCKS (supplementary):                                          │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ Willow        │ Meadowcap Capabilities, Earthstar TS               │   │
-│  │ Keyhive       │ BeeKEM Gruppen-Keys                                │   │
-│  │ Secsync       │ E2EE CRDT Architektur-Referenz                     │   │
-│  │ Iroh          │ QUIC Networking Layer (n0-computer)                 │   │
-│  │ Subduction    │ Encrypted P2P Sync (Sedimentree), Ink & Switch      │   │
+│  │ Willow        │ Meadowcap capabilities, Earthstar TS                │   │
+│  │ Keyhive       │ BeeKEM group keys                                   │   │
+│  │ Secsync       │ E2EE CRDT architecture reference                    │   │
+│  │ Iroh          │ QUIC networking layer (n0-computer)                  │   │
+│  │ Subduction    │ Encrypted P2P sync (Sedimentree), Ink & Switch      │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -120,7 +148,7 @@ Diese Evaluation untersucht Kandidaten für beide Achsen und definiert eine 6-Ad
 
 ---
 
-## Detailanalysen
+## Detailed Analysis
 
 ### NextGraph
 
@@ -128,84 +156,84 @@ Diese Evaluation untersucht Kandidaten für beide Achsen und definiert eine 6-Ad
 
 **Website:** https://nextgraph.org/
 **Gitea:** https://git.nextgraph.org/NextGraph/nextgraph-rs
-**GitHub Mirror:** https://github.com/nextgraph-org/nextgraph-rs (~73 ⭐)
+**GitHub Mirror:** https://github.com/nextgraph-org/nextgraph-rs (~73 stars)
 **Status:** Alpha (v0.1.2-alpha.1)
 **Maintainer:** ~3 (Niko Bonnieure primary)
 **Funding:** EU NLnet/NGI Grants + Donations
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | `did:ng` für User und Dokumente, Multiple Personas pro Wallet |
-| **E2EE** | Ja, capability-basiert (nicht Signal/Matrix) |
-| **CRDTs** | 3 Modelle: Graph CRDT (RDF, custom) + Automerge + Yjs |
-| **Datenmodell** | RDF Triples + SPARQL, JSON, Rich Text, Markdown |
-| **Gruppen** | Cryptographic Capabilities (Editor/Reader/Signer Rollen) |
-| **Sync** | 2-Tier Broker Network, P2P Pub/Sub, DAG von Commits |
-| **Transport** | WebSocket + Noise Protocol (kein TLS/DNS nötig) |
-| **Sprachen** | Rust (76%), TypeScript (14%), Svelte (6%) |
-| **SDKs** | Rust (crates.io), JS/TS (WASM, noch Alpha), Node.js, Deno geplant |
-| **Plattformen** | Linux, macOS, Windows, Android, iOS (TestFlight), Web |
+| **Identity** | `did:ng` for users and documents, multiple personas per wallet |
+| **E2EE** | Yes, capability-based (not Signal/Matrix) |
+| **CRDTs** | 3 models: Graph CRDT (RDF, custom) + Automerge + Yjs |
+| **Data model** | RDF triples + SPARQL, JSON, rich text, Markdown |
+| **Groups** | Cryptographic capabilities (Editor/Reader/Signer roles) |
+| **Sync** | 2-tier broker network, P2P pub/sub, DAG of commits |
+| **Transport** | WebSocket + Noise Protocol (no TLS/DNS required) |
+| **Languages** | Rust (76%), TypeScript (14%), Svelte (6%) |
+| **SDKs** | Rust (crates.io), JS/TS (WASM, still Alpha), Node.js, Deno planned |
+| **Platforms** | Linux, macOS, Windows, Android, iOS (TestFlight), Web |
 | **Storage** | RocksDB (encrypted at rest) |
 
-#### Architektur
+#### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    NextGraph                         │
 │                                                      │
-│  Tier 1: Core Brokers (Server, 24/7, relay)         │
+│  Tier 1: Core Brokers (server, 24/7, relay)         │
 │     ↕ WebSocket + Noise Protocol                    │
-│  Tier 2: Edge/Local Brokers (Client-side daemon)    │
+│  Tier 2: Edge/Local Brokers (client-side daemon)    │
 │     ↕                                                │
-│  Documents: DAG von Commits                          │
+│  Documents: DAG of commits                           │
 │     ├── Graph Part (RDF, mandatory)                  │
 │     ├── Discrete Part (Yjs/Automerge, optional)      │
 │     └── Binary Files (optional)                      │
 │                                                      │
-│  Overlays pro Repo:                                  │
-│     ├── Inner Overlay (Write-Access, Peers kennen    │
-│     │   einander)                                    │
-│     └── Outer Overlay (Read-Only, anonymer)          │
+│  Overlays per repo:                                  │
+│     ├── Inner Overlay (write access, peers know      │
+│     │   each other)                                  │
+│     └── Outer Overlay (read-only, anonymous)         │
 └─────────────────────────────────────────────────────┘
 ```
 
-#### Einzigartige Features
+#### Unique Features
 
-- **3 CRDTs vereint:** Graph CRDT (RDF) + Automerge + Yjs auf Branch-Ebene mischbar
-- **SPARQL auf verschlüsselten Local-First Daten** - einzigartig
-- **Social Queries:** Federated SPARQL über verschlüsselte P2P-Daten anderer User
-- **Pazzle-Auth:** 9 Bilder als Passwort-Alternative (mental narrative)
-- **Smart Contracts ohne Blockchain:** FSM + WASM Verifier
-- **Nuri (NextGraph URI):** Permanente kryptografische Dokument-IDs mit eingebetteten Capabilities
-- **ShEx → TypeScript:** RDF-Schemas werden zu getypten TS-Objekten mit Proxy-Reactivity
+- **3 CRDTs combined:** Graph CRDT (RDF) + Automerge + Yjs mixable at branch level
+- **SPARQL on encrypted local-first data** — unique
+- **Social queries:** Federated SPARQL over encrypted P2P data of other users
+- **Pazzle auth:** 9 images as password alternative (mental narrative)
+- **Smart contracts without blockchain:** FSM + WASM verifier
+- **Nuri (NextGraph URI):** Permanent cryptographic document IDs with embedded capabilities
+- **ShEx → TypeScript:** RDF schemas become typed TS objects with proxy reactivity
 
-#### Bewertung für Web of Trust (aktualisiert 2026-02-07)
+#### Assessment for Web of Trust (updated 2026-02-07)
 
 ```
-Vorteile:
-✅ DID-Support eingebaut (einziges Framework mit did:ng!)
-✅ RDF-Graph = natürliches Modell für Vertrauensnetzwerk
-✅ Capability-basierte Crypto = passt zu WoT Permissions
-✅ E2EE + Encryption at Rest mandatory
-✅ Kein DNS, kein TLS, kein Single Point of Failure
-✅ SPARQL ermöglicht mächtige Graph-Queries über Trust-Beziehungen
-✅ Consumer App + Developer Framework (Social Network eingebaut)
+Advantages:
++ DID support built in (only framework with did:ng!)
++ RDF graph = natural model for a trust network
++ Capability-based crypto = fits WoT permissions
++ E2EE + encryption at rest mandatory
++ No DNS, no TLS, no single point of failure
++ SPARQL enables powerful graph queries over trust relationships
++ Consumer app + developer framework (social network built in)
 
-Nachteile:
-❌ Alpha - NICHT produktionsreif (v0.1.2-alpha)
-❌ JS/React SDK noch nicht released (kommt Anfang 2026)
-❌ Kein Custom Key Import - Wallet generiert eigene Keys
-   → Integration mit bestehendem BIP39 Seed problematisch
-❌ Sehr kleine Community (~73 Stars, ~3 Contributors)
-❌ Grant-abhängige Finanzierung (Nachhaltigkeit?)
-⚠️ Extrem komplex (3 CRDTs, RDF, SPARQL, Noise Protocol, Broker Network)
-⚠️ Rust-basiert → WASM für Web, Integration aufwendiger
-⚠️ Single-Point-of-Knowledge Risiko (Niko Bonnieure)
+Disadvantages:
+- Alpha — NOT production-ready (v0.1.2-alpha)
+- JS/React SDK not yet released (coming early 2026)
+- No custom key import — wallet generates its own keys
+  → Integration with existing BIP39 seed problematic
+- Very small community (~73 stars, ~3 contributors)
+- Grant-dependent funding (sustainability?)
+- Extremely complex (3 CRDTs, RDF, SPARQL, Noise Protocol, broker network)
+- Rust-based → WASM for web, integration more expensive
+- Single-point-of-knowledge risk (Niko Bonnieure)
 ```
 
-**Empfehlung:** Philosophisch am nächsten an unserer Vision. Beobachten und evaluieren sobald JS SDK verfügbar. Für POC nicht geeignet wegen fehlender Custom-Key-Integration und Alpha-Status. Langfristig der interessanteste Kandidat.
+**Recommendation:** Philosophically closest to our vision. Monitor and evaluate once the JS SDK is available. Not suitable for POC due to missing custom key integration and alpha status. Longest-term most interesting candidate.
 
 ---
 
@@ -213,57 +241,57 @@ Nachteile:
 
 > Local-first platform with E2EE and SQLite
 
-**Website:** <https://evolu.dev/>
-**GitHub:** <https://github.com/evoluhq/evolu> (~1.8k ⭐)
-**Status:** Produktiv (v7/v8, Major Rewrite laufend)
-**Maintainer:** 1 primary (Daniel Steigerwald), wenige weitere
-**Lizenz:** MIT
+**Website:** https://evolu.dev/
+**GitHub:** https://github.com/evoluhq/evolu (~1.8k stars)
+**Status:** Production (v7/v8, major rewrite in progress)
+**Maintainer:** 1 primary (Daniel Steigerwald), few others
+**License:** MIT
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | SLIP-21 Key Derivation aus 16 Bytes Entropy, BIP39 Mnemonic |
-| **E2EE** | Ja, symmetric (quantum-safe) + PADME Padding |
-| **CRDTs** | LWW (Last-Write-Wins) per Cell (Table/Row/Column) |
-| **Datenmodell** | SQLite mit Branded TypeScript-Typen (Kysely Query Builder) |
-| **Sync** | Range-Based Set Reconciliation, Hybrid Logical Clocks, binäres Protokoll |
-| **Transport** | WebSocket zu Relay-Server (self-hostable) |
-| **Sprachen** | TypeScript |
-| **Plattformen** | Web (OPFS), React Native, Expo, Electron, Svelte, Vue |
-| **Custom Keys** | ✅ Ja! `ownerId`, `writeKey`, `encryptionKey` direkt übergeben (seit Nov 2025, Issue #537) |
+| **Identity** | SLIP-21 key derivation from 16 bytes entropy, BIP39 mnemonic |
+| **E2EE** | Yes, symmetric (quantum-safe) + PADME padding |
+| **CRDTs** | LWW (last-write-wins) per cell (table/row/column) |
+| **Data model** | SQLite with branded TypeScript types (Kysely query builder) |
+| **Sync** | Range-based set reconciliation, hybrid logical clocks, binary protocol |
+| **Transport** | WebSocket to relay server (self-hostable) |
+| **Languages** | TypeScript |
+| **Platforms** | Web (OPFS), React Native, Expo, Electron, Svelte, Vue |
+| **Custom keys** | Yes — `ownerId`, `writeKey`, `encryptionKey` passed directly (since Nov 2025, Issue #537) |
 
-#### Architektur
+#### Architecture
 
 ```
-Browser/App (SQLite lokal, OPFS)
+Browser/App (SQLite local, OPFS)
     ↕ WebSocket (E2E encrypted, binary)
-Relay Server (stateless, sieht nur encrypted blobs)
+Relay Server (stateless, sees only encrypted blobs)
     ↕ WebSocket
-Anderes Gerät (SQLite lokal)
+Other Device (SQLite local)
 
-Relay kann NICHT:
-- Daten lesen (E2E encrypted)
-- Muster erkennen (PADME Padding)
-- User korrelieren
+Relay CANNOT:
+- Read data (E2E encrypted)
+- Detect patterns (PADME padding)
+- Correlate users
 
-Relay ist:
+Relay IS:
 - Self-hostable (Docker, Render, AWS Lambda)
-- Free Relay verfügbar: free.evoluhq.com
-- Empfohlen: 2 Relays (lokal + geo-distant backup)
+- Free relay available: free.evoluhq.com
+- Recommended: 2 relays (local + geo-distant backup)
 ```
 
-#### Owner-Modelle
+#### Owner Models
 
-- **AppOwner** - Single-User (Standard, unser Usecase)
-- **SharedOwner** - Collaborative Multi-User
-- **SharedReadonlyOwner** - Nur-Lesen Collaboration
-- **ShardOwner** - Logische Datenpartitionierung (Partial Sync)
+- **AppOwner** — Single-user (default, our use case)
+- **SharedOwner** — Collaborative multi-user
+- **SharedReadonlyOwner** — Read-only collaboration
+- **ShardOwner** — Logical data partitioning (partial sync)
 
-#### Custom Key Integration (kritisch für uns!)
+#### Custom Key Integration (critical for us)
 
 ```typescript
-// Evolu mit WotIdentity-Keys initialisieren:
+// Initialize Evolu with WotIdentity keys:
 const evolKey = await identity.deriveFrameworkKey('evolu-storage-v1')
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {
@@ -274,33 +302,33 @@ const evolu = createEvolu(evoluReactWebDeps)(Schema, {
 })
 ```
 
-Dieses Feature wurde vom Trezor-Team angefragt und in Issue #537 implementiert.
+This feature was requested by the Trezor team and implemented in Issue #537.
 
-#### Bewertung für Web of Trust (aktualisiert 2026-02-07)
+#### Assessment for Web of Trust (updated 2026-02-07)
 
 ```
-Vorteile:
-✅ Custom Keys! → direkte Integration mit WotIdentity.deriveFrameworkKey()
-✅ BIP39 Mnemonic als Basis (gleiche Philosophie wie wir)
-✅ React/Svelte/Vue erstklassig unterstützt
-✅ React Native + Expo voll unterstützt
-✅ SQLite = vertraute Queries mit Kysely (type-safe)
-✅ E2EE mandatory, Relay blind
-✅ Produktionsnah, aktive Entwicklung
-✅ Self-hostable Relay (Docker, ein Klick auf Render)
-✅ Partial Sync (temporal + logical) für Skalierung
-✅ PADME Padding gegen Traffic-Analyse
+Advantages:
++ Custom keys! → direct integration with WotIdentity.deriveFrameworkKey()
++ BIP39 mnemonic as basis (same philosophy as us)
++ React/Svelte/Vue first-class support
++ React Native + Expo fully supported
++ SQLite = familiar queries with Kysely (type-safe)
++ E2EE mandatory, relay blind
++ Near-production, active development
++ Self-hostable relay (Docker, one click on Render)
++ Partial sync (temporal + logical) for scaling
++ PADME padding against traffic analysis
 
-Nachteile:
-⚠️ Single-Maintainer Risiko (steida = 99% der Commits)
-⚠️ Major Rewrite laufend (Effect entfernt, neuer Sync)
-⚠️ Kein DID-Support (muss selbst gebaut werden → haben wir schon)
-⚠️ LWW-CRDT ist simpel (kein Rich-Text-Merging wie Yjs)
-⚠️ Relay nötig für Sync (kein echtes P2P, aber auf Roadmap)
-⚠️ SQL-Paradigma vs. Graph-Datenmodell
+Disadvantages:
+- Single-maintainer risk (steida = 99% of commits)
+- Major rewrite in progress (Effect removed, new sync)
+- No DID support (must be built ourselves → we already have it)
+- LWW CRDT is simple (no rich-text merging like Yjs)
+- Relay required for sync (no true P2P, but on roadmap)
+- SQL paradigm vs. graph data model
 ```
 
-**Empfehlung:** Primärer Kandidat für POC. Pragmatisch, stabil, Custom-Key-Support ist der Gamechanger. DID-Layer haben wir bereits (WotIdentity).
+**Recommendation:** Primary candidate for POC. Pragmatic, stable, custom key support is the game changer. DID layer we already have (WotIdentity).
 
 ---
 
@@ -312,36 +340,36 @@ Nachteile:
 **GitHub:** https://github.com/garden-co/jazz
 **Status:** Beta
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | Account Keys (Passphrase-basiert) |
-| **E2EE** | Ja, mit Signatures |
-| **CRDTs** | CoJSON (eigenes Format) |
-| **Datenmodell** | Collaborative JSON ("CoValues") |
-| **Gruppen** | Eingebaut mit Permissions |
-| **Sprachen** | TypeScript |
-| **Plattformen** | Web, React Native (dokumentiert) |
+| **Identity** | Account keys (passphrase-based) |
+| **E2EE** | Yes, with signatures |
+| **CRDTs** | CoJSON (own format) |
+| **Data model** | Collaborative JSON ("CoValues") |
+| **Groups** | Built-in with permissions |
+| **Languages** | TypeScript |
+| **Platforms** | Web, React Native (documented) |
 
-#### Bewertung für Web of Trust
+#### Assessment for Web of Trust
 
 ```
-Vorteile:
-✅ Elegantes API ("feels like reactive local JSON")
-✅ Gruppen mit Permissions eingebaut
-✅ React Native dokumentiert
-✅ Passphrase Recovery (ähnlich Mnemonic)
-✅ Aktive Entwicklung
+Advantages:
++ Elegant API ("feels like reactive local JSON")
++ Groups with permissions built in
++ React Native documented
++ Passphrase recovery (similar to mnemonic)
++ Active development
 
-Nachteile:
-⚠️ Kein DID-Support
-⚠️ Noch Beta
-⚠️ CoJSON ist proprietär
-⚠️ Weniger Kontrolle über Crypto
+Disadvantages:
+- No DID support
+- Still Beta
+- CoJSON is proprietary
+- Less control over crypto
 ```
 
-**Empfehlung:** Alternative zu Evolu. Eleganter, aber weniger ausgereift.
+**Recommendation:** Alternative to Evolu. More elegant, but less mature.
 
 ---
 
@@ -350,37 +378,37 @@ Nachteile:
 > Architecture for E2E encrypted CRDTs
 
 **Website:** https://secsync.com/
-**GitHub:** https://github.com/nikgraf/secsync (225 ⭐)
+**GitHub:** https://github.com/nikgraf/secsync (225 stars)
 **Status:** Beta
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | Ed25519 Keys (extern verwaltet) |
+| **Identity** | Ed25519 keys (externally managed) |
 | **E2EE** | XChaCha20-Poly1305-IETF |
-| **CRDTs** | Agnostisch (Yjs, Automerge Beispiele) |
-| **Konzept** | Snapshots + Updates + Ephemeral Messages |
-| **Key Exchange** | Extern (Signal Protocol oder PKI) |
-| **Sprachen** | TypeScript |
+| **CRDTs** | Agnostic (Yjs, Automerge examples) |
+| **Concept** | Snapshots + updates + ephemeral messages |
+| **Key exchange** | External (Signal Protocol or PKI) |
+| **Languages** | TypeScript |
 
-#### Bewertung für Web of Trust
+#### Assessment for Web of Trust
 
 ```
-Vorteile:
-✅ Framework-agnostisch (Yjs oder Automerge)
-✅ Saubere E2EE-Architektur dokumentiert
-✅ Server sieht nur verschlüsselte Blobs
-✅ Snapshot + Update Modell effizient
+Advantages:
++ Framework-agnostic (Yjs or Automerge)
++ Clean E2EE architecture documented
++ Server sees only encrypted blobs
++ Snapshot + update model is efficient
 
-Nachteile:
-⚠️ Key Exchange muss selbst gebaut werden
-⚠️ React Native Support unklar
-⚠️ Noch Beta
-⚠️ Kleinere Community
+Disadvantages:
+- Key exchange must be built yourself
+- React Native support unclear
+- Still Beta
+- Smaller community
 ```
 
-**Empfehlung:** Gute Referenz-Architektur. Konzepte übernehmen, wenn wir selbst bauen.
+**Recommendation:** Good architecture reference. Adopt the concepts if we build ourselves.
 
 ---
 
@@ -388,84 +416,84 @@ Nachteile:
 
 > Modular toolkit for local-first P2P applications
 
-**Website:** <https://p2panda.org/>
-**GitHub:** <https://github.com/p2panda/p2panda> (~394 ⭐)
-**Status:** Pre-1.0 (v0.5.0, Jan 2026) - aktive Entwicklung
-**Maintainer:** 4 (adzialocha, sandreae, mycognosist, cafca)
+**Website:** https://p2panda.org/
+**GitHub:** https://github.com/p2panda/p2panda (~394 stars)
+**Status:** Pre-1.0 (v0.5.0, Jan 2026) — active development
+**Maintainers:** 4 (adzialocha, sandreae, mycognosist, cafca)
 **Funding:** EU NLnet/NGI Grants (POINTER, ASSURE, ENTRUST, Commons Fund)
-**Lizenz:** Apache 2.0 / MIT
+**License:** Apache 2.0 / MIT
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | Ed25519 pro Device, KeyGroups für Multi-Device |
+| **Identity** | Ed25519 per device, KeyGroups for multi-device |
 | **E2EE** | Data: XChaCha20-Poly1305 + PCS. Messages: Double Ratchet (Signal-like) |
-| **CRDTs** | BYOC - Bring Your Own (Automerge, Yjs, Loro, custom) |
-| **Datenmodell** | Append-Only Logs (Namakemono Spec), data-type-agnostic |
-| **Sync** | Bidirectional Push + PlumTree/HyParView Gossip |
-| **Transport** | QUIC (iroh), mDNS, Bootstrap Nodes |
-| **Sprachen** | Rust (9 modulare Crates) |
-| **Plattformen** | Desktop (GTK/Tauri), Mobile (Flutter FFI), IoT |
-| **JS SDK** | Veraltet! `p2panda-js` v0.8.1 (~2 Jahre alt, pre-rewrite) |
+| **CRDTs** | BYOC — Bring Your Own (Automerge, Yjs, Loro, custom) |
+| **Data model** | Append-only logs (Namakemono spec), data-type-agnostic |
+| **Sync** | Bidirectional push + PlumTree/HyParView gossip |
+| **Transport** | QUIC (iroh), mDNS, bootstrap nodes |
+| **Languages** | Rust (9 modular crates) |
+| **Platforms** | Desktop (GTK/Tauri), mobile (Flutter FFI), IoT |
+| **JS SDK** | Outdated — `p2panda-js` v0.8.1 (~2 years old, pre-rewrite) |
 
-#### Modulare Crates
+#### Modular Crates
 
-| Crate | Funktion |
+| Crate | Function |
 |-------|----------|
-| **p2panda-core** | Erweiterbare Datentypen (Operations, Headers, Bodies) |
-| **p2panda-net** | P2P Networking, Discovery, Gossip |
-| **p2panda-discovery** | Confidential Peer/Topic Discovery |
-| **p2panda-sync** | Append-Only Log Synchronization |
-| **p2panda-blobs** | Large File Transfer |
-| **p2panda-store** | SQLite, Memory, Filesystem Persistence |
-| **p2panda-stream** | Stream Processing Middleware |
-| **p2panda-encryption** | Group Encryption (2 Schemes) |
-| **p2panda-auth** | Decentralized Access Control |
+| **p2panda-core** | Extensible data types (operations, headers, bodies) |
+| **p2panda-net** | P2P networking, discovery, gossip |
+| **p2panda-discovery** | Confidential peer/topic discovery |
+| **p2panda-sync** | Append-only log synchronization |
+| **p2panda-blobs** | Large file transfer |
+| **p2panda-store** | SQLite, memory, filesystem persistence |
+| **p2panda-stream** | Stream processing middleware |
+| **p2panda-encryption** | Group encryption (2 schemes) |
+| **p2panda-auth** | Decentralized access control |
 
-#### Verschlüsselung (2 Schemes)
+#### Encryption (2 Schemes)
 
-**Data Encryption** (für persistente Gruppendaten):
-- Symmetric Key für alle Gruppenmitglieder
-- Post-Compromise Security (Key Rotation bei Member-Removal)
+**Data Encryption** (for persistent group data):
+- Symmetric key for all group members
+- Post-compromise security (key rotation on member removal)
 - XChaCha20-Poly1305
 
-**Message Encryption** (für ephemere Nachrichten):
-- Double Ratchet Algorithm (wie Signal)
-- Jede Nachricht bekommt eigenen Key → starke Forward Secrecy
+**Message Encryption** (for ephemeral messages):
+- Double Ratchet algorithm (like Signal)
+- Each message gets its own key → strong forward secrecy
 - AES-256-GCM
 
 #### Real-World Apps
 
-- **Reflection** - Collaborative local-first GTK Text Editor (224 ⭐)
-- **Meli** - Android App für Bienenarten-Kategorisierung (Brasilien, Flutter)
-- **Toolkitty** - Koordinations-App für Kollektive
+- **Reflection** — Collaborative local-first GTK text editor (224 stars)
+- **Meli** — Android app for bee species categorization (Brazil, Flutter)
+- **Toolkitty** — Coordination app for collectives
 
-#### Bewertung für Web of Trust (aktualisiert 2026-02-07)
+#### Assessment for Web of Trust (updated 2026-02-07)
 
 ```
-Vorteile:
-✅ Echtes P2P (kein Server/Relay nötig!)
-✅ Funktioniert über LoRa, Bluetooth, Shortwave, USB-Stick (!!)
-✅ Modularer Ansatz (pick what you need)
-✅ Double Ratchet = Signal-Level Forward Secrecy
-✅ Post-Compromise Security bei Gruppen
-✅ Confidential Discovery (Peers finden sich ohne Interessen preiszugeben)
-✅ EU-gefördert (NLnet), Security Audit geplant
-✅ 4 aktive Contributors (besser als Single-Maintainer)
-✅ Ed25519 Keys (wie wir), Custom Keys möglich
+Advantages:
++ True P2P (no server/relay needed!)
++ Works over LoRa, Bluetooth, shortwave, USB stick
++ Modular approach (pick what you need)
++ Double Ratchet = Signal-level forward secrecy
++ Post-compromise security for groups
++ Confidential discovery (peers find each other without revealing interests)
++ EU-funded (NLnet), security audit planned
++ 4 active contributors (better than single-maintainer)
++ Ed25519 keys (like us), custom keys possible
 
-Nachteile:
-❌ KEIN aktuelles JavaScript/Web SDK (Knockout für React-basierte App!)
-❌ Pre-1.0 - nicht produktionsreif
-⚠️ Rust-basiert → WASM oder FFI für Web nötig
-⚠️ Kein DID-Support
-⚠️ Kein BIP39/Mnemonic Support eingebaut
-⚠️ Wiederholte Architectural Rewrites (Bamboo→Namakemono, aquadoggo→modular)
-⚠️ Dokumentation verstreut (Blog Posts, altes Handbook, Rust Docs)
+Disadvantages:
+- NO current JavaScript/Web SDK (knockout for React-based app!)
+- Pre-1.0 — not production-ready
+- Rust-based → WASM or FFI needed for web
+- No DID support
+- No BIP39/mnemonic support built in
+- Repeated architectural rewrites (Bamboo→Namakemono, aquadoggo→modular)
+- Documentation scattered (blog posts, old handbook, Rust docs)
 ```
 
-**Empfehlung:** Philosophisch sehr nahe (echtes P2P, Offline-First radikal). Für Web-App aktuell nicht nutzbar wegen fehlendem JS SDK. Beobachten für: (1) Langfrist-Vision mit LoRa/BLE für Offline-Gemeinschaften, (2) Einzelne Crates (p2panda-encryption, p2panda-auth) als Inspiration. FOSDEM 2026 Talk zeigt wachsendes GNOME/Linux-Desktop-Interest.
+**Recommendation:** Philosophically very close (true P2P, radically offline-first). Not usable for a web app right now due to missing JS SDK. Watch for: (1) long-term vision with LoRa/BLE for offline communities, (2) individual crates (p2panda-encryption, p2panda-auth) as inspiration. FOSDEM 2026 talk shows growing GNOME/Linux desktop interest.
 
 ---
 
@@ -474,41 +502,41 @@ Nachteile:
 > Decentralized developer platform
 
 **Website:** https://dxos.org/
-**GitHub:** https://github.com/dxos/dxos (483 ⭐)
-**Status:** Produktiv
+**GitHub:** https://github.com/dxos/dxos (483 stars)
+**Status:** Production
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | HALO Protocol (ECDSA P-256 Keyring!) |
-| **E2EE** | Ja, über ECHO Protocol |
-| **CRDTs** | Yjs / Automerge via Adapter |
-| **Datenmodell** | Graph-basiert (Spaces, Objects) |
+| **Identity** | HALO protocol (ECDSA P-256 keyring) |
+| **E2EE** | Yes, via ECHO protocol |
+| **CRDTs** | Yjs / Automerge via adapter |
+| **Data model** | Graph-based (spaces, objects) |
 | **Sync** | P2P via WebRTC |
-| **Sprachen** | TypeScript |
-| **Keys** | ECDSA P-256 (Web Crypto Standard) — NICHT Ed25519 |
+| **Languages** | TypeScript |
+| **Keys** | ECDSA P-256 (Web Crypto standard) — NOT Ed25519 |
 
-#### Bewertung für Web of Trust (aktualisiert 2026-02-08)
+#### Assessment for Web of Trust (updated 2026-02-08)
 
 ```
-Vorteile:
-✅ Graph-Modell passt zu Web of Trust
-✅ Spaces-Konzept ähnlich unseren Gruppen
-✅ Produktionsreif
-✅ Gute TypeScript-Typen
-✅ Composer = vollständige App als Referenz
+Advantages:
++ Graph model fits Web of Trust
++ Spaces concept similar to our groups
++ Production-ready
++ Good TypeScript types
++ Composer = complete app as reference
 
-Nachteile:
-❌ ECDSA P-256 Keyring — inkompatibel mit unserem Ed25519/did:key!
-❌ Kein React Native Support (Web-only)
-❌ Custom DID Format (DXOS-spezifisch, nicht W3C-kompatibel)
-⚠️ Kein BIP39/Mnemonic-Support
-⚠️ Komplexes eigenes Protokoll (HALO + ECHO)
-⚠️ Großes Bundle (~2MB)
+Disadvantages:
+- ECDSA P-256 keyring — incompatible with our Ed25519/did:key!
+- No React Native support (Web-only)
+- Custom DID format (DXOS-specific, not W3C-compatible)
+- No BIP39/mnemonic support
+- Complex own protocol (HALO + ECHO)
+- Large bundle (~2MB)
 ```
 
-**Empfehlung:** ❌ Eliminiert. P-256 vs. Ed25519 ist ein fundamentaler Krypto-Mismatch. Kein React Native. Konzepte (Spaces, HALO) interessant als Inspiration.
+**Recommendation:** Eliminated. P-256 vs. Ed25519 is a fundamental crypto mismatch. No React Native. Concepts (spaces, HALO) interesting as inspiration.
 
 ---
 
@@ -517,36 +545,36 @@ Nachteile:
 > Decentralized group key management
 
 **Website:** https://www.inkandswitch.com/keyhive/
-**GitHub:** https://github.com/inkandswitch/keyhive (177 ⭐)
-**Status:** Pre-Alpha (Forschung)
+**GitHub:** https://github.com/inkandswitch/keyhive (177 stars)
+**Status:** Pre-Alpha (research)
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Fokus** | Gruppenkey-Management für Local-First |
-| **Protokoll** | BeeKEM (basiert auf TreeKEM) |
-| **Features** | Forward Secrecy, Post-Compromise Security |
-| **Skalierung** | Logarithmisch (tausende Members) |
-| **Sprachen** | Rust + WASM |
+| **Focus** | Group key management for local-first |
+| **Protocol** | BeeKEM (based on TreeKEM) |
+| **Features** | Forward secrecy, post-compromise security |
+| **Scaling** | Logarithmic (thousands of members) |
+| **Languages** | Rust + WASM |
 
-#### Bewertung für Web of Trust
+#### Assessment for Web of Trust
 
 ```
-Vorteile:
-✅ Löst genau das Gruppenkey-Problem
-✅ Von Ink & Switch (Automerge-Macher)
-✅ Capability-basiertes Access Control
-✅ Designed für CRDTs
+Advantages:
++ Solves exactly the group key problem
++ From Ink & Switch (makers of Automerge)
++ Capability-based access control
++ Designed for CRDTs
 
-Nachteile:
-❌ Pre-Alpha, nicht auditiert
-❌ Kein React Native
-⚠️ Nur Key Management, kein vollständiges Framework
-⚠️ API noch instabil
+Disadvantages:
+- Pre-Alpha, not audited
+- No React Native
+- Key management only, not a complete framework
+- API still unstable
 ```
 
-**Empfehlung:** Beobachten für Gruppen-Verschlüsselung. Könnte Evolu/Jazz ergänzen wenn stabil.
+**Recommendation:** Monitor for group encryption. Could complement Evolu/Jazz once stable.
 
 ---
 
@@ -556,50 +584,53 @@ Nachteile:
 
 **Website:** https://loro.dev/
 **GitHub:** https://github.com/loro-dev/loro
-**Status:** Produktiv
+**Status:** Production
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Fokus** | Performance-optimierte CRDTs |
-| **Datentypen** | Map, List, Text, MovableTree |
-| **Features** | Time Travel, Undo/Redo |
-| **Sprachen** | Rust, WASM, Swift |
-| **E2EE** | Nicht eingebaut |
+| **Focus** | Performance-optimized CRDTs |
+| **Data types** | Map, List, Text, MovableTree |
+| **Features** | Time travel, undo/redo |
+| **Languages** | Rust, WASM, Swift |
+| **E2EE** | Not built in |
 
-#### Bewertung für Web of Trust
+#### Assessment for Web of Trust
 
 ```
-Vorteile:
-✅ Beste Performance (Memory, CPU, Loading)
-✅ MovableTree für hierarchische Daten
-✅ Swift-Bindings für iOS
-✅ Aktive Entwicklung
+Advantages:
++ Best performance (memory, CPU, loading)
++ MovableTree for hierarchical data
++ Swift bindings for iOS
++ Active development
 
-Nachteile:
-❌ Kein E2EE (selbst bauen)
-❌ Kein DID
-⚠️ Nur CRDT-Engine, kein Sync
+Disadvantages:
+- No E2EE (build yourself)
+- No DID
+- CRDT engine only, no sync
 ```
 
-**Empfehlung:** Wenn wir CRDT-Engine selbst wählen, ist Loro der Performance-Champion.
+**Recommendation:** If we choose the CRDT engine ourselves, Loro is the performance champion.
 
 ---
 
-### Yjs & Automerge
+### Automerge + Yjs
 
-Klassische CRDT-Libraries, gut dokumentiert. Keine E2EE, kein DID.
+Classic CRDT libraries, well-documented. No E2EE, no DID.
 
-| Aspekt | Yjs | Automerge |
+| Aspect | Yjs | Automerge |
 |--------|-----|-----------|
-| **Performance** | Sehr schnell | Gut |
-| **Bundle Size** | ~50KB | ~200KB (WASM) |
-| **Community** | Sehr groß | Groß |
-| **Bindings** | Viele (Prosemirror, Monaco) | Weniger |
-| **React Native** | Ja | WASM nötig |
+| **Performance** | Very fast | Good |
+| **Bundle size** | ~69KB | ~1.7MB (WASM) |
+| **Community** | Very large | Large |
+| **Bindings** | Many (ProseMirror, Monaco) | Fewer |
+| **React Native** | Yes | WASM required |
+| **Mobile init** | ~85ms (163KB doc) | ~6.4s (163KB doc) |
 
-**Empfehlung:** Gute Basis wenn wir E2EE selbst bauen wollen. Automerge wird in der externen Analyse als pragmatische Wahl für CRDT-Achse empfohlen.
+**Current decision (2026-03-15):** Yjs is the default CRDT. See the update note at the top of this document.
+
+**Recommendation:** Good basis when building E2EE ourselves. The adapter architecture allows swapping between the two without touching business logic.
 
 ---
 
@@ -608,59 +639,59 @@ Klassische CRDT-Libraries, gut dokumentiert. Keine E2EE, kein DID.
 > Notes and Other Stuff Transmitted by Relays
 
 **Website:** https://nostr.com/
-**GitHub:** https://github.com/nostr-protocol/nips (~2.8k ⭐)
-**Status:** Produktiv (großes Ökosystem)
-**Evaluiert:** 2026-02-08
+**GitHub:** https://github.com/nostr-protocol/nips (~2.8k stars)
+**Status:** Production (large ecosystem)
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | secp256k1 Keypairs (wie Bitcoin), npub/nsec Encoding |
-| **E2EE** | NIP-44: XChaCha20 + HMAC-SHA256 (DM-Verschlüsselung) |
-| **Datenmodell** | Events (JSON): kind, content, tags, sig |
-| **Relay** | Dumb relays speichern Events, Client hat die Logik |
-| **Transport** | WebSocket zu Relays (kein P2P) |
-| **Sprachen** | JS/TS (nostr-tools), Rust, Go, Python, Swift |
-| **Ökosystem** | ~30+ Clients, ~100+ Relays, Zaps (Lightning), Marketplace |
+| **Identity** | secp256k1 keypairs (like Bitcoin), npub/nsec encoding |
+| **E2EE** | NIP-44: XChaCha20 + HMAC-SHA256 (DM encryption) |
+| **Data model** | Events (JSON): kind, content, tags, sig |
+| **Relay** | Dumb relays store events, client has the logic |
+| **Transport** | WebSocket to relays (not P2P) |
+| **Languages** | JS/TS (nostr-tools), Rust, Go, Python, Swift |
+| **Ecosystem** | 30+ clients, 100+ relays, Zaps (Lightning), marketplace |
 
-#### Architektur
+#### Architecture
 
 ```
 Client A ─── WebSocket ──→ Relay 1 ←── WebSocket ─── Client B
                            Relay 2
                            Relay 3
 
-Events sind:
-- Signiert (secp256k1)
-- Öffentlich oder NIP-44 verschlüsselt (DMs)
-- Gefiltert via Subscriptions (REQ/EVENT/CLOSE)
-- Broadcast (nicht targeted delivery)
+Events are:
+- Signed (secp256k1)
+- Public or NIP-44 encrypted (DMs)
+- Filtered via subscriptions (REQ/EVENT/CLOSE)
+- Broadcast (not targeted delivery)
 ```
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ Großes, aktives Ökosystem (Clients, Relays, Tools)
-✅ Einfaches Protokoll (JSON Events + WebSocket)
-✅ Self-hostable Relays (strfry, nostream)
-✅ Offline-Queue via Relays (Events werden gespeichert)
-✅ NIP-44 Verschlüsselung für DMs
-✅ Community-getrieben, kein Single Point of Failure
+Advantages:
++ Large, active ecosystem (clients, relays, tools)
++ Simple protocol (JSON events + WebSocket)
++ Self-hostable relays (strfry, nostream)
++ Offline queue via relays (events are stored)
++ NIP-44 encryption for DMs
++ Community-driven, no single point of failure
 
-Nachteile:
-❌ secp256k1 — NICHT Ed25519! Fundamentaler Krypto-Mismatch
-❌ Kein Item-Key-Konzept (pro-Empfänger Verschlüsselung fehlt)
-❌ Empfänger-Prinzip nicht abbildbar (Events gehören dem Sender)
-❌ Broadcast-Modell vs. selektive Sichtbarkeit (N von M)
-❌ Kein DID-Support (eigenes npub-Format)
-⚠️ Kein CRDT-Support (Events sind append-only, kein Merging)
-⚠️ Gruppen (NIP-29) sind einfache Channels, kein cryptographic group key
-⚠️ Relay-Trust problematisch (Relay kann Events zensieren/löschen)
+Disadvantages:
+- secp256k1 — NOT Ed25519! Fundamental crypto mismatch
+- No item-key concept (per-recipient encryption missing)
+- Recipient principle not representable (events belong to sender)
+- Broadcast model vs. selective visibility (N of M)
+- No DID support (own npub format)
+- No CRDT support (events are append-only, no merging)
+- Groups (NIP-29) are simple channels, no cryptographic group key
+- Relay trust problematic (relay can censor/delete events)
 ```
 
-**Empfehlung:** ❌ Eliminiert für WoT-Core. secp256k1 vs. Ed25519 ist unüberbrückbar ohne Key-Translation-Layer. Das Broadcast-Modell widerspricht unserem Empfänger-Prinzip fundamental. Nostr-Bridge als optionaler Export denkbar, aber nicht als Messaging-Backend.
+**Recommendation:** Eliminated for WoT core. secp256k1 vs. Ed25519 is unbridgeable without a key translation layer. The broadcast model fundamentally contradicts our recipient principle. A Nostr bridge as optional export is conceivable, but not as messaging backend.
 
 ---
 
@@ -670,23 +701,23 @@ Nachteile:
 
 **Website:** https://matrix.org/
 **Spec:** https://spec.matrix.org/
-**Status:** Produktiv (Element, Beeper, Bundeswehr)
-**Evaluiert:** 2026-02-08
+**Status:** Production (Element, Beeper, Bundeswehr)
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | @user:homeserver.org (föderiert) |
-| **E2EE** | Megolm (Gruppen) + Olm/Vodozemac (1:1), Curve25519 + Ed25519 |
-| **Datenmodell** | Rooms mit DAG von Events |
-| **Sync** | Federation zwischen Homeservern |
+| **Identity** | @user:homeserver.org (federated) |
+| **E2EE** | Megolm (groups) + Olm/Vodozemac (1:1), Curve25519 + Ed25519 |
+| **Data model** | Rooms with DAG of events |
+| **Sync** | Federation between homeservers |
 | **Transport** | HTTPS + optional WebSocket |
-| **Sprachen** | JS (matrix-js-sdk), Rust (matrix-rust-sdk/vodozemac) |
-| **Plattformen** | Web, iOS, Android, Desktop |
-| **Keys** | Curve25519 + Ed25519 (kompatibel!) |
+| **Languages** | JS (matrix-js-sdk), Rust (matrix-rust-sdk/vodozemac) |
+| **Platforms** | Web, iOS, Android, desktop |
+| **Keys** | Curve25519 + Ed25519 (compatible!) |
 
-#### Architektur
+#### Architecture
 
 ```
 Client A ──→ Homeserver A ←──Federation──→ Homeserver B ←── Client B
@@ -695,35 +726,35 @@ Client A ──→ Homeserver A ←──Federation──→ Homeserver B ←─
 
 E2EE:
 - Olm: 1:1 Double Ratchet (Signal-like)
-- Megolm: Gruppen-Verschlüsselung (effizient für N Empfänger)
-- Vodozemac: Rust-Implementierung von Olm/Megolm
-- Key Verification: Emoji/QR-Code Cross-Signing
+- Megolm: Group encryption (efficient for N recipients)
+- Vodozemac: Rust implementation of Olm/Megolm
+- Key verification: Emoji/QR code cross-signing
 ```
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ Ed25519 + Curve25519 — kompatibel mit unserem Krypto-Stack!
-✅ Bewährte E2EE (Megolm für Gruppen, auditiert)
-✅ Rooms = natürliches Modell für Gruppen/Spaces
-✅ Federation = kein Single Point of Failure
-✅ Offline-Queue via Homeserver (Nachrichten warten auf Empfänger)
-✅ Bridges zu anderen Protokollen (IRC, Slack, Signal, XMPP)
-✅ Riesiges Ökosystem (Element, Beeper, 100M+ User)
-✅ Self-hostable (Synapse, Conduit, Dendrite)
-✅ matrix-rust-sdk + vodozemac = performant und auditiert
+Advantages:
++ Ed25519 + Curve25519 — compatible with our crypto stack!
++ Proven E2EE (Megolm for groups, audited)
++ Rooms = natural model for groups/spaces
++ Federation = no single point of failure
++ Offline queue via homeserver (messages wait for recipient)
++ Bridges to other protocols (IRC, Slack, Signal, XMPP)
++ Huge ecosystem (Element, Beeper, 100M+ users)
++ Self-hostable (Synapse, Conduit, Dendrite)
++ matrix-rust-sdk + vodozemac = performant and audited
 
-Nachteile:
-⚠️ Homeserver nötig (kein echtes P2P, aber self-hostable)
-⚠️ Kein DID-Support nativ (Matrix-IDs sind @user:server)
-⚠️ Matrix-IDs sind server-gebunden (Migration aufwändig)
-⚠️ Overhead für einfache Nachrichten (Room-Erstellung, Sync)
-⚠️ Föderationsprotokoll komplex (Server-zu-Server)
-⚠️ matrix-js-sdk ist groß (~500KB+)
+Disadvantages:
+- Homeserver required (not true P2P, but self-hostable)
+- No native DID support (Matrix IDs are @user:server)
+- Matrix IDs are server-bound (migration complex)
+- Overhead for simple messages (room creation, sync)
+- Federation protocol complex (server-to-server)
+- matrix-js-sdk is large (~500KB+)
 ```
 
-**Empfehlung:** Stärkster Kandidat für Messaging-Achse. Ed25519-Kompatibilität, bewährte Gruppen-E2EE (Megolm), und Offline-Queue via Homeserver. Für POC möglicherweise Overkill — minimaler WebSocket-Relay als Vorstufe, mit Matrix als Ziel für Produktion. Empfohlen in externer Analyse als pragmatische Wahl.
+**Recommendation:** Strongest candidate for the messaging axis. Ed25519 compatibility, proven group E2EE (Megolm), and offline queue via homeserver. For POC potentially overkill — minimal WebSocket relay as a stepping stone, with Matrix as the production target.
 
 ---
 
@@ -732,82 +763,82 @@ Nachteile:
 > DID-based secure messaging
 
 **Spec:** https://identity.foundation/didcomm-messaging/spec/v2.1/
-**Status:** Spec v2.1 fertig (DIF), JS-Libs veraltet
-**Evaluiert:** 2026-02-08
+**Status:** Spec v2.1 done (DIF), JS libs stale
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | did:key, did:web, did:peer (DID-native!) |
+| **Identity** | did:key, did:web, did:peer (DID-native!) |
 | **E2EE** | JWE (JSON Web Encryption), ECDH-ES+A256KW |
-| **Datenmodell** | Structured Messages mit Protocols |
-| **Transport** | Agnostisch (HTTP, WebSocket, Bluetooth, QR-Code) |
-| **Mediator** | Optional: Message-Relay für Offline-Delivery |
-| **Sprachen** | Rust (didcomm-rs), JS (didcomm-node), Kotlin, Swift |
-| **JS SDK** | `didcomm` npm — letzte Updates 2023, TypeScript aber stale |
+| **Data model** | Structured messages with protocols |
+| **Transport** | Agnostic (HTTP, WebSocket, Bluetooth, QR code) |
+| **Mediator** | Optional: message relay for offline delivery |
+| **Languages** | Rust (didcomm-rs), JS (didcomm-node), Kotlin, Swift |
+| **JS SDK** | `didcomm` npm — last updates 2023, TypeScript but stale |
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ DID-native! Genau unser Identity-Modell (did:key + Ed25519)
-✅ Transport-agnostisch (HTTP, WS, BLE, QR — passt zu unserem Offline-Vision)
-✅ Spec ist ausgereift (v2.1, DIF-Standard)
-✅ Structured Protocols (Trust Ping, Issue Credential, Present Proof)
-✅ Perfect fit für Verification/Attestation Delivery
+Advantages:
++ DID-native! Exactly our identity model (did:key + Ed25519)
++ Transport-agnostic (HTTP, WS, BLE, QR — fits our offline vision)
++ Spec is mature (v2.1, DIF standard)
++ Structured protocols (Trust Ping, Issue Credential, Present Proof)
++ Perfect fit for verification/attestation delivery
 
-Nachteile:
-❌ JS-Libraries sind stale (npm didcomm: 2023, wenige Downloads)
-❌ Mediator-Infrastruktur kaum vorhanden (müssten wir selbst bauen)
-❌ Keine Gruppen-Konzepte in der Spec
-❌ Kein Ökosystem für "einfache" Messaging-Use-Cases
-⚠️ JWE-Overhead für simple Nachrichten
-⚠️ DID-Resolver-Dependency (did:peer ist komplex)
+Disadvantages:
+- JS libraries are stale (npm didcomm: 2023, few downloads)
+- Mediator infrastructure barely exists (would have to build ourselves)
+- No group concepts in the spec
+- No ecosystem for "simple" messaging use cases
+- JWE overhead for simple messages
+- DID resolver dependency (did:peer is complex)
 ```
 
-**Empfehlung:** ❌ Eliminiert als Messaging-Backend wegen staler JS-Libs und fehlendem Mediator-Ökosystem. ABER: DIDComm Message-Format als Inspiration für unser eigenes Messaging-Protokoll — die Structured Protocols (Issue Credential, Present Proof) sind direkt relevant für Attestation-Delivery.
+**Recommendation:** Eliminated as messaging backend due to stale JS libs and missing mediator ecosystem. BUT: DIDComm message format as inspiration for our own messaging protocol — the structured protocols (Issue Credential, Present Proof) are directly relevant for attestation delivery.
 
 ---
 
 ### ActivityPub
 
-> W3C Standard for decentralized social networking
+> W3C standard for decentralized social networking
 
 **Spec:** https://www.w3.org/TR/activitypub/
 **Status:** W3C Recommendation (Mastodon, Pixelfed, Lemmy)
-**Evaluiert:** 2026-02-08
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | @user@server.org (föderiert, WebFinger) |
-| **E2EE** | ❌ Nicht eingebaut! |
-| **Datenmodell** | ActivityStreams 2.0 (JSON-LD) |
-| **Sync** | Server-to-Server Federation (Inbox/Outbox) |
-| **Transport** | HTTPS (Server nötig!) |
-| **Offline** | ❌ Server-abhängig |
-| **Sprachen** | Diverse (Server-Implementierungen) |
+| **Identity** | @user@server.org (federated, WebFinger) |
+| **E2EE** | Not built in |
+| **Data model** | ActivityStreams 2.0 (JSON-LD) |
+| **Sync** | Server-to-server federation (inbox/outbox) |
+| **Transport** | HTTPS (server required!) |
+| **Offline** | Server-dependent |
+| **Languages** | Various (server implementations) |
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ W3C Standard (stabil, weit verbreitet)
-✅ Riesiges Ökosystem (Mastodon, 10M+ User)
-✅ Inbox/Outbox Modell ähnlich unserem Empfänger-Prinzip
-✅ ActivityStreams 2.0 = gut definiertes Vokabular
+Advantages:
++ W3C standard (stable, widely adopted)
++ Huge ecosystem (Mastodon, 10M+ users)
++ Inbox/outbox model similar to our recipient principle
++ ActivityStreams 2.0 = well-defined vocabulary
 
-Nachteile:
-❌ KEINE E2E-Verschlüsselung (Knockout-Kriterium!)
-❌ Server-Pflicht (kein Offline-First, kein Local-First)
-❌ Kein DID-Support (WebFinger + HTTP-Signaturen)
-❌ Kein CRDT (Server-autoritativ)
-❌ JSON-LD Overhead (Komplex, schwer zu debuggen)
+Disadvantages:
+- NO E2E encryption (knockout criterion!)
+- Server required (no offline-first, no local-first)
+- No DID support (WebFinger + HTTP signatures)
+- No CRDT (server-authoritative)
+- JSON-LD overhead (complex, hard to debug)
 ```
 
-**Empfehlung:** ❌ Eliminiert. Keine E2EE und Server-Pflicht widersprechen unseren Grundprinzipien. ActivityStreams 2.0 Vokabular als Inspiration für unser Datenmodell denkbar, aber nicht als Protokoll.
+**Recommendation:** Eliminated. No E2EE and server requirement contradict our core principles. ActivityStreams 2.0 vocabulary as inspiration for our data model is conceivable, but not as a protocol.
 
 ---
 
@@ -816,43 +847,43 @@ Nachteile:
 > Build on a more open internet (n0-computer)
 
 **Website:** https://iroh.computer/
-**GitHub:** https://github.com/n0-computer/iroh (~2.5k ⭐)
-**Status:** Beta (aktive Entwicklung)
-**Evaluiert:** 2026-02-08
+**GitHub:** https://github.com/n0-computer/iroh (~2.5k stars)
+**Status:** Beta (active development)
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Fokus** | Networking Layer (Connections + Data Transfer) |
-| **Transport** | QUIC + NAT Traversal (Hole Punching) |
-| **Identität** | Ed25519 Node-IDs |
-| **E2EE** | ✅ QUIC = mandatory TLS 1.3 |
-| **Datenmodell** | Blobs + Hash-verified content (IPFS-inspiriert) |
-| **CRDTs** | ❌ Nicht eingebaut |
-| **Messaging** | ❌ Nicht eingebaut |
-| **Sprachen** | Rust, mit FFI-Bindings (Python, Swift, Kotlin) |
-| **JS SDK** | ❌ Kein nativer JS-Support (WASM theoretisch möglich) |
+| **Focus** | Networking layer (connections + data transfer) |
+| **Transport** | QUIC + NAT traversal (hole punching) |
+| **Identity** | Ed25519 node IDs |
+| **E2EE** | QUIC = mandatory TLS 1.3 |
+| **Data model** | Blobs + hash-verified content (IPFS-inspired) |
+| **CRDTs** | Not built in |
+| **Messaging** | Not built in |
+| **Languages** | Rust, with FFI bindings (Python, Swift, Kotlin) |
+| **JS SDK** | No native JS support (WASM theoretically possible) |
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ Exzellentes NAT Traversal (Hole Punching funktioniert zuverlässig)
-✅ Ed25519 Node-IDs (kompatibel)
-✅ QUIC = performant und sicher
-✅ Content-addressed Blobs (gut für File-Sharing)
-✅ Aktive Entwicklung, gute Dokumentation
+Advantages:
++ Excellent NAT traversal (hole punching works reliably)
++ Ed25519 node IDs (compatible)
++ QUIC = performant and secure
++ Content-addressed blobs (good for file sharing)
++ Active development, good documentation
 
-Nachteile:
-❌ NUR Networking Layer — kein App-Framework!
-❌ Kein JS/Web SDK
-❌ Kein CRDT, kein Messaging, kein Storage
-❌ Müssten alles darauf selbst bauen
-⚠️ Rust-only (FFI für Mobile möglich, aber kein Web)
+Disadvantages:
+- ONLY a networking layer — not an app framework!
+- No JS/Web SDK
+- No CRDT, no messaging, no storage
+- Would have to build everything on top of it ourselves
+- Rust-only (FFI for mobile possible, but not for web)
 ```
 
-**Empfehlung:** ❌ Eliminiert als eigenständige Lösung — Iroh ist ein Networking-Layer, kein App-Framework. Könnte als Transport-Schicht unter einem CRDT-Framework dienen (p2panda nutzt Iroh intern), aber für unseren TypeScript-Stack nicht direkt nutzbar.
+**Recommendation:** Eliminated as a standalone solution — Iroh is a networking layer, not an app framework. Could serve as a transport layer under a CRDT framework (p2panda uses Iroh internally), but not directly usable in our TypeScript stack.
 
 ---
 
@@ -862,153 +893,155 @@ Nachteile:
 > Earthstar: TypeScript implementation of Willow concepts
 
 **Website:** https://willowprotocol.org/
-**Earthstar GitHub:** https://github.com/earthstar-project/earthstar (~640 ⭐)
-**Status:** Willow = Spec Beta, Earthstar = TypeScript (stagnierend)
-**Evaluiert:** 2026-02-08
+**Earthstar GitHub:** https://github.com/earthstar-project/earthstar (~640 stars)
+**Status:** Willow = spec beta, Earthstar = TypeScript (stagnating)
+**Evaluated:** 2026-02-08
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Identität** | Ed25519 Keypairs (Willow Namespaces) |
-| **E2EE** | ✅ Meadowcap (Capability-basiert!) |
-| **Datenmodell** | 3D Entries: (Namespace, Subspace, Path) + Payload |
+| **Identity** | Ed25519 keypairs (Willow namespaces) |
+| **E2EE** | Meadowcap (capability-based!) |
+| **Data model** | 3D entries: (namespace, subspace, path) + payload |
 | **Sync** | WGPS (Willow General Purpose Sync) — Private Area Intersection |
-| **Capabilities** | Meadowcap: Delegierbare, einschränkbare Capabilities (wie UCAN!) |
-| **Sprachen** | Willow: Rust (Aljoscha Meyer). Earthstar: TypeScript (gwil) |
-| **Plattformen** | Earthstar: Deno + Node + Browser |
+| **Capabilities** | Meadowcap: delegatable, attenuatable capabilities (like UCAN!) |
+| **Languages** | Willow: Rust (Aljoscha Meyer). Earthstar: TypeScript (gwil) |
+| **Platforms** | Earthstar: Deno + Node + Browser |
 
 #### Meadowcap Capabilities
 
 ```
-Meadowcap ist das Capability-System von Willow:
+Meadowcap is the capability system of Willow:
 
-- Capabilities = signierte Tokens die Zugriff auf einen 3D-Bereich gewähren
-- Delegation: Alice gibt Bob ein eingeschränktes Token weiter
-- Restriction: Jede Delegation kann den Bereich NUR einschränken, nie erweitern
-- Read + Write Capabilities separat
-- Ähnlich UCAN, aber in die Sync-Engine integriert
+- Capabilities = signed tokens granting access to a 3D region
+- Delegation: Alice passes Bob a restricted token
+- Restriction: each delegation can ONLY restrict the region, never expand it
+- Read + Write capabilities separate
+- Similar to UCAN, but integrated into the sync engine
 
-Beispiel:
-Alice hat: write(namespace=group1, path=/*, subspace=*)
-Alice delegiert: write(namespace=group1, path=/events/*, subspace=bob)
-  → Bob kann nur Events in seinem Subspace schreiben
+Example:
+Alice has: write(namespace=group1, path=/*, subspace=*)
+Alice delegates: write(namespace=group1, path=/events/*, subspace=bob)
+  → Bob can only write events in his subspace
 ```
 
-#### Bewertung für Web of Trust (2026-02-08)
+#### Assessment for Web of Trust (2026-02-08)
 
 ```
-Vorteile:
-✅ Meadowcap = genau das Capability-Modell das wir brauchen!
-✅ Ed25519 Keys (kompatibel)
-✅ 3D-Datenmodell ideal für Spaces/Modules (Namespace=Group, Path=Module)
-✅ Private Area Intersection = datenschutzfreundlicher Sync
-✅ Architektonisch der eleganteste Ansatz
-✅ Earthstar existiert als TypeScript-Implementierung
+Advantages:
++ Meadowcap = exactly the capability model we need!
++ Ed25519 keys (compatible)
++ 3D data model ideal for spaces/modules (namespace=group, path=module)
++ Private area intersection = privacy-friendly sync
++ Architecturally the most elegant approach
++ Earthstar exists as a TypeScript implementation
 
-Nachteile:
-❌ Earthstar stagniert (letzte Commits Monate alt, gwil einziger Dev)
-❌ Willow Rust-Implementierung noch nicht feature-complete
-❌ Winzige Community (~640 Stars Earthstar, kaum Nutzer)
-⚠️ Kein React-Integration, keine UI-Bindings
-⚠️ Kein E2EE für Payload-Content (nur Access Control via Meadowcap)
-⚠️ Keine Gruppen-Verschlüsselung (Meadowcap ≠ Encryption)
-⚠️ Sync-Protokoll komplex und noch nicht battle-tested
+Disadvantages:
+- Earthstar stagnating (last commits months ago, gwil only dev)
+- Willow Rust implementation not yet feature-complete
+- Tiny community (~640 stars Earthstar, barely any users)
+- No React integration, no UI bindings
+- No E2EE for payload content (only access control via Meadowcap)
+- No group encryption (Meadowcap ≠ encryption)
+- Sync protocol complex and not yet battle-tested
 ```
 
-**Empfehlung:** Architektonisch am elegantesten (Meadowcap ≈ UCAN + Sync). Aber zu unreif und zu kleine Community für Produktion. Meadowcap als Inspiration für unseren AuthorizationAdapter. Langfristig beobachten — falls Willow Rust-Implementierung reift und WASM-Bindings bekommt, ist es der natürlichste Fit.
+**Recommendation:** Architecturally the most elegant (Meadowcap ≈ UCAN + sync). But too immature and too small a community for production. Meadowcap as inspiration for our AuthorizationAdapter. Monitor long-term — if the Willow Rust implementation matures and gets WASM bindings, it is the most natural fit.
+
+---
 
 ### Subduction
 
 > P2P sync protocol for efficient synchronization of encrypted, partitioned data
 
-**GitHub:** <https://github.com/inkandswitch/subduction> (~35 Stars)
-**Entwickler:** Ink & Switch (die Macher von Automerge)
+**GitHub:** https://github.com/inkandswitch/subduction (~35 stars)
+**Developer:** Ink & Switch (makers of Automerge)
 **Status:** Pre-Alpha — "DO NOT use for production use cases"
-**Evaluiert:** 2026-03-07
+**Evaluated:** 2026-03-07
 
-#### Eigenschaften
+#### Properties
 
-| Aspekt | Details |
+| Aspect | Details |
 |--------|---------|
-| **Kernkonzept** | Sedimentree: hierarchische Datenstruktur für verschlüsselte Partitionen |
-| **Sync** | Hash-basiertes Diff auf verschlüsselten Daten (Server entschlüsselt nie) |
-| **Automerge** | Direkte Integration via `automerge_sedimentree` Crate |
-| **Transporte** | WebSocket, HTTP Long-Poll, Iroh (QUIC) |
-| **Sprache** | Rust (93.6%) + WASM-Bindings für Browser/Node.js |
-| **E2EE** | Native — Sync funktioniert auf Ciphertext-Ebene |
-| **Crypto** | `subduction_crypto` Crate (signierte Payloads) |
+| **Core concept** | Sedimentree: hierarchical data structure for encrypted partitions |
+| **Sync** | Hash-based diff on encrypted data (server never decrypts) |
+| **Automerge** | Direct integration via `automerge_sedimentree` crate |
+| **Transports** | WebSocket, HTTP long-poll, Iroh (QUIC) |
+| **Language** | Rust (93.6%) + WASM bindings for browser/Node.js |
+| **E2EE** | Native — sync operates at ciphertext level |
+| **Crypto** | `subduction_crypto` crate (signed payloads) |
 
-#### Vergleich mit unserem Ansatz
+#### Comparison with Our Approach
 
-| Aspekt | WoT (aktuell) | Subduction |
+| Aspect | WoT (current) | Subduction |
 |--------|---------------|------------|
-| Server sieht Klartext? | Nein (AES-256-GCM) | Nein (Sedimentree) |
-| Verschlüsselung wo? | Client | Client |
-| Merge wo? | Client (Automerge) | Client (Automerge) |
-| Sync-Effizienz | Full-Doc-Snapshot bei requestSync | Hash-basiertes Diff auf Ciphertext |
-| Sprache | TypeScript | Rust + WASM |
+| Server sees plaintext? | No (AES-256-GCM) | No (Sedimentree) |
+| Encryption where? | Client | Client |
+| Merge where? | Client (CRDT) | Client (Automerge) |
+| Sync efficiency | Full doc snapshot on requestSync | Hash-based diff on ciphertext |
+| Language | TypeScript | Rust + WASM |
 
-Der zentrale Unterschied: **Sedimentree** ermöglicht es, den Sync-Prozess selbst auf verschlüsselten Daten durchzuführen. Der Server kann effizient berechnen, welche Partitionen ein Peer braucht, ohne die Daten zu entschlüsseln. Bei unserem Ansatz muss der anfragende Client den ganzen Snapshot holen und lokal mergen.
+The key difference: **Sedimentree** allows the sync process itself to operate on encrypted data. The server can efficiently compute which partitions a peer needs without decrypting anything. With our approach the requesting client has to fetch the entire snapshot and merge locally.
 
-#### Bewertung für Web of Trust (2026-03-07)
+#### Assessment for Web of Trust (2026-03-07)
 
-Vorteile:
+Advantages:
 
-- Von Ink & Switch (Automerge-Macher) — Tiefstes Verständnis von CRDTs + E2EE
-- Sedimentree-Ansatz: Effizienterer Sync als Full-Doc-Snapshot
-- Direkte Automerge-Integration
-- Server bleibt ahnungslos (Zero-Knowledge Sync)
+- From Ink & Switch (Automerge makers) — deepest understanding of CRDTs + E2EE
+- Sedimentree approach: more efficient sync than full doc snapshot
+- Direct Automerge integration
+- Server remains oblivious (zero-knowledge sync)
 
-Nachteile:
+Disadvantages:
 
-- Sehr früh (v0.6.0, 35 Stars, "DO NOT use for production")
-- Rust + WASM — Integration in unser TypeScript-Ökosystem aufwändig
-- Instabile API
-- Kleine Community, wenig Dokumentation
+- Very early (v0.6.0, 35 stars, "DO NOT use for production")
+- Rust + WASM — integration into our TypeScript ecosystem expensive
+- Unstable API
+- Small community, little documentation
 
-**Empfehlung:** Beobachten. Subduction löst das gleiche Problem wie unser EncryptedSyncService + requestSync, aber effizienter. Für unseren aktuellen Stand (kleine Docs, wenige User) ist unser DIY-Ansatz ausreichend. Wenn Subduction reift und stabile WASM-Bindings bietet, könnte es unseren Sync-Layer ersetzen — als Drop-in unter dem ReplicationAdapter.
+**Recommendation:** Monitor. Subduction solves the same problem as our EncryptedSyncService + requestSync, but more efficiently. For our current scale (small docs, few users) our DIY approach is sufficient. If Subduction matures and offers stable WASM bindings, it could replace our sync layer — as a drop-in under the ReplicationAdapter.
 
 ---
 
-## Warum haben diese Frameworks keinen DID-Support?
+## Why Do These Frameworks Lack DID Support?
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  1. Unterschiedliche Design-Philosophien                    │
-│     • Local-First: Geschlossenes Ökosystem                 │
-│     • DIDs: Universelle Interoperabilität                  │
+│  1. Different design philosophies                           │
+│     • Local-first: closed ecosystem                        │
+│     • DIDs: universal interoperability                     │
 │                                                             │
-│  2. DIDs sind "zu viel" für ihren Usecase                  │
-│     • Sie brauchen nur Public Key für Crypto                │
-│     • DID Document ist Overhead                             │
+│  2. DIDs are "too much" for their use case                 │
+│     • They only need a public key for crypto               │
+│     • DID document is overhead                              │
 │                                                             │
-│  3. Resolver-Problem                                        │
-│     • did:web braucht HTTP (nicht offline-first!)          │
-│     • did:key ist self-describing, aber warum DID-String?  │
+│  3. Resolver problem                                        │
+│     • did:web requires HTTP (not offline-first!)           │
+│     • did:key is self-describing, but why a DID string?    │
 │                                                             │
-│  4. Historische Entwicklung                                 │
-│     • CRDTs und DIDs entwickelten sich parallel            │
-│     • Welten treffen sich erst jetzt                        │
+│  4. Historical development                                  │
+│     • CRDTs and DIDs evolved in parallel                   │
+│     • The worlds are only meeting now                       │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Unsere Lösung: DID-Layer über Framework
+### Our Solution: DID Layer Over Framework
 
 ```typescript
-// Framework speichert Bytes, wir interpretieren als DID
+// Framework stores bytes, we interpret as DID
 
 class WotIdentity {
   private keyPair: KeyPair;
 
-  // Für externe Systeme: DID
+  // For external systems: DID
   get did(): string {
     return publicKeyToDid(this.keyPair.publicKey);
   }
 
-  // Für Framework-interne Nutzung
+  // For framework-internal use
   get publicKey(): Uint8Array {
     return this.keyPair.publicKey;
   }
@@ -1017,14 +1050,14 @@ class WotIdentity {
 
 ---
 
-## Framework-Agnostische Architektur (v2)
+## Framework-Agnostic Architecture (v2)
 
-> Siehe [adapter-architektur-v2.md](adapter-architektur-v2.md) für die vollständige Adapter-Spezifikation.
+> See [adapter-architecture-v2.md](adapter-architecture-v2.md) for the complete adapter specification.
 
-### Schichten-Modell (aktualisiert 2026-02-08)
+### Layer Model (updated 2026-02-08)
 
-Die v1-Architektur hatte 2 Adapter (Storage + Crypto). Nach der Erkenntnis, dass Messaging
-und CRDT-Replication zwei orthogonale Achsen sind, erweitern wir auf 6 Adapter:
+The v1 architecture had 2 adapters (Storage + Crypto). After recognizing that Messaging
+and CRDT Replication are two orthogonal axes, we expanded to 6 adapters:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -1035,264 +1068,255 @@ und CRDT-Replication zwei orthogonale Achsen sind, erweitern wir auf 6 Adapter:
 │  │              WoT Domain Layer                        │   │
 │  │  • Identity, Contact, Verification, Attestation     │   │
 │  │  • Item, Group, AutoGroup                           │   │
-│  │  • Business Logic (Empfänger-Prinzip)               │   │
+│  │  • Business Logic (Recipient Principle)             │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                           │                                 │
 │                           ▼                                 │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │           6 WoT Adapter Interfaces                  │   │
 │  │                                                     │   │
-│  │  Bestehend (v1, implementiert):                     │   │
-│  │  • StorageAdapter       (lokale Persistenz)         │   │
-│  │  • ReactiveStorageAdapter (Live Queries)            │   │
-│  │  • CryptoAdapter        (Signing/Encryption/DID)    │   │
+│  │  Existing (v1, implemented):                        │   │
+│  │  • StorageAdapter       (local persistence)         │   │
+│  │  • ReactiveStorageAdapter (live queries)            │   │
+│  │  • CryptoAdapter        (signing/encryption/DID)    │   │
 │  │                                                     │   │
-│  │  Neu (v2):                                          │   │
-│  │  • MessagingAdapter     (Cross-User Delivery)       │   │
-│  │  • ReplicationAdapter   (CRDT Sync + Spaces)        │   │
-│  │  • AuthorizationAdapter (UCAN-like Capabilities)    │   │
+│  │  New (v2):                                          │   │
+│  │  • MessagingAdapter     (cross-user delivery)       │   │
+│  │  • ReplicationAdapter   (CRDT sync + spaces)        │   │
+│  │  • AuthorizationAdapter (UCAN-like capabilities)    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                           │                                 │
 │     ┌─────────┬───────────┼───────────┬─────────┐         │
 │     ▼         ▼           ▼           ▼         ▼         │
 │  ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐      │
-│  │Evolu  │ │WebSock│ │Auto-  │ │Matrix │ │Custom │      │
+│  │ Yjs   │ │WebSock│ │Auto-  │ │Matrix │ │Custom │      │
 │  │Storage│ │Relay  │ │merge  │ │Client │ │UCAN   │      │
 │  └───────┘ └───────┘ └───────┘ └───────┘ └───────┘      │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Drei Sharing-Patterns
+### Three Sharing Patterns
 
-Die Architektur muss drei fundamental verschiedene Sharing-Patterns unterstützen:
+The architecture must support three fundamentally different sharing patterns:
 
 ```
-1. GROUP SPACES (Kanban, Kalender, Karte)
-   ├── Mechanismus: ReplicationAdapter (CRDT Sync)
-   ├── Verschlüsselung: Group Key (rotiert bei Member-Änderung)
-   ├── Alle Members sehen alle Daten im Space
-   └── Beispiel: Kanban-Board für WG → alle sehen alle Tasks
+1. GROUP SPACES (Kanban, calendar, map)
+   ├── Mechanism: ReplicationAdapter (CRDT sync)
+   ├── Encryption: Group key (rotated on member change)
+   ├── All members see all data in the space
+   └── Example: Kanban board for a flat share → everyone sees all tasks
 
-2. SELECTIVE SHARING (Event für 3 von 10 Kontakten)
-   ├── Mechanismus: MessagingAdapter (Item-Key Delivery)
-   ├── Verschlüsselung: Item-Key pro Item, encrypted per Recipient
-   ├── Nur ausgewählte Empfänger können entschlüsseln
-   └── Beispiel: Kalender-Event nur für Anna, Bob, Carl
+2. SELECTIVE SHARING (event for 3 of 10 contacts)
+   ├── Mechanism: MessagingAdapter (item-key delivery)
+   ├── Encryption: Item key per item, encrypted per recipient
+   ├── Only selected recipients can decrypt
+   └── Example: Calendar event only for Anna, Bob, Carl
 
-3. 1:1 DELIVERY (Attestation, Verification)
-   ├── Mechanismus: MessagingAdapter (Fire-and-forget)
-   ├── Verschlüsselung: E2EE mit Empfänger-PublicKey
-   ├── Empfänger-Prinzip: gespeichert beim Empfänger
-   └── Beispiel: "Anton attestiert Bob: Zuverlässig"
+3. 1:1 DELIVERY (attestation, verification)
+   ├── Mechanism: MessagingAdapter (fire-and-forget)
+   ├── Encryption: E2EE with recipient public key
+   ├── Recipient principle: stored at the recipient
+   └── Example: "Anton attests Bob: reliable"
 ```
 
-### Adapter-Interfaces (Übersicht)
+### Adapter Interfaces (Overview)
 
-Die bestehenden v1-Interfaces (StorageAdapter, ReactiveStorageAdapter, CryptoAdapter)
-bleiben unverändert. Die drei neuen v2-Interfaces werden in
-[adapter-architektur-v2.md](adapter-architektur-v2.md) detailliert spezifiziert.
+The existing v1 interfaces (StorageAdapter, ReactiveStorageAdapter, CryptoAdapter)
+remain unchanged. The three new v2 interfaces are specified in detail in
+[adapter-architecture-v2.md](adapter-architecture-v2.md).
 
 ---
 
-## Anforderungs-Matrix (v2)
+## Requirements Matrix (v2)
 
-Abgleich der WoT-Anforderungen mit allen evaluierten Kandidaten:
+Mapping of WoT requirements against all evaluated candidates:
 
-### CRDT/Sync-Achse
+### CRDT/Sync Axis
 
-| Anforderung | Evolu | Automerge | Yjs | Jazz | p2panda |
+| Requirement | Evolu | Automerge | Yjs | Jazz | p2panda |
 |-------------|-------|-----------|-----|------|---------|
-| Custom Keys (BIP39 → Ed25519) | ✅ | ❌ Selbst | ❌ Selbst | ❌ | ✅ |
-| E2EE mandatory | ✅ | ❌ Selbst | ❌ Selbst | ✅ | ✅ |
-| React/React Native | ✅ | ⚠️ WASM | ✅ | ✅ | ❌ |
-| Multi-Device Sync | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Cross-User Sync (Spaces) | ❌ | ✅ | ✅ | ✅ Groups | ✅ |
-| Offline-First | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Produktionsreife | ✅ | ✅ | ✅ | ⚠️ Beta | ❌ |
+| Custom keys (BIP39 → Ed25519) | Yes | Self-build | Self-build | No | Yes |
+| E2EE mandatory | Yes | Self-build | Self-build | Yes | Yes |
+| React/React Native | Yes | WASM | Yes | Yes | No |
+| Multi-device sync | Yes | Yes | Yes | Yes | Yes |
+| Cross-user sync (spaces) | No | Yes | Yes | Yes (groups) | Yes |
+| Offline-first | Yes | Yes | Yes | Yes | Yes |
+| Production maturity | Yes | Yes | Yes | Beta | No |
 
-### Messaging-Achse
+### Messaging Axis
 
-| Anforderung | Matrix | Nostr | DIDComm | Custom WS |
+| Requirement | Matrix | Nostr | DIDComm | Custom WS |
 |-------------|--------|-------|---------|-----------|
-| Ed25519-kompatibel | ✅ | ❌ secp256k1 | ✅ did:key | ✅ |
-| E2EE (1:1) | ✅ Olm | ✅ NIP-44 | ✅ JWE | ✅ Selbst |
-| E2EE (Gruppen) | ✅ Megolm | ❌ | ❌ | ❌ Selbst |
-| Offline-Queue | ✅ Homeserver | ✅ Relays | ⚠️ Mediator | ✅ Server |
-| DID-Addressing | ❌ @user:server | ❌ npub | ✅ | ✅ |
-| Item-Key Delivery | ❌ Selbst | ❌ | ❌ | ✅ |
-| Empfänger-Prinzip | ⚠️ Room-Modell | ❌ Sender-Events | ✅ | ✅ |
-| Self-hostable | ✅ | ✅ | ⚠️ | ✅ |
-| JS SDK Qualität | ⚠️ Groß | ✅ nostr-tools | ❌ Stale | ✅ |
+| Ed25519-compatible | Yes | No (secp256k1) | Yes (did:key) | Yes |
+| E2EE (1:1) | Yes (Olm) | Yes (NIP-44) | Yes (JWE) | Yes (self-built) |
+| E2EE (groups) | Yes (Megolm) | No | No | No (self-built) |
+| Offline queue | Yes (homeserver) | Yes (relays) | Mediator | Yes (server) |
+| DID addressing | No (@user:server) | No (npub) | Yes | Yes |
+| Item-key delivery | Self-built | No | No | Yes |
+| Recipient principle | Room model | Sender events | Yes | Yes |
+| Self-hostable | Yes | Yes | Partial | Yes |
+| JS SDK quality | Large | Good (nostr-tools) | Stale | Yes |
 
-### WoT-spezifische Anforderungen
+### WoT-Specific Requirements
 
-| Anforderung | Bester Kandidat | Anmerkung |
-|-------------|----------------|-----------|
-| Empfänger-Prinzip | Custom WS / DIDComm | Kein Framework bildet das nativ ab |
-| Item-Key-Modell (AES per Item, encrypted per Recipient) | Eigene Implementierung | CryptoAdapter hat die Primitives |
-| Selektive Sichtbarkeit (N von M) | Eigene Implementierung | Item-Key + MessagingAdapter |
-| UCAN-like Capabilities | Willow/Meadowcap (Inspiration) | Eigene Implementierung, inspiriert von Meadowcap |
-| Gruppen mit Admin + Quorum | Eigene Implementierung | Kein Framework hat demokratische Gruppen |
-| Social Recovery (Shamir) | Eigene Implementierung | Bereits in WotIdentity geplant |
+| Requirement | Best candidate | Note |
+|-------------|----------------|------|
+| Recipient principle | Custom WS / DIDComm | No framework natively represents this |
+| Item-key model (AES per item, encrypted per recipient) | Own implementation | CryptoAdapter has the primitives |
+| Selective visibility (N of M) | Own implementation | Item key + MessagingAdapter |
+| UCAN-like capabilities | Willow/Meadowcap (inspiration) | Own implementation, inspired by Meadowcap |
+| Groups with admin + quorum | Own implementation | No framework has democratic groups |
+| Social recovery (Shamir) | Own implementation | Planned in WotIdentity |
 
 ---
 
-## Empfehlungen (aktualisiert 2026-02-08, v2)
+## Recommendations (updated 2026-02-08, v2)
 
-### Zentrale Erkenntnis
+### Core Insight
 
-> **Kein einzelnes Framework erfüllt unsere Anforderungen.**
+> **No single framework satisfies our requirements.**
 >
-> Die WoT-spezifischen Anforderungen (Empfänger-Prinzip, Item-Key-Modell, selektive
-> Sichtbarkeit, UCAN Capabilities, demokratische Gruppen) sind einzigartig genug,
-> dass sie immer eigene Implementierung erfordern — unabhängig vom gewählten Framework.
+> The WoT-specific requirements (recipient principle, item-key model, selective
+> visibility, UCAN capabilities, democratic groups) are unique enough
+> that they always require custom implementation — regardless of the chosen framework.
 >
-> **Die richtige Strategie: Adapter-Architektur mit austauschbaren Implementierungen.**
+> **The right strategy: adapter architecture with swappable implementations.**
 
-### Eliminierte Kandidaten
+### Eliminated Candidates
 
-| Kandidat | Grund | Details |
-|----------|-------|---------|
-| **ActivityPub** | Kein E2EE, Server-Pflicht | Widerspricht Local-First und Privacy-Grundsätzen |
-| **Nostr** | secp256k1 ≠ Ed25519 | Fundamentaler Krypto-Mismatch, kein Item-Key-Konzept |
-| **DXOS** | ECDSA P-256 ≠ Ed25519 | Krypto-Mismatch, kein React Native |
-| **DIDComm** | JS-Libs stale | Spec gut, aber Ökosystem nicht nutzbar (2023) |
-| **Iroh** | Nur Networking-Layer | Kein JS SDK, kein App-Framework |
-| **p2panda** | Kein JS SDK | Architektonisch ideal, aber nicht für Web nutzbar |
+| Candidate | Reason | Details |
+|-----------|--------|---------|
+| **ActivityPub** | No E2EE, server required | Contradicts local-first and privacy principles |
+| **Nostr** | secp256k1 ≠ Ed25519 | Fundamental crypto mismatch, no item-key concept |
+| **DXOS** | ECDSA P-256 ≠ Ed25519 | Crypto mismatch, no React Native |
+| **DIDComm** | JS libs stale | Good spec, but ecosystem unusable (2023) |
+| **Iroh** | Networking layer only | No JS SDK, no app framework |
+| **p2panda** | No JS SDK | Architecturally ideal, but not usable for web |
 
-### Empfohlene Architektur
+### Recommended Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  CRDT/SYNC-ACHSE:                                          │
+│  CRDT/SYNC AXIS:                                           │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  POC:  Evolu (lokale Persistenz + Multi-Device)     │   │
-│  │  Ziel: Automerge (Cross-User Spaces, wenn nötig)    │   │
+│  │  POC:        Automerge (cross-user spaces)          │   │
+│  │  Current:    Yjs (default since 2026-03-15)         │   │
+│  │  Rationale:  76x faster on mobile, 25x smaller      │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
-│  MESSAGING-ACHSE:                                          │
+│  MESSAGING AXIS:                                           │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  POC:  Custom WebSocket Relay (minimal, DID-basiert)│   │
-│  │  Ziel: Matrix (Gruppen-E2EE, Federation, auditiert) │   │
+│  │  POC:    Custom WebSocket relay (minimal, DID-based)│   │
+│  │  Target: Matrix (group E2EE, federation, audited)   │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  AUTHORIZATION:                                            │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  Eigene Implementierung, inspiriert von Meadowcap    │   │
-│  │  und UCAN (signierte, delegierbare Capabilities)     │   │
+│  │  Own implementation, inspired by Meadowcap           │   │
+│  │  and UCAN (signed, delegatable capabilities)         │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Tier-Einteilung (v2)
+### Tier Classification (v2)
 
-**Tier 1: POC-Implementierung (jetzt)**
+**Tier 1: Current Implementation**
 
-| Adapter | Implementierung | Begründung |
-|---------|----------------|------------|
-| StorageAdapter | Evolu | Custom Keys, React, BIP39, E2EE, bereits integriert |
-| ReactiveStorageAdapter | Evolu | Live Queries via Subscribable |
-| CryptoAdapter | WebCrypto + noble | Bereits implementiert und getestet |
-| MessagingAdapter | Custom WebSocket Relay | Minimal, DID-basiert, volle Kontrolle |
+| Adapter | Implementation | Rationale |
+|---------|----------------|-----------|
+| StorageAdapter | YjsStorageAdapter | 76x faster on mobile, pure JS |
+| ReactiveStorageAdapter | Yjs | Live queries via Subscribable |
+| CryptoAdapter | WebCrypto + noble | Already implemented and tested |
+| MessagingAdapter | Custom WebSocket relay | Minimal, DID-based, full control |
 
-**Tier 2: Mittelfrist (nach POC)**
+**Tier 2: Medium-term (after POC)**
 
-| Adapter | Implementierung | Wann |
+| Adapter | Implementation | When |
 |---------|----------------|------|
-| ReplicationAdapter | Automerge | Wenn Cross-User Spaces gebraucht werden |
-| AuthorizationAdapter | Custom UCAN-like | Wenn selektive Sichtbarkeit implementiert wird |
-| MessagingAdapter | Matrix | Wenn Federation und Gruppen-E2EE gebraucht werden |
+| ReplicationAdapter | YjsReplicationAdapter (default) | Done |
+| AuthorizationAdapter | Custom UCAN-like | Done |
+| MessagingAdapter | Matrix | When federation and group E2EE are needed |
 
-**Tier 3: Langfrist (beobachten)**
+**Tier 3: Long-term (monitor)**
 
-| Framework | Wann relevant | Begründung |
-|-----------|--------------|------------|
-| **NextGraph** | Wenn JS SDK + Custom Keys | Philosophisch am nächsten, RDF-Graph ideal |
-| **p2panda** | Wenn WASM-Bindings | Echtes P2P, LoRa/BLE für Offline-Gemeinschaften |
-| **Willow/Earthstar** | Wenn Earthstar weiterentwickelt wird | Meadowcap = elegantestes Capability-Modell |
-| **Keyhive** | Wenn stabil | BeeKEM für Gruppen-Key-Rotation |
+| Framework | When relevant | Rationale |
+|-----------|---------------|-----------|
+| **NextGraph** | When JS SDK + custom keys available | Philosophically closest, RDF graph ideal |
+| **p2panda** | When WASM bindings available | True P2P, LoRa/BLE for offline communities |
+| **Willow/Earthstar** | When Earthstar is further developed | Meadowcap = most elegant capability model |
+| **Keyhive** | When stable | BeeKEM for group key rotation |
 
-**Tier 4: Bausteine & Inspiration**
+**Tier 4: Building Blocks & Inspiration**
 
-| Quelle | Was wir nutzen |
-|--------|---------------|
-| **Meadowcap** (Willow) | Capability-Modell für AuthorizationAdapter |
-| **DIDComm** (Spec) | Message-Format-Inspiration für MessagingAdapter |
-| **Secsync** | Architektur-Referenz für E2EE über CRDTs |
-| **p2panda-encryption** | Group Key Rotation Design |
-| **Megolm** (Matrix) | Gruppen-Verschlüsselungs-Referenz |
+| Source | What we use |
+|--------|-------------|
+| **Meadowcap** (Willow) | Capability model for AuthorizationAdapter |
+| **DIDComm** (spec) | Message format inspiration for MessagingAdapter |
+| **Secsync** | Architecture reference for E2EE over CRDTs |
+| **p2panda-encryption** | Group key rotation design |
+| **Megolm** (Matrix) | Group encryption reference |
 
-### Strategie (v2)
+### Strategy (v2)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  Phase 1: Fundament (jetzt)                                │
-│  • 6 Adapter-Interfaces definieren (Anforderungen klären)  │
-│  • Evolu für Storage (Custom Keys, bereits integriert)     │
-│  • Custom WebSocket Relay für Messaging                    │
-│  • Attestation/Verification Delivery funktionsfähig        │
+│  Phase 1: Foundation (done)                                │
+│  • 6 adapter interfaces defined                            │
+│  • Yjs for storage (76x faster on mobile)                 │
+│  • Custom WebSocket relay for messaging                    │
+│  • Attestation/verification delivery functional            │
 │                                                             │
-│  Phase 2: Selektives Teilen                                │
-│  • Item-Key-Modell implementieren (CryptoAdapter)          │
-│  • MessagingAdapter: Item-Key Delivery an N Empfänger      │
-│  • AuthorizationAdapter: Grundlegende Capabilities         │
+│  Phase 2: Selective Sharing (done)                         │
+│  • Item-key model implemented (CryptoAdapter)              │
+│  • MessagingAdapter: item-key delivery to N recipients     │
+│  • AuthorizationAdapter: basic capabilities                │
 │                                                             │
-│  Phase 3: Gruppen                                          │
-│  • ReplicationAdapter: Automerge für shared Spaces         │
-│  • Group Key Management (Keyhive-Inspiration)              │
-│  • Kalender, Kanban, Karte Module                          │
+│  Phase 3: Groups (done)                                    │
+│  • ReplicationAdapter: Yjs for shared spaces               │
+│  • Group key management (Keyhive-inspired)                 │
+│  • Calendar, Kanban, map modules                           │
 │                                                             │
-│  Phase 4: Skalierung                                       │
-│  • MessagingAdapter: Migration zu Matrix                   │
-│  • Federation für Cross-Server Messaging                   │
-│  • UCAN Delegation Chains                                  │
-│  • Ggf. p2panda/NextGraph wenn reif genug                 │
+│  Phase 4: Scaling (future)                                 │
+│  • MessagingAdapter: migration to Matrix                   │
+│  • Federation for cross-server messaging                   │
+│  • UCAN delegation chains                                  │
+│  • Possibly p2panda/NextGraph when mature enough           │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Warum die Adapter-Architektur kritisch ist
+### Why the Adapter Architecture is Critical
 
-1. **Kein Framework passt zu 100%** — eigene Implementierung unvermeidbar
-2. **Technologie-Landschaft bewegt sich schnell** — NextGraph, p2panda, Willow könnten in 12 Monaten reif sein
-3. **Verschiedene Achsen, verschiedene Lösungen** — CRDT/Sync und Messaging sind orthogonale Probleme
-4. **Interfaces sind billig, Implementierungen teuer** — Interfaces jetzt definieren erzwingt Anforderungsklarheit
-5. **Phased Migration möglich** — Custom WS → Matrix, Evolu → Automerge ohne Business-Logik-Änderung
-
----
-
-## Quellen
-
-- [NextGraph](https://nextgraph.org/) - Decentralized, encrypted, local-first platform
-- [Evolu](https://evolu.dev/) - Local-first platform with E2EE
-- [Jazz](https://jazz.tools/) - Primitives for local-first apps
-- [Secsync](https://github.com/nikgraf/secsync) - E2EE CRDT architecture
-- [p2panda](https://p2panda.org/) - Modular P2P framework
-- [DXOS](https://dxos.org/) - Decentralized developer platform
-- [Keyhive](https://www.inkandswitch.com/keyhive/) - Group key management
-- [Loro](https://loro.dev/) - High-performance CRDT library
-- [Yjs](https://yjs.dev/) - Shared data types for collaboration
-- [Automerge](https://automerge.org/) - JSON-like data structures that sync
-- [Nostr](https://nostr.com/) - Notes and Other Stuff Transmitted by Relays
-- [Matrix](https://matrix.org/) - Open standard for decentralised communication
-- [DIDComm](https://identity.foundation/didcomm-messaging/spec/v2.1/) - DID-based secure messaging
-- [ActivityPub](https://www.w3.org/TR/activitypub/) - W3C decentralized social networking
-- [Iroh](https://iroh.computer/) - QUIC networking layer (n0-computer)
-- [Willow Protocol](https://willowprotocol.org/) - Peer-to-peer data protocol
-- [Earthstar](https://github.com/earthstar-project/earthstar) - TypeScript Willow implementation
-- [UCAN](https://ucan.xyz/) - User Controlled Authorization Networks
-- [Ossa Protocol](https://jamesparker.me/blog/post/2025/08/04/ossa-towards-the-next-generation-web) - Universal sync protocol
-- [awesome-local-first](https://github.com/alexanderop/awesome-local-first) - Curated list
+1. **No framework fits 100%** — custom implementation inevitable
+2. **Technology landscape moves fast** — NextGraph, p2panda, Willow could be mature in 12 months
+3. **Different axes, different solutions** — CRDT/sync and messaging are orthogonal problems
+4. **Interfaces are cheap, implementations are expensive** — defining interfaces now forces requirements clarity
+5. **Phased migration possible** — Custom WS → Matrix, Automerge → Yjs without touching business logic
 
 ---
 
-## Weiterführend
+## Sources
 
-- [Adapter-Architektur v2](adapter-architektur-v2.md) - 6-Adapter-Spezifikation (NEU)
-- [Sync Protocol](../architecture/sync-protocol.md) - Wie Offline-Änderungen synchronisiert werden
-- [Verschlüsselung](verschluesselung.md) - E2E-Verschlüsselung im Detail
-- [Datenmodell](../architecture/entities.md) - Entitäten und ihre Beziehungen
+- [NextGraph](https://nextgraph.org/) — Decentralized, encrypted, local-first platform
+- [Evolu](https://evolu.dev/) — Local-first platform with E2EE
+- [Jazz](https://jazz.tools/) — Primitives for local-first apps
+- [Secsync](https://github.com/nikgraf/secsync) — E2EE CRDT architecture
+- [p2panda](https://p2panda.org/) — Modular P2P framework
+- [DXOS](https://dxos.org/) — Decentralized developer platform
+- [Keyhive](https://www.inkandswitch.com/keyhive/) — Group key management
+- [Loro](https://loro.dev/) — High-performance CRDT library
+- [Yjs](https://yjs.dev/) — Shared data types for collaboration
+- [Automerge](https://automerge.org/) — JSON-like data structures that sync
+- [Nostr](https://nostr.com/) — Notes and Other Stuff Transmitted by Relays
+- [Matrix](https://matrix.org/) — Open standard for decentralised communication
+- [DIDComm](https://identity.foundation/didcomm-messaging/spec/v2.1/) — DID-based secure messaging
+- [ActivityPub](https://www.w3.org/TR/activitypub/) — W3C decentralized social networking
+- [Iroh](https://iroh.computer/) — QUIC networking layer (n0-computer)
+- [Willow Protocol](https://willowprotocol.org/) — Peer-to-peer data protocol
+- [Earthstar](https://github.com/earthstar-project/earthstar) — TypeScript Willow implementation
+- [UCAN](https://ucan.xyz/) — User Controlled Authorization Networks
+- [awesome-local-first](https://github.com/alexanderop/awesome-local-first) — Curated list

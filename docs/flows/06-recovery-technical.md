@@ -1,214 +1,213 @@
-# Recovery-Flow (Technische Perspektive)
+# Recovery Flow (Technical Perspective)
 
-> Wie eine Identität aus der Recovery-Phrase wiederhergestellt wird
+> How an identity is restored from the recovery phrase
 
-## Übersicht
+## Overview
 
 ```mermaid
 flowchart TD
-    Input(["12 Wörter eingeben"]) --> Validate["BIP39 validieren"]
+    Input(["Enter 12 words"]) --> Validate["BIP39 validate"]
 
-    Validate --> Derive["Seed ableiten PBKDF2"]
+    Validate --> Derive["Derive master key via HKDF"]
 
-    Derive --> Generate["KeyPair generieren Ed25519"]
+    Derive --> Generate["Derive Ed25519 KeyPair"]
 
-    Generate --> ComputeDID["DID berechnen"]
+    Generate --> ComputeDID["Compute DID"]
 
-    ComputeDID --> Fetch["Daten vom Server abrufen"]
+    ComputeDID --> Unlock["WotIdentity.unlock()"]
 
-    Fetch --> Decrypt["Mit Private Key entschlüsseln"]
+    Unlock --> Fetch["Fetch encrypted snapshot from Vault"]
 
-    Decrypt --> Store["Lokal speichern"]
+    Fetch --> Decrypt["Decrypt PersonalDoc with derived key"]
 
-    Store --> Done(["Wiederhergestellt"])
+    Decrypt --> Store["Write to PersonalDoc CRDT (Y.Map)"]
+
+    Store --> Done(["Restored"])
 ```
 
 ---
 
-## Hauptflow: Recovery
+## Main flow: Recovery
 
 ```mermaid
 sequenceDiagram
-    participant User as Nutzer
+    participant User as User
     participant App as App
-    participant Crypto as Crypto-Modul
-    participant Server as Sync Server
-    participant Store as Local Store
+    participant Crypto as WotIdentity
+    participant Vault as Relay + Vault
+    participant Store as PersonalDoc CRDT
 
-    User->>App: Gibt 12 Wörter ein
+    User->>App: Enters 12 words
 
     App->>Crypto: validateMnemonic(words)
-    Crypto->>Crypto: Prüfe gegen BIP39-Wortliste
-    Crypto->>Crypto: Prüfe Checksum
+    Crypto->>Crypto: Check against BIP39 word list
+    Crypto->>Crypto: Check checksum
 
-    alt Ungültig
+    alt Invalid
         Crypto->>App: invalid
-        App->>User: Fehler: Ungültige Phrase
-    else Gültig
+        App->>User: Error: Invalid phrase
+    else Valid
         Crypto->>App: valid
     end
 
-    App->>Crypto: deriveSeed(mnemonic)
-    Crypto->>Crypto: PBKDF2 mit 2048 Runden
+    App->>Crypto: WotIdentity.unlock(mnemonic)
+    Crypto->>Crypto: BIP39 → entropy → seed
+    Crypto->>Crypto: HKDF → master key (non-extractable)
+    Crypto->>Crypto: HKDF path → Ed25519 signing key
+    Crypto->>Crypto: HKDF path → X25519 encryption key
 
-    App->>Crypto: generateKeyPair(seed)
-    Crypto->>Crypto: Ed25519 von Seed
+    App->>Crypto: getDid()
+    Crypto->>App: did:key:z6Mk...
 
-    App->>Crypto: computeDID(publicKey)
-    Crypto->>App: did:wot:...
+    App->>Vault: fetchSnapshot(did, signedCapability)
+    Vault->>Vault: Verify capability signature
+    Vault->>App: Encrypted PersonalDoc bytes
 
-    App->>Server: fetchDataForDID(did, signature)
-    Server->>Server: Verifiziere Signatur mit Public Key aus DID
-    Server->>App: Verschlüsselte Blobs
+    App->>Crypto: decrypt(snapshot, derivedKey)
+    Crypto->>App: Y.Doc state bytes
 
-    loop Für jeden Blob
-        App->>Crypto: decrypt(blob, privateKey)
-        Crypto->>App: Klartext
-        App->>Store: save(data)
-    end
+    App->>Store: Y.applyUpdate(ydoc, bytes)
+    Note over Store: PersonalDoc CRDT (Y.Map) populated
 
-    App->>Store: storePrivateKey(secureStorage)
-
-    App->>User: Wiederherstellung abgeschlossen
+    App->>User: Restoration complete
 ```
 
 ---
 
-## Schritt 1: Mnemonic validieren
+## Step 1: Validate mnemonic
 
-### BIP39-Validierung
+### BIP39 validation
 
-```javascript
-function validateMnemonic(words) {
-  // 1. Prüfe Anzahl
+```typescript
+function validateMnemonic(words: string[]): { valid: boolean; error?: string } {
+  // 1. Check count
   if (words.length !== 12) {
-    return { valid: false, error: 'Genau 12 Wörter erforderlich' };
+    return { valid: false, error: 'Exactly 12 words required' };
   }
 
-  // 2. Prüfe ob alle Wörter in BIP39-Liste
-  const wordlist = getBIP39Wordlist('english');
+  // 2. Check all words against BIP39 list (German wordlist)
+  const wordlist = getBIP39Wordlist('german');
   for (const word of words) {
     if (!wordlist.includes(word.toLowerCase())) {
-      return { valid: false, error: `Unbekanntes Wort: ${word}` };
+      return { valid: false, error: `Unknown word: ${word}` };
     }
   }
 
-  // 3. Prüfe Checksum
+  // 3. Check checksum
   const entropy = mnemonicToEntropy(words);
   const checksumBits = calculateChecksum(entropy);
   const expectedChecksum = extractChecksumFromMnemonic(words);
 
   if (checksumBits !== expectedChecksum) {
-    return { valid: false, error: 'Checksum ungültig' };
+    return { valid: false, error: 'Invalid checksum' };
   }
 
   return { valid: true };
 }
 ```
 
-### Checksum-Berechnung
+### Checksum calculation
 
 ```mermaid
 flowchart LR
-    Words["12 Wörter"] --> Indices["11-bit Indices"]
+    Words["12 words"] --> Indices["11-bit indices"]
     Indices --> Concat["132 bits total"]
-    Concat --> Split["128 bits Entropy + 4 bits Checksum"]
-    Split --> Hash["SHA256(Entropy)"]
-    Hash --> Compare["Erste 4 bits = Checksum?"]
+    Concat --> Split["128 bits entropy + 4 bits checksum"]
+    Split --> Hash["SHA256(entropy)"]
+    Hash --> Compare["First 4 bits == checksum?"]
 ```
 
 ---
 
-## Schritt 2: Schlüssel ableiten
+## Step 2: Derive keys — WotIdentity.unlock()
 
-### Von Mnemonic zu KeyPair
+### From mnemonic to key material
 
 ```mermaid
 flowchart TD
-    Mnemonic["12 Wörter"] --> PBKDF2["PBKDF2-SHA512"]
+    Mnemonic["12 words (German BIP39)"] --> Entropy["128-bit entropy"]
 
-    subgraph PBKDF2_Details["PBKDF2 Parameter"]
-        Password["Password: Mnemonic als String"]
-        Salt["Salt: 'mnemonic' + Passphrase"]
-        Iterations["2048 Iterations"]
-        KeyLen["512 bits Output"]
+    Entropy --> Seed["BIP39 seed (512 bits)"]
+
+    Seed --> HKDF["HKDF-SHA256\n(non-extractable master key)"]
+
+    subgraph HKDF_Paths["HKDF Derivation Paths"]
+        Sign["info: 'sign' → Ed25519 private key"]
+        Encrypt["info: 'x25519' → X25519 key"]
+        Frame["info: 'framework/{name}' → framework keys"]
     end
 
-    PBKDF2 --> Seed["512-bit Seed"]
+    HKDF --> Sign
+    HKDF --> Encrypt
+    HKDF --> Frame
 
-    Seed --> Ed25519["Ed25519 Derivation"]
-
-    Ed25519 --> PrivKey["Private Key 32 bytes"]
-    Ed25519 --> PubKey["Public Key 32 bytes"]
-
-    PubKey --> DID["DID berechnen"]
+    Sign --> PubKey["Ed25519 public key"]
+    PubKey --> DID["did:key:z6Mk..."]
 ```
 
-### Code-Beispiel
+### Code example
 
-```javascript
-async function recoverKeyPair(mnemonic) {
-  // 1. Mnemonic zu Seed
-  const mnemonicString = mnemonic.join(' ');
-  const salt = 'mnemonic'; // Keine zusätzliche Passphrase
+```typescript
+// WotIdentity.unlock() — simplified
+async function unlock(mnemonic: string): Promise<void> {
+  // 1. Mnemonic → entropy → seed
+  const entropy = mnemonicToEntropy(mnemonic.split(' '));
+  const seed = await mnemonicToSeed(entropy); // standard BIP39
 
-  const seed = await pbkdf2(
-    mnemonicString,
-    salt,
-    2048,           // Iterations
-    64,             // Key length in bytes (512 bits)
-    'sha512'
+  // 2. Seed → HKDF master key (non-extractable)
+  const masterKey = await crypto.subtle.importKey(
+    'raw', seed,
+    { name: 'HKDF' },
+    false, // non-extractable
+    ['deriveKey', 'deriveBits']
   );
 
-  // 2. Seed zu Ed25519 KeyPair
-  const privateKey = seed.slice(0, 32);
-  const publicKey = ed25519.getPublicKey(privateKey);
+  // 3. Derive Ed25519 signing key
+  const signingKeyBytes = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: encode('sign') },
+    masterKey,
+    256
+  );
+  // → used with @noble/ed25519 for signing
 
-  // 3. DID berechnen
-  const publicKeyHash = sha256(publicKey);
-  const didSuffix = base58.encode(publicKeyHash.slice(0, 16));
-  const did = `did:wot:${didSuffix}`;
-
-  return { privateKey, publicKey, did };
+  // 4. Compute DID
+  const publicKey = ed25519.getPublicKey(new Uint8Array(signingKeyBytes));
+  const did = createDid(publicKey); // did:key:z6Mk...
 }
 ```
 
 ---
 
-## Schritt 3: Daten abrufen
+## Step 3: Vault restore
 
-### Authentifizierung bei Recovery
+### Authentication for recovery
 
 ```mermaid
 sequenceDiagram
     participant App as App
-    participant Server as Server
+    participant Vault as Vault Server
 
-    App->>App: Generiere Schlüssel aus Phrase
-    App->>App: Berechne DID
+    App->>App: Derive keys from phrase
+    App->>App: Compute DID
 
-    Note over App: Challenge-Response
+    Note over App: Create signed capability token
 
-    App->>App: timestamp = now()
-    App->>App: nonce = random()
-    App->>App: message = did + timestamp + nonce
-    App->>App: signature = sign(message, privateKey)
+    App->>App: capability = createCapability(did, 'vault:read', signFn)
 
-    App->>Server: POST /recovery/init
-    Note over App,Server: did, timestamp, nonce, signature
+    App->>Vault: GET /vault/{did}/snapshot
+    Note over App,Vault: Authorization: Bearer {capability}
 
-    Server->>Server: Extrahiere Public Key aus DID
-    Server->>Server: Verifiziere Signatur
-    Server->>Server: Prüfe Timestamp nicht zu alt
+    Vault->>Vault: Extract public key from DID
+    Vault->>Vault: Verify capability signature
 
-    Server->>App: recoveryToken + dataManifest
+    Vault->>App: Encrypted PersonalDoc snapshot bytes
 ```
 
-### Daten-Manifest
+### Data manifest (what is available)
 
 ```json
 {
-  "did": "did:wot:anna123",
+  "did": "did:key:z6Mk...",
   "dataAvailable": {
     "profile": true,
     "contacts": 23,
@@ -216,169 +215,154 @@ sequenceDiagram
     "attestationsReceived": 47,
     "attestationsGiven": 12,
     "items": 34,
-    "groups": 3
+    "spaces": 3
   },
-  "totalSize": "2.3 MB",
-  "lastSync": "2025-01-08T10:00:00Z"
+  "snapshotSize": "2.3 MB",
+  "lastSync": "2026-01-08T10:00:00Z"
 }
 ```
 
-### Daten herunterladen
+### Restore flow
 
 ```mermaid
 flowchart TD
-    Manifest(["Manifest empfangen"]) --> Download["Starte Download"]
+    Unlock(["WotIdentity.unlock() complete"]) --> Cap["Create signed capability"]
 
-    Download --> Profile["Profil laden"]
-    Profile --> Contacts["Kontakte laden"]
-    Contacts --> Verifications["Verifizierungen laden"]
-    Verifications --> Attestations["Attestationen laden"]
-    Attestations --> Items["Items laden"]
-    Items --> Groups["Gruppen laden"]
+    Cap --> Fetch["GET /vault/{did}/snapshot"]
 
-    Groups --> Decrypt["Alles entschlüsseln"]
+    Fetch --> Encrypted["Encrypted Y.Doc bytes"]
 
-    Decrypt --> Store["In lokale DB speichern"]
+    Encrypted --> Decrypt["Decrypt with AES-256-GCM\n(key derived via HKDF)"]
+
+    Decrypt --> Apply["Y.applyUpdate(ydoc, bytes)"]
+
+    Apply --> Store["PersonalDoc CRDT (Y.Map) populated"]
+
+    Store --> ReactiveUpdate["Reactive UI updates"]
 ```
 
 ---
 
-## Schritt 4: Daten entschlüsseln
+## Step 4: PersonalDoc CRDT (Y.Map)
 
-### Entschlüsselungs-Flow
+### Data model after restore
 
-```mermaid
-flowchart TD
-    Blob["Verschlüsselter Blob"] --> FindKey["Finde meinen Item Key"]
-
-    FindKey --> DecryptKey["Entschlüssele Item Key mit Private Key"]
-
-    DecryptKey --> DecryptContent["Entschlüssele Content mit Item Key"]
-
-    DecryptContent --> Verify["Verifiziere Signatur"]
-
-    Verify --> Store["Speichern"]
+```typescript
+// PersonalDoc is a Y.Doc with Y.Maps for each collection
+interface PersonalDoc {
+  profile:             Y.Map<ProfileDoc>
+  contacts:            Y.Map<ContactDoc>        // keyed by DID
+  verifications:       Y.Map<VerificationDoc>   // keyed by ID
+  attestations:        Y.Map<AttestationDoc>    // keyed by ID
+  attestationMetadata: Y.Map<AttestationMetaDoc>
+  outbox:              Y.Map<OutboxEntryDoc>
+  spaces:              Y.Map<SpaceMetadataDoc>
+  groupKeys:           Y.Map<GroupKeyDoc>
+}
 ```
 
-### Code-Beispiel
+### Applying the snapshot
 
-```javascript
-async function decryptBlob(blob, privateKey) {
-  // 1. Finde meinen verschlüsselten Item Key
-  const myDid = computeDID(getPublicKey(privateKey));
-  const myItemKey = blob.itemKeys.find(k => k.recipientDid === myDid);
+```typescript
+async function restoreFromVault(
+  identity: WotIdentity,
+  vaultClient: VaultClient
+): Promise<YjsPersonalDocManager> {
+  const did = identity.getDid();
 
-  if (!myItemKey) {
-    throw new Error('Kein Schlüssel für mich gefunden');
+  // 1. Fetch encrypted snapshot
+  const encryptedBytes = await vaultClient.getSnapshot(did);
+
+  if (!encryptedBytes) {
+    // No vault data — fresh start
+    return new YjsPersonalDocManager(identity);
   }
 
-  // 2. Entschlüssele Item Key
-  const itemKey = await decryptAsymmetric(
-    myItemKey.encryptedKey,
-    privateKey
-  );
+  // 2. Decrypt
+  const vaultKey = await identity.deriveFrameworkKey('vault');
+  const plainBytes = await decryptSymmetric(encryptedBytes, vaultKey);
 
-  // 3. Entschlüssele Content
-  const content = await decryptSymmetric(
-    blob.encryptedContent,
-    itemKey,
-    blob.nonce
-  );
+  // 3. Apply to Y.Doc
+  const ydoc = new Y.Doc();
+  Y.applyUpdate(ydoc, plainBytes);
 
-  // 4. Verifiziere Signatur
-  const ownerPublicKey = await getPublicKeyForDID(blob.owner);
-  const isValid = await verifySignature(content, blob.proof, ownerPublicKey);
-
-  if (!isValid) {
-    throw new Error('Ungültige Signatur');
-  }
-
-  return JSON.parse(content);
+  // 4. Wrap in manager
+  return new YjsPersonalDocManager(identity, ydoc);
 }
 ```
 
 ---
 
-## Schritt 5: Private Key speichern
+## Step 5: Key storage after restore
 
-### Plattform-spezifische Speicherung
+### Platform-specific storage
 
 ```mermaid
 flowchart TD
-    PrivKey["Private Key"] --> Platform{"Platform?"}
+    MasterKey["HKDF Master Key\n(non-extractable)"] --> Platform{"Platform?"}
 
-    Platform -->|iOS| Keychain["iOS Keychain"]
-    Platform -->|Android| Keystore["Android Keystore"]
-    Platform -->|Web| WebCrypto["Web Crypto API"]
+    Platform -->|iOS| Keychain["iOS Keychain\nkSecAttrAccessibleWhenUnlocked"]
+    Platform -->|Android| Keystore["Android Keystore\nsetUserAuthenticationRequired"]
+    Platform -->|Web| IDB["IndexedDB\nextractable: false CryptoKey object"]
 
-    Keychain --> Options1["kSecAttrAccessible: whenUnlockedThisDeviceOnly"]
-    Keystore --> Options2["setUserAuthenticationRequired: true"]
-    WebCrypto --> Options3["extractable: false"]
+    Note["Master key is derived fresh\nfrom mnemonic on recovery.\nThen stored as non-extractable."]
 ```
 
-### Web: Besonderheit bei Recovery
+### Encrypted seed storage (web)
 
-Bei Web/Browser muss der Key aus der Mnemonic abgeleitet werden, da `extractable: false` Keys nicht importiert werden können:
+On web, the seed is stored encrypted in IndexedDB so that subsequent unlocks only require a passphrase (not the full mnemonic):
 
-```javascript
-// Web: Key aus Seed generieren (nicht importieren)
-async function storeKeyWeb(seed) {
-  // Generiere non-extractable Key direkt aus Seed
-  const keyPair = await crypto.subtle.generateKey(
-    {
-      name: "Ed25519",
-      // Seed als Entropy-Quelle (vereinfacht)
-    },
-    false,  // extractable = false
-    ["sign", "verify"]
-  );
+```typescript
+// After recovery: store encrypted seed for future unlockFromStorage()
+async function storeSeed(seed: Uint8Array, passphrase: string): Promise<void> {
+  // PBKDF2 to derive storage key from passphrase
+  const storageKey = await deriveStorageKey(passphrase); // PBKDF2, 600k rounds
 
-  // In IndexedDB speichern
-  const db = await openDB('wot-keys', 1);
-  await db.put('keys', keyPair.privateKey, 'privateKey');
-  await db.put('keys', keyPair.publicKey, 'publicKey');
+  // AES-256-GCM encrypt the seed
+  const { ciphertext, iv } = await encryptAesGcm(seed, storageKey);
+
+  // Store in IndexedDB
+  await idb.put('seed-store', { ciphertext, iv }, 'encrypted-seed');
 }
 ```
 
-**Hinweis:** Die genaue Implementierung hängt von der Web Crypto API Unterstützung ab. Möglicherweise muss ein anderer Algorithmus verwendet werden.
-
 ---
 
-## Fehlerbehandlung
+## Error handling
 
-### Fehlertypen
+### Error types
 
 ```mermaid
 flowchart TD
-    Recovery(["Recovery starten"]) --> V1{"Mnemonic gültig?"}
+    Recovery(["Start recovery"]) --> V1{"Mnemonic valid?"}
 
-    V1 -->|Nein| E1["Fehler: Ungültige Phrase"]
+    V1 -->|No| E1["Error: Invalid phrase"]
 
-    V1 -->|Ja| V2{"Server erreichbar?"}
+    V1 -->|Yes| V2{"Vault reachable?"}
 
-    V2 -->|Nein| E2["Fehler: Keine Verbindung"]
+    V2 -->|No| E2["Error: No connection\n(can retry later)"]
 
-    V2 -->|Ja| V3{"DID auf Server bekannt?"}
+    V2 -->|Yes| V3{"DID known in Vault?"}
 
-    V3 -->|Nein| E3["Fehler: Keine Daten gefunden"]
+    V3 -->|No| E3["Error: No data found\n(never synced to Vault)"]
 
-    V3 -->|Ja| V4{"Entschlüsselung erfolgreich?"}
+    V3 -->|Yes| V4{"Decryption successful?"}
 
-    V4 -->|Nein| E4["Fehler: Daten korrupt"]
+    V4 -->|No| E4["Error: Data corrupt"]
 
-    V4 -->|Ja| Success["Recovery erfolgreich"]
+    V4 -->|Yes| Success["Recovery successful"]
 ```
 
-### Fehler-Responses
+### Error responses
 
 ```json
 {
   "error": "invalid_mnemonic",
-  "message": "Die Recovery-Phrase ist ungültig",
+  "message": "The recovery phrase is invalid",
   "details": {
-    "invalidWord": "applz",
-    "position": 1,
-    "suggestion": "apple"
+    "invalidWord": "bananx",
+    "position": 2,
+    "suggestion": "banane"
   }
 }
 ```
@@ -386,34 +370,33 @@ flowchart TD
 ```json
 {
   "error": "did_not_found",
-  "message": "Für diese Identität existieren keine Daten",
+  "message": "No data exists for this identity",
   "details": {
-    "did": "did:wot:xyz123",
-    "hint": "Wurde die Identität auf einem anderen Server erstellt?"
+    "did": "did:key:z6Mk...",
+    "hint": "Was the identity synced to the Vault before the device was lost?"
   }
 }
 ```
 
 ---
 
-## Sicherheitsüberlegungen
+## Security considerations
 
-### Brute-Force-Schutz
+### Brute-force protection
 
-| Maßnahme | Beschreibung |
-| -------- | ------------ |
-| BIP39 Entropy | 128 bits = 2^128 Kombinationen |
-| Rate Limiting | Max 5 Recovery-Versuche pro IP pro Stunde |
-| Keine Enumeration | Server verrät nicht ob DID existiert ohne gültige Signatur |
+| Measure | Description |
+| ------- | ----------- |
+| BIP39 entropy | 128 bits = 2^128 combinations |
+| HKDF | Key derivation is fast (unlike PBKDF2) but entropy space is the protection |
+| No enumeration | Vault does not reveal whether a DID exists without a valid signature |
+| Capability token | Vault requires a freshly signed capability — proves key possession |
 
-### Timing-Analyse
+### Timing analysis
 
-```javascript
-// Constant-time Vergleich für Signatur-Prüfung
-function constantTimeCompare(a, b) {
-  if (a.length !== b.length) {
-    return false;
-  }
+```typescript
+// Constant-time comparison for signature verification
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
 
   let result = 0;
   for (let i = 0; i < a.length; i++) {
@@ -424,125 +407,86 @@ function constantTimeCompare(a, b) {
 }
 ```
 
-### Recovery vs. Neuanmeldung
+### Recovery vs. new login
 
-Der Server kann nicht unterscheiden zwischen:
-- Legitimem Nutzer der recovered
-- Angreifer der die Phrase gestohlen hat
+The Vault cannot distinguish between:
 
-**Konsequenz:** Die Phrase IST die Identität. Wer die Phrase hat, hat die Kontrolle.
+- A legitimate user recovering their identity
+- An attacker who has stolen the phrase
 
----
-
-## Speicher-Schema
-
-### Recovery-spezifische Tabellen
-
-```sql
--- Tracking für Recovery-Prozess
-CREATE TABLE recovery_state (
-    id INTEGER PRIMARY KEY,
-    phase TEXT NOT NULL,
-    progress INTEGER DEFAULT 0,
-    total_items INTEGER,
-    started_at DATETIME NOT NULL,
-    completed_at DATETIME,
-    error TEXT
-);
-
--- Download-Queue während Recovery
-CREATE TABLE recovery_queue (
-    id TEXT PRIMARY KEY,
-    blob_type TEXT NOT NULL,
-    blob_id TEXT NOT NULL,
-    downloaded BOOLEAN DEFAULT FALSE,
-    decrypted BOOLEAN DEFAULT FALSE,
-    error TEXT
-);
-```
+**Consequence:** The phrase IS the identity. Whoever holds the phrase has control.
 
 ---
 
 ## Multi-Device vs. Recovery
 
-### Unterschied
+### Difference
 
-| Aspekt | Multi-Device | Recovery |
+| Aspect | Multi-Device | Recovery |
 | ------ | ------------ | -------- |
-| Phrase eingeben | Ja | Ja |
-| Altes Gerät noch aktiv | Ja | Nein |
-| Sync-State | Übernommen vom alten Gerät | Komplett neu vom Server |
-| Private Key | Neu generiert aus Phrase | Neu generiert aus Phrase |
+| Enter phrase | Yes | Yes |
+| Old device still active | Yes | No |
+| Sync state | Incremental from Relay | Full restore from Vault |
+| Master key | Freshly derived from phrase | Freshly derived from phrase |
+| PersonalDoc | Merge with existing | Replace from snapshot |
 
-### Gleiche Phrase, mehrere Geräte
+### Same phrase, multiple devices
 
 ```mermaid
 flowchart TD
-    Phrase["Recovery-Phrase"] --> Phone["Handy"]
+    Phrase["Recovery phrase"] --> Phone["Phone"]
     Phrase --> Tablet["Tablet"]
     Phrase --> Web["Browser"]
 
-    Phone --> Same["Gleicher Private Key"]
+    Phone --> Same["Same HKDF master key"]
     Tablet --> Same
     Web --> Same
 
-    Same --> SameDID["Gleiche DID"]
+    Same --> SameDID["Same DID\ndid:key:z6Mk..."]
 
-    SameDID --> Sync["Sync hält alle Geräte aktuell"]
+    SameDID --> Sync["Relay + Vault keep all devices in sync"]
 ```
 
 ---
 
-## Sequenzdiagramm: Vollständiger Recovery-Flow
+## Complete sequence diagram
 
 ```mermaid
 sequenceDiagram
-    participant U as Nutzer
+    participant U as User
     participant App as App
-    participant Crypto as Crypto
-    participant Server as Server
+    participant Identity as WotIdentity
+    participant Vault as Vault
     participant Secure as Secure Storage
-    participant DB as Local DB
+    participant CRDT as PersonalDoc CRDT
 
-    U->>App: 12 Wörter eingeben
+    U->>App: Enter 12 words
 
-    App->>Crypto: validateMnemonic()
-    Crypto->>App: valid
+    App->>Identity: validateMnemonic()
+    Identity->>App: valid
 
-    App->>Crypto: deriveSeed()
-    Crypto->>App: seed
+    App->>Identity: unlock(mnemonic)
+    Identity->>Identity: BIP39 → seed → HKDF master key
+    Identity->>Identity: Derive Ed25519 + X25519 keys
+    Identity->>App: DID = did:key:z6Mk...
 
-    App->>Crypto: generateKeyPair(seed)
-    Crypto->>App: privateKey, publicKey
+    App->>Identity: createCapability('vault:read')
+    Identity->>App: signedCapability
 
-    App->>Crypto: computeDID(publicKey)
-    Crypto->>App: did
+    App->>Vault: GET /vault/{did}/snapshot
+    Vault->>Vault: verifyCapability()
+    Vault->>App: encryptedBytes
 
-    App->>App: createAuthChallenge(did, privateKey)
+    App->>Identity: deriveFrameworkKey('vault')
+    Identity->>App: vaultKey
 
-    App->>Server: POST /recovery/init
-    Server->>Server: verifySignature()
-    Server->>App: recoveryToken, manifest
+    App->>App: decryptSymmetric(encryptedBytes, vaultKey)
+    App->>CRDT: Y.applyUpdate(ydoc, plainBytes)
 
-    App->>U: Zeige Fortschritt
+    Note over CRDT: contacts, verifications, attestations, spaces all populated
 
-    loop Für jeden Datentyp
-        App->>Server: GET /recovery/data/:type
-        Server->>App: encryptedBlobs[]
-
-        loop Für jeden Blob
-            App->>Crypto: decrypt(blob, privateKey)
-            Crypto->>App: plaintext
-            App->>DB: store(data)
-        end
-
-        App->>U: Fortschritt aktualisieren
-    end
-
-    App->>Secure: storePrivateKey()
+    App->>Secure: storeSeed(seed, passphrase)
     Secure->>App: ok
 
-    App->>DB: markRecoveryComplete()
-
-    App->>U: Willkommen zurück!
+    App->>U: Welcome back!
 ```

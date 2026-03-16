@@ -1,48 +1,34 @@
-# QR-Code-Formate
+# QR Code Formats
 
-> QR-Code-Strukturen für Verifizierung und Einladungen
+> QR code structures for verification and contact exchange
 
-## Übersicht
+## Overview
 
-QR-Codes werden im Web of Trust für den direkten Austausch zwischen Personen verwendet.
+QR codes are used in the Web of Trust for direct in-person exchange between participants.
 
-| Typ | Zweck | Wann verwendet |
-|-----|-------|----------------|
-| **Identity QR** | Eigene Identität teilen | Verifizierung starten |
-| **Invite QR** | Einladung zu Gruppe | Gruppeneinladung |
-| **Deep Link QR** | App-Link | Marketing, Onboarding |
+| Type | Purpose | Status |
+| --- | --- | --- |
+| **Identity QR** | Share own identity | Implemented |
+| **Invite QR** | Invite to a group space | Planned — not yet implemented |
+| **Deep Link QR** | App link / profile shortcut | Planned — not yet implemented |
 
 ---
 
 ## Identity QR
 
-### Zweck
+### Purpose
 
-Teilt die eigene Identität mit einer anderen Person für die gegenseitige Verifizierung.
+Shares the user's own identity with another person to initiate mutual verification.
 
 ### Format
 
-```
-wot://verify?did=<did>&name=<name>&pk=<publicKey>
-```
-
-### Beispiel
+The QR code encodes a JSON object as a Base64url string, embedded in a URL:
 
 ```
-wot://verify?did=did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK&name=Anna%20M%C3%BCller&pk=z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
+https://web-of-trust.de/verify#<base64url-encoded-json>
 ```
 
-### Struktur
-
-```mermaid
-flowchart LR
-    QR[QR Code] --> Parse[Parsen]
-    Parse --> DID["did:key:z6Mk..."]
-    Parse --> Name["Anna Müller"]
-    Parse --> PK["Public Key"]
-```
-
-### JSON-Repräsentation
+### Encoded Payload
 
 ```json
 {
@@ -54,227 +40,208 @@ flowchart LR
 }
 ```
 
-### Ablauf
+**Fields:**
+
+| Field | Description |
+| --- | --- |
+| `type` | Always `"identity"` |
+| `version` | Schema version (currently `1`) |
+| `did` | The `did:key` identifier of the person |
+| `name` | Display name (optional, shown during verification) |
+| `publicKey` | Multibase-encoded Ed25519 public key (same as the key embedded in the DID) |
+
+### Structure
+
+```mermaid
+flowchart LR
+    QR[QR Code] --> Decode[Base64url decode]
+    Decode --> JSON[JSON payload]
+    JSON --> DID["did:key:z6Mk..."]
+    JSON --> Name["Anna Müller"]
+    JSON --> PK["Public Key (multibase)"]
+
+    style QR stroke:#333,fill:none
+    style Decode stroke:#333,fill:none
+    style JSON stroke:#333,fill:none
+    style DID stroke:#333,fill:none
+    style Name stroke:#333,fill:none
+    style PK stroke:#333,fill:none
+```
+
+### Verification Flow
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant B as Ben
 
-    A->>A: Zeigt Identity QR
+    A->>A: Opens "Show QR" screen
+    A->>B: Displays Identity QR
 
-    B->>B: Scannt QR
+    B->>B: Scans QR with camera
+    B->>B: Decodes DID + PublicKey
+    B->>B: Creates Verification B→A
+    B->>B: Signs with own private key
+    B->>B: Sends via Relay to Anna
 
-    B->>B: Extrahiert DID + PublicKey
+    B->>A: Shows own Identity QR
+    A->>A: Scans Ben's QR
+    A->>A: Creates Verification A→B
+    A->>A: Sends via Relay to Ben
 
-    B->>B: Erstellt Verification B→A
-    B->>B: Signiert mit eigenem Private Key
-
-    B->>B: Zeigt eigenen Identity QR
-
-    A->>A: Scannt Bens QR
-    A->>A: Erstellt Verification A→B
-
-    Note over A,B: Gegenseitig verifiziert
+    Note over A,B: Mutually verified — both stored in receivers' PersonalDoc
 ```
+
+### Security Notes
+
+The public key in the QR payload is redundant with the DID (the `did:key` method encodes the key directly in the DID string). Both are included for convenience — the app validates that they match before proceeding.
 
 ---
 
 ## Invite QR
 
-### Zweck
+> **Planned — not yet implemented.**
+>
+> Group invitations currently use the MessagingAdapter (Relay) directly. A QR-based invite flow is planned for a future release.
 
-Lädt eine Person zu einer Gruppe ein.
+### Intended Purpose
 
-### Format
+Allow a group admin to invite a new member by showing a QR code in person — without requiring the invitee to already be a contact.
 
-```
-wot://invite?group=<groupDid>&name=<groupName>&inviter=<inviterDid>&token=<token>
-```
-
-### Beispiel
-
-```
-wot://invite?group=did:key:z6MkgYGF3thn8k1Fv4p4dWXKtsXCnLH7q9yw4QgNPULDmDKB&name=Gemeinschaftsgarten&inviter=did:key:z6Mkf5rGMoatrSj1f...&token=abc123...
-```
-
-### JSON-Repräsentation
+### Planned Format
 
 ```json
 {
   "type": "invite",
   "version": 1,
   "group": {
-    "did": "did:key:z6MkgYGF3thn8k1Fv4p4dWXKtsXCnLH7q9yw4QgNPULDmDKB",
-    "name": "Gemeinschaftsgarten Sonnenberg"
+    "id": "<space-id>",
+    "name": "Community Garden"
   },
   "inviter": {
     "did": "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
     "name": "Anna Müller"
   },
-  "token": "abc123...",
-  "expiresAt": "2025-01-15T10:00:00Z"
+  "token": "<signed-capability-token>",
+  "expiresAt": "2026-04-01T10:00:00Z"
 }
 ```
 
-### Token
-
-Das `token` ist eine Signatur des Einladenden, die beweist:
-1. Die Einladung kommt wirklich von dieser Person
-2. Die Person hat Einlade-Rechte (Admin)
-
-```javascript
-token = sign({
-  groupDid: "did:key:z6MkgYGF...",
-  inviterDid: "did:key:z6Mkf5rG...",
-  createdAt: "2025-01-08T10:00:00Z",
-  expiresAt: "2025-01-15T10:00:00Z"
-}, inviterPrivateKey)
-```
+The `token` would be a signed capability (see `crypto/capabilities.ts`) proving that the inviter has the right to add members, and encoding an expiry.
 
 ---
 
 ## Deep Link QR
 
-### Zweck
+> **Planned — not yet implemented.**
+>
+> Deep links for marketing or onboarding are not yet in use. The app is web-only at this stage.
 
-Allgemeine App-Links für Marketing oder spezielle Aktionen.
+### Deep Link Purpose
 
-### Format
+Link directly to a public profile or trigger a specific action when scanned on a device that already has the app open.
+
+### Deep Link Format
 
 ```
-https://weboftrust.app/open?action=<action>&params=<params>
+https://web-of-trust.de/open?action=<action>&params=<params>
 ```
 
-### Beispiele
+**Examples:**
 
-**App installieren:**
+View a public profile:
 ```
-https://weboftrust.app/open?action=install
-```
-
-**Profil ansehen (öffentlich):**
-```
-https://weboftrust.app/open?action=profile&did=did:key:z6Mk...
+https://web-of-trust.de/open?action=profile&did=did:key:z6Mk...
 ```
 
 ---
 
-## QR-Code-Generierung
+## QR Code Generation
 
-### Größe und Fehlerkorrektur
+### Size and Error Correction
 
-| Inhaltslänge | QR-Version | Empfohlene Größe | Fehlerkorrektur |
-|--------------|------------|------------------|-----------------|
-| < 100 Zeichen | 3-5 | 200x200 px | Level M (15%) |
-| 100-300 Zeichen | 6-10 | 300x300 px | Level M (15%) |
-| > 300 Zeichen | 11+ | 400x400 px | Level L (7%) |
+| Content Length | QR Version | Recommended Size | Error Correction |
+| --- | --- | --- | --- |
+| < 100 chars | 3–5 | 200×200 px | Level M (15%) |
+| 100–300 chars | 6–10 | 300×300 px | Level M (15%) |
+| > 300 chars | 11+ | 400×400 px | Level L (7%) |
 
 ### Best Practices
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  QR-Code Best Practices:                                    │
+│  QR Code Best Practices:                                   │
 │                                                             │
-│  ✅ Hoher Kontrast (schwarz auf weiß)                       │
-│  ✅ Ruhezone um QR (mind. 4 Module)                         │
-│  ✅ Fehlerkorrektur Level M oder höher                      │
-│  ✅ Kurze URLs bevorzugen                                   │
+│  ✅ High contrast (black on white)                         │
+│  ✅ Quiet zone around QR (min. 4 modules)                  │
+│  ✅ Error correction Level M or higher                     │
+│  ✅ Keep URLs short                                        │
 │                                                             │
-│  ❌ Keine Logos im QR-Code (reduziert Lesbarkeit)           │
-│  ❌ Keine bunten QR-Codes                                   │
-│  ❌ Keine zu kleinen QR-Codes                               │
+│  ❌ No logos overlaid on QR (reduces readability)          │
+│  ❌ No colored QR codes                                    │
+│  ❌ No QR codes that are too small                        │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Sicherheitsüberlegungen
+## Security Considerations
 
-### Was im QR-Code ist
+### What is in the QR code
 
-| Enthalten | Nicht enthalten |
-|-----------|-----------------|
-| DID (öffentlich) | Private Key |
-| Public Key (öffentlich) | Verschlüsselte Daten |
-| Name (öffentlich) | Session Tokens |
+| Included | Not included |
+| --- | --- |
+| DID (public) | Private key |
+| Public key (public) | Encrypted data |
+| Display name (public) | Session tokens |
 
-### Validierung beim Scannen
+### Validation on Scan
 
 ```mermaid
 flowchart TD
-    Scan[QR scannen] --> Parse[URL parsen]
+    Scan[Scan QR] --> Decode[Decode Base64url]
+    Decode --> Valid{Valid JSON format?}
+    Valid -->|No| Error[Show error]
+    Valid -->|Yes| Check[Validate DID format]
+    Check --> Match{DID and PublicKey match?}
+    Match -->|No| Error
+    Match -->|Yes| Action[Proceed with verification]
 
-    Parse --> Valid{Gültiges Format?}
-
-    Valid -->|Nein| Error[Fehler anzeigen]
-
-    Valid -->|Ja| Check[DID validieren]
-
-    Check --> Match{DID und PublicKey passen?}
-
-    Match -->|Nein| Error
-
-    Match -->|Ja| Action[Aktion ausführen]
+    style Scan stroke:#333,fill:none
+    style Decode stroke:#333,fill:none
+    style Valid stroke:#333,fill:none
+    style Error stroke:#333,fill:none
+    style Check stroke:#333,fill:none
+    style Match stroke:#333,fill:none
+    style Action stroke:#333,fill:none
 ```
 
-### Prüfungen
+### Checks performed
 
-1. **Schema:** Muss `wot://` oder `https://weboftrust.app/` sein
-2. **DID-Format:** Muss gültiges `did:key:z...` sein
-3. **PublicKey:** Muss zum DID passen (ableitbar)
-4. **Token (bei Invite):** Signatur muss gültig sein
+1. **Format:** Must be a valid URL starting with `https://web-of-trust.de/`
+2. **DID format:** Must be a valid `did:key:z6Mk...` string
+3. **PublicKey:** Must match the key embedded in the DID (derivable)
+4. **Type field:** Must be a known type (`identity`, `invite`)
 
 ---
 
-## URL-Encoding
+## URL Encoding
 
-### Sonderzeichen
+If a name or other string parameter is included in a URL (rather than a JSON payload), standard percent-encoding applies:
 
-| Zeichen | Encoded |
-|---------|---------|
-| Leerzeichen | `%20` |
-| Umlaute (ä) | `%C3%A4` |
-| : | `%3A` |
-| / | `%2F` |
-
-### Beispiel
-
-```
-Name: "Anna Müller"
-Encoded: "Anna%20M%C3%BCller"
-```
+| Character | Encoded |
+| --- | --- |
+| Space | `%20` |
+| Umlaut ä | `%C3%A4` |
+| `:` | `%3A` |
+| `/` | `%2F` |
 
 ---
 
-## Plattform-spezifisches Handling
+## See Also
 
-### iOS
-
-```
-wot:// → Custom URL Scheme → App öffnet
-https://weboftrust.app/ → Universal Link → App öffnet
-```
-
-### Android
-
-```
-wot:// → Intent Filter → App öffnet
-https://weboftrust.app/ → App Link → App öffnet
-```
-
-### Web (kein App installiert)
-
-```
-wot:// → Nicht unterstützt → Fallback-Seite
-https://weboftrust.app/ → Landing Page mit Install-Link
-```
-
----
-
-## Weiterführend
-
-- [Verifizierungs-Flow](../flows/02-verifizierung-nutzer-flow.md) - Wie QR-Codes bei Verifizierung genutzt werden
-- [Onboarding-Flow](../flows/01-onboarding-nutzer-flow.md) - QR beim ersten Start
+- [Verification Flow](../flows/02-verification-user-flow.md) — How QR codes are used during verification
+- [Onboarding Flow](../flows/01-onboarding-user-flow.md) — QR at first launch
+- [Current Implementation](../CURRENT_IMPLEMENTATION.md) — Implementation status

@@ -1,326 +1,323 @@
-# Attestation-Flow (Nutzer-Perspektive)
+# Attestation Flow (User Perspective)
 
-> Wie Nutzer Attestationen erstellen und ansehen
+> How users create and view attestations
 
-## Was ist eine Attestation?
+## What is an Attestation?
 
-Eine Attestation ist eine **signierte Aussage** einer Person über eine andere Person.
+An attestation is a **signed statement** made by one person about another person.
 
-| Verifizierung | Attestation |
-|---------------|-------------|
-| "Ich habe diese Person getroffen" | "Diese Person hat X getan" |
-| Identitätsbestätigung | Vertrauensaufbau |
-| Einmalig pro Kontakt | Beliebig viele möglich |
-| Binär (ja/nein) | Inhaltlich (was, wann, wo) |
+| Verification | Attestation |
+|--------------|-------------|
+| "I have met this person" | "This person did X" |
+| Identity confirmation | Building trust |
+| Once per contact | Any number possible |
+| Binary (yes/no) | Content-rich (what, when, where) |
 
-## Hauptflow: Attestation erstellen
+## Main Flow: Creating an Attestation
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
-    participant App as Anna App
+    participant App as Anna's App
     participant B as Ben
 
-    Note over A,B: Ben hat im Garten geholfen
+    Note over A,B: Ben helped in the garden
 
-    A->>App: Öffnet Bens Profil
-    A->>App: Tippt Attestation erstellen
-    
-    App->>A: Zeigt Formular
-    
-    A->>App: Beschreibung eingeben
-    Note over App: "Ben hat 3 Stunden im Gemeinschaftsgarten geholfen"
-    
-    A->>App: Tags auswählen
-    Note over App: Garten, Helfen, Gemeinschaft
-    
-    A->>App: Optional: Gruppe auswählen
-    Note over App: Gemeinschaftsgarten Sonnenberg
-    
-    A->>App: Tippt Attestation erstellen
-    
-    App->>App: Signiert mit Annas Private Key
-    App->>App: Speichert lokal
-    App->>App: Sync zum Server
-    
-    App->>A: Attestation erstellt!
-    
-    Note over B: Ben sieht neue Attestation in seinem Profil
+    A->>App: Opens Ben's profile
+    A->>App: Taps Create Attestation
+
+    App->>A: Shows form
+
+    A->>App: Enter description
+    Note over App: "Ben helped for 3 hours in the community garden"
+
+    A->>App: Select tags
+    Note over App: Garden, Helping, Community
+
+    A->>App: Optional: select group
+    Note over App: Community Garden Sonnenberg
+
+    A->>App: Taps Create Attestation
+
+    App->>App: Signs with Anna's private key
+    App->>App: Delivers to Ben via Relay (Outbox pattern)
+
+    App->>A: Attestation created!
+
+    Note over B: Ben sees the new attestation in his profile
 ```
 
-## Variante: Schnelle Attestation (Danke-Button)
+> **Delivery:** Attestations are sent via the **AttestationDeliveryService** and the **Outbox pattern** — messages are queued locally and delivered reliably via the WebSocket Relay, with redelivery on reconnect.
+
+## Variant: Quick Attestation (Thank-You Button)
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
-    participant App as Anna App
+    participant App as Anna's App
 
-    Note over A: Ben hat gerade geholfen
+    Note over A: Ben just helped out
 
-    A->>App: Öffnet Bens Profil
-    A->>App: Tippt Danke-Button
-    
-    App->>A: Schnell-Attestation Vorschläge
-    Note over App: Hat geholfen, War freundlich, Gute Arbeit
-    
-    A->>App: Wählt Vorlage aus
-    A->>App: Optional: Text anpassen
-    A->>App: Tippt Senden
-    
-    App->>App: Erstellt und signiert Attestation
-    
-    App->>A: Danke gesendet!
+    A->>App: Opens Ben's profile
+    A->>App: Taps Thank-You button
+
+    App->>A: Quick attestation suggestions
+    Note over App: Helped out, Was friendly, Good work
+
+    A->>App: Selects a template
+    A->>App: Optional: adjust text
+    A->>App: Taps Send
+
+    App->>App: Creates and signs attestation
+
+    App->>A: Thanks sent!
 ```
 
-## Was der Nutzer sieht
+## What the User Sees
 
-### Bens Profil mit Attestation-Button
+### Ben's Profile with Attestation Button
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│         📷 [Profilbild]         │
+│         📷 [Profile photo]      │
 │                                 │
 │          Ben Schmidt            │
-│     "Neu in der Gegend"         │
+│     "New to the neighborhood"   │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Verifiziert am 08.01.25 ✅     │
+│  Verified on 08.01.25 ✅        │
 │                                 │
-│  12 Attestationen erhalten      │
-│                                 │
-├─────────────────────────────────┤
-│                                 │
-│  [ 👍 Danke ]  [ ✍️ Attestation ]│
+│  12 attestations received       │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Letzte Attestationen:          │
+│  [ 👍 Thanks ] [ ✍️ Attest ]    │
 │                                 │
-│  "Hat beim Umzug geholfen"      │
-│  von Tom · vor 3 Tagen          │
+├─────────────────────────────────┤
 │                                 │
-│  "Kennt sich mit Fahrrädern     │
-│   aus"                          │
-│  von Carla · vor 1 Woche        │
+│  Recent attestations:           │
 │                                 │
-│  [ Alle anzeigen ]              │
+│  "Helped with moving"           │
+│  by Tom · 3 days ago            │
+│                                 │
+│  "Knows bikes really well"      │
+│  by Carla · 1 week ago          │
+│                                 │
+│  [ Show all ]                   │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Attestation erstellen - Formular
+### Create Attestation — Form
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ✍️ Attestation für Ben          │
+│  ✍️ Attestation for Ben          │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Was möchtest du bestätigen?    │
+│  What do you want to attest?    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ Ben hat 3 Stunden im    │    │
-│  │ Gemeinschaftsgarten     │    │
-│  │ geholfen und dabei die  │    │
-│  │ Tomaten gegossen.       │    │
+│  │ Ben helped for 3 hours  │    │
+│  │ in the community garden │    │
+│  │ and watered the         │    │
+│  │ tomatoes.               │    │
 │  │                         │    │
 │  └─────────────────────────┘    │
 │                                 │
-│  Tags (wähle passende):         │
+│  Tags (select relevant):        │
 │                                 │
-│  [Garten] [Helfen] [Handwerk]   │
-│  [Beratung] [Transport] [+Neu]  │
+│  [Garden] [Helping] [Crafts]    │
+│  [Advice] [Transport] [+New]    │
 │                                 │
-│  Im Kontext einer Gruppe?       │
+│  In context of a group?         │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ Gemeinschaftsgarten  ▼  │    │
+│  │ Community Garden     ▼  │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  ℹ️ Attestationen können nicht   │
-│    zurückgenommen werden.       │
+│  ℹ️ Attestations cannot be       │
+│    taken back.                  │
 │                                 │
-│  [ Attestation erstellen ]      │
+│  [ Create Attestation ]         │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Schnell-Attestation (Danke)
+### Quick Attestation (Thank You)
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  👍 Danke an Ben                 │
+│  👍 Thanks to Ben               │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Wofür möchtest du danken?      │
+│  What do you want to thank      │
+│  them for?                      │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 🌱 Hat im Garten        │    │
-│  │    geholfen             │    │
+│  │ 🌱 Helped in the        │    │
+│  │    garden               │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 🔧 Hat etwas repariert  │    │
+│  │ 🔧 Fixed something      │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📦 Hat beim Tragen      │    │
-│  │    geholfen             │    │
+│  │ 📦 Helped carry things  │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 💬 War ein gutes        │    │
-│  │    Gespräch             │    │
+│  │ 💬 Had a great          │    │
+│  │    conversation         │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ ✍️ Eigenen Text          │    │
-│  │    schreiben...         │    │
+│  │ ✍️ Write custom text...  │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Attestation erstellt - Bestätigung
+### Attestation Created — Confirmation
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
 │         ✅ Attestation          │
-│            erstellt!            │
+│            created!             │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  "Ben hat 3 Stunden im          │
-│   Gemeinschaftsgarten           │
-│   geholfen"                     │
+│  "Ben helped for 3 hours in     │
+│   the community garden"         │
 │                                 │
-│  Tags: Garten, Helfen           │
-│  Gruppe: Gemeinschaftsgarten    │
+│  Tags: Garden, Helping          │
+│  Group: Community Garden        │
 │                                 │
-│  Signiert: 08.01.25 14:32       │
+│  Signed: 08.01.25 14:32         │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Ben wird benachrichtigt.       │
+│  Ben will be notified.          │
 │                                 │
-│  [ Fertig ]                     │
+│  [ Done ]                       │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-## Attestationen ansehen
+## Viewing Attestations
 
-### Eigene erhaltene Attestationen
+### My Received Attestations
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  📜 Meine Attestationen         │
+│  📜 My Attestations             │
 │                                 │
-│  Filtern: [Alle ▼] [Garten ▼]   │
+│  Filter: [All ▼] [Garden ▼]     │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ "Hat 3 Stunden im       │    │
-│  │  Garten geholfen"       │    │
+│  │ "Helped for 3 hours     │    │
+│  │  in the garden"         │    │
 │  │                         │    │
 │  │  👩 Anna · 08.01.25      │    │
-│  │  🏷️ Garten, Helfen       │    │
-│  │  👥 Gemeinschaftsgarten  │    │
+│  │  🏷️ Garden, Helping      │    │
+│  │  👥 Community Garden     │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ "Kennt sich super mit   │    │
-│  │  Fahrrädern aus"        │    │
+│  │ "Knows bikes really     │    │
+│  │  well"                  │    │
 │  │                         │    │
 │  │  👴 Tom · 05.01.25       │    │
-│  │  🏷️ Handwerk, Fahrrad    │    │
+│  │  🏷️ Crafts, Bicycle      │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ "Hat beim Umzug         │    │
-│  │  geholfen - super       │    │
-│  │  zuverlässig!"          │    │
+│  │ "Helped with the move   │    │
+│  │  — super reliable!"     │    │
 │  │                         │    │
 │  │  👩 Carla · 01.01.25     │    │
-│  │  🏷️ Helfen, Transport    │    │
+│  │  🏷️ Helping, Transport   │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Attestationen eines Kontakts ansehen
+### Viewing a Contact's Attestations
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  📜 Attestationen für Ben       │
+│  📜 Attestations for Ben        │
 │                                 │
-│  23 Attestationen von           │
-│  8 verschiedenen Personen       │
+│  23 attestations from           │
+│  8 different people             │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Häufigste Tags:                │
+│  Most common tags:              │
 │                                 │
-│  ████████████ Helfen (12)       │
-│  ████████     Garten (8)        │
-│  █████        Handwerk (5)      │
+│  ████████████ Helping (12)      │
+│  ████████     Garden (8)        │
+│  █████        Crafts (5)        │
 │  ███          Transport (3)     │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Von deinen Kontakten:          │
+│  From your contacts:            │
 │                                 │
-│  👩 Anna (3 Attestationen)      │
-│  👴 Tom (2 Attestationen)       │
-│  👩 Carla (1 Attestation)       │
+│  👩 Anna (3 attestations)       │
+│  👴 Tom (2 attestations)        │
+│  👩 Carla (1 attestation)       │
 │                                 │
-│  Von anderen:                   │
-│  👤 5 weitere Personen          │
+│  From others:                   │
+│  👤 5 more people               │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  [ Alle Attestationen ]         │
+│  [ All attestations ]           │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ## Personas
 
-### Kemal attestiert nach Reparatur-Café
+### Kemal attests after a Repair Café
 
 ```mermaid
 sequenceDiagram
     participant K as Kemal
     participant App as App
 
-    Note over K: Nach dem Reparatur-Café
+    Note over K: After the Repair Café
 
-    K->>App: Öffnet Teilnehmer-Liste
-    
-    loop Für jeden Helfer
-        K->>App: Öffnet Profil
-        K->>App: Tippt Danke
-        K->>App: Wählt "Hat repariert"
-        K->>App: Fügt Detail hinzu
-        Note over App: "Hat 2 Fahrräder repariert"
-        K->>App: Senden
+    K->>App: Opens participant list
+
+    loop For each helper
+        K->>App: Opens profile
+        K->>App: Taps Thanks
+        K->>App: Selects "Repaired something"
+        K->>App: Adds detail
+        Note over App: "Fixed 2 bicycles"
+        K->>App: Send
     end
-    
-    Note over K: 5 Attestationen in 3 Minuten
+
+    Note over K: 5 attestations in 3 minutes
 ```
 
-### Greta bedankt sich bei Tom
+### Greta thanks Tom
 
 ```mermaid
 sequenceDiagram
@@ -328,83 +325,99 @@ sequenceDiagram
     participant T as Tom
     participant App as App
 
-    Note over G,T: Tom hat Greta bei der App geholfen
+    Note over G,T: Tom helped Greta with the app
 
-    G->>App: Öffnet Toms Profil
-    G->>App: Sieht Danke-Button
-    G->>App: Tippt Danke
-    
-    App->>G: Zeigt Schnell-Optionen
-    
-    G->>App: Wählt "War ein gutes Gespräch"
-    G->>App: Senden
-    
-    App->>G: Danke gesendet!
-    
-    Note over T: Tom sieht Benachrichtigung
+    G->>App: Opens Tom's profile
+    G->>App: Sees Thank-You button
+    G->>App: Taps Thanks
+
+    App->>G: Shows quick options
+
+    G->>App: Selects "Had a great conversation"
+    G->>App: Send
+
+    App->>G: Thanks sent!
+
+    Note over T: Tom sees notification
 ```
 
-## Regeln und Einschränkungen
+## Rules and Constraints
 
-### Was Attestationen NICHT können
+### What Attestations CANNOT Do
 
 ```mermaid
 flowchart TD
-    A["Attestation erstellt"] --> B{"Was passiert?"}
+    A["Attestation created"] --> B{"What happens?"}
 
-    B --> C["Kann NICHT gelöscht werden"]
-    B --> D["Kann NICHT bearbeitet werden"]
-    B --> E["Kann NICHT widerrufen werden"]
+    B --> C["CANNOT be deleted"]
+    B --> D["CANNOT be edited"]
+    B --> E["CANNOT be revoked"]
 
-    C --> F["Attestation bleibt für immer"]
+    C --> F["Attestation persists forever"]
     D --> F
     E --> F
 
-    F --> G["Aber: Empfänger kann sie ausblenden"]
+    F --> G["But: recipient can hide it"]
+
+    style A stroke:#888,fill:none,color:inherit
+    style B stroke:#888,fill:none,color:inherit
+    style C stroke:#e55,fill:none,color:inherit
+    style D stroke:#e55,fill:none,color:inherit
+    style E stroke:#e55,fill:none,color:inherit
+    style F stroke:#888,fill:none,color:inherit
+    style G stroke:#5a5,fill:none,color:inherit
 ```
 
-> **Neu:** Der Empfänger kann unerwünschte Attestationen **ausblenden** (hidden=true). Sie bleiben gespeichert, sind aber nicht öffentlich sichtbar.
+> **Note:** The recipient can hide unwanted attestations by setting `attestationMetadata.accepted = false`. They remain stored but are not publicly visible.
 
-### Warum nicht löschbar?
+### Why can't they be deleted?
 
-| Grund | Erklärung |
-|-------|-----------|
-| Integrität | Signierte Aussagen sind unveränderlich |
-| Vertrauen | Andere verlassen sich auf die Aussage |
-| Missbrauch | Sonst könnte man positive Attestationen sammeln und dann löschen |
+| Reason | Explanation |
+|--------|-------------|
+| Integrity | Signed statements are immutable |
+| Trust | Others rely on the statement |
+| Abuse prevention | Otherwise one could collect positive attestations and then delete them |
 
-### Umgang mit falschen Attestationen
+### Handling incorrect attestations
 
-Wenn jemand etwas Falsches attestiert hat:
+If someone attested something incorrectly:
 
-1. **Neue Attestation:** Eine korrigierende Attestation erstellen
-2. **Kontakt ausblenden:** Wenn systematisch falsch attestiert wird
-3. **Soziale Konsequenz:** Wer falsch attestiert, verliert Glaubwürdigkeit
+1. **New attestation:** Create a correcting attestation
+2. **Hide contact:** If attestations are systematically wrong
+3. **Social consequence:** Those who attest falsely lose credibility
 
-## Sichtbarkeit von Attestationen
+## Visibility of Attestations
 
-Mit dem **Empfänger-Prinzip** wird die Attestation bei Ben gespeichert – er kontrolliert die Sichtbarkeit:
+With the **recipient principle**, the attestation is stored at Ben's end — he controls visibility:
 
 ```mermaid
 flowchart TD
-    A["Anna erstellt Attestation für Ben"] --> B["Attestation wird bei Ben gespeichert"]
+    A["Anna creates attestation for Ben"] --> B["Attestation stored in Ben's PersonalDoc CRDT"]
 
-    B --> C{"Ben kann entscheiden"}
+    B --> C{"Ben can decide"}
 
-    C --> D["Sichtbar lassen (Standard)"]
-    C --> E["Ausblenden (hidden=true)"]
+    C --> D["Leave visible (default)"]
+    C --> E["Hide (attestationMetadata.accepted = false)"]
 
-    D --> F["Bens Kontakte sehen sie in seinem Profil"]
-    E --> G["Nur Ben selbst sieht sie"]
+    D --> F["Ben's contacts see it in his profile"]
+    E --> G["Only Ben himself sees it"]
+
+    style A stroke:#888,fill:none,color:inherit
+    style B stroke:#888,fill:none,color:inherit
+    style C stroke:#888,fill:none,color:inherit
+    style D stroke:#5a5,fill:none,color:inherit
+    style E stroke:#a55,fill:none,color:inherit
+    style F stroke:#5a5,fill:none,color:inherit
+    style G stroke:#888,fill:none,color:inherit
 ```
 
-### Sichtbarkeits-Matrix
+### Visibility Matrix
 
-| Betrachter | Sieht Attestation? | Warum? |
-|------------|-------------------|--------|
-| Ben (Empfänger) | ✅ Immer | Ist sein Profil, er kontrolliert Sichtbarkeit |
-| Bens Kontakte | ✅ Wenn nicht hidden | Teil von Bens Profil |
-| Anna (Ersteller) | ✅ Wenn Ben's Kontakt | Sieht Ben's Profil |
-| Fremde | ❌ Nein | Nicht in Ben's Netzwerk |
+| Viewer | Sees attestation? | Why? |
+|--------|-------------------|------|
+| Ben (recipient) | ✅ Always | It's his profile, he controls visibility |
+| Ben's contacts | ✅ Unless hidden | Part of Ben's profile |
+| Anna (creator) | ✅ If Ben's contact | Sees Ben's profile |
+| Strangers | ❌ No | Not in Ben's network |
 
-> **Hinweis:** Ben kann unerwünschte Attestationen ausblenden, aber nicht löschen. Die Signatur von Anna bleibt gültig.
+> **Note:** Ben can hide unwanted attestations but not delete them. Anna's signature remains valid.

@@ -1,245 +1,254 @@
 # Self-Service Onboarding Flow
 
-## Übersicht
+## Overview
 
-Dieser Flow beschreibt den vollständigen Prozess, wie eine Person dem Web of Trust beitritt und optional eigene Zeitgutscheine bestellt. Der Prozess ist so gestaltet, dass er von Multiplikatoren weitergegeben werden kann.
+This flow describes the complete process by which a person joins the Web of Trust. The process is designed to be self-explanatory and shareable by multipliers.
 
-**Ziel:** Ein einfacher, selbsterklärender Prozess von der Einladung bis zum fertigen Profil mit QR-Code.
+**Goal:** A simple, self-guided process from invitation to a finished profile with QR code.
 
-**Technische Voraussetzung (2026):** Alle relevanten Browser unterstützen Ed25519 nativ über die Web Crypto API.
+**Technical prerequisite (2026):** All relevant browsers natively support Ed25519 via the Web Crypto API.
 
----
-
-## User Journey
-
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│ Einladung│───►│ Beitritt │───►│  Profil  │───►│  Schein  │───►│ Einladen │
-│ erhalten │    │ WoT      │    │ erstellen│    │ bestellen│    │ (andere) │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
-     │               │               │               │               │
-     │               │               │               │               │
-   Link/QR       Schlüssel        Name,          Design,         Eigener
-   scannen       generieren       Portrait       Bestellung      Einladungs-
-                 Recovery                                        link
-                 sichern
-```
+> **Out of scope:** Shop integration (Zeitgutschein ordering, affiliate tracking) is explicitly out of scope for the current implementation. The relevant steps are marked below.
 
 ---
 
-## Schritt 1: Einladung erhalten
+## User journey
 
-### Kontext
-Eine Person erhält eine Einladung von jemandem, der bereits im Web of Trust ist – entweder als:
-- Link (per Messenger, Email, etc.)
-- QR-Code (auf einem Zeitgutschein oder Visitenkarte)
-
-### URL-Struktur
+```text
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│Invitation│───►│  Join    │───►│ Create   │───►│  Invite  │
+│ received │    │  WoT     │    │ profile  │    │ (others) │
+└──────────┘    └──────────┘    └──────────┘    └──────────┘
+     │               │               │               │
+     │               │               │               │
+   Link/QR       Generate        Name,             Own
+   scan          keys            portrait          invite
+                 Save                              link
+                 recovery
 ```
-https://web-of-trust.de/join/{einlader-did-fragment}/{einladungs-code}
 
-Beispiel:
+---
+
+## Step 1: Receive invitation
+
+### Context
+
+A person receives an invitation from someone already in the Web of Trust — either as:
+
+- A link (via messenger, email, etc.)
+- A QR code (on a time voucher or business card)
+
+### URL structure
+
+```text
+https://web-of-trust.de/join/{inviter-did-fragment}/{invite-code}
+
+Example:
 https://web-of-trust.de/join/z6MkhaXg/A7B3C9
 ```
 
-**Komponenten:**
-- `z6MkhaXg` – Kurzform der DID des Einladenden (erste 8 Zeichen nach `z`)
-- `A7B3C9` – Einmaliger Einladungscode (verhindert Spam, ermöglicht Tracking)
+**Components:**
 
-### Landing Page
+- `z6MkhaXg` — Short form of the inviter's DID (first 8 characters after `z`)
+- `A7B3C9` — One-time invite code (prevents spam, enables tracking)
 
-```
+### Landing page
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
 │                     🌐 Web of Trust                             │
 │                                                                 │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                                                         │   │
-│   │              [Portrait des Einladenden]                 │   │
+│   │              [Portrait of inviter]                      │   │
 │   │                                                         │   │
 │   │                    Timo                                 │   │
-│   │           hat dich eingeladen                           │   │
+│   │               has invited you                           │   │
 │   │                                                         │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  Das Web of Trust ist ein dezentrales Netzwerk für              │
-│  echte Verbindungen zwischen Menschen.                          │
+│  Web of Trust is a decentralised network for                    │
+│  genuine connections between people.                            │
 │                                                                 │
-│  • Deine Identität gehört dir (nicht einer Plattform)           │
-│  • Vertrauen entsteht durch echte Begegnungen                   │
-│  • Keine zentrale Kontrolle, keine Überwachung                  │
+│  • Your identity belongs to you (not a platform)               │
+│  • Trust is built through real encounters                       │
+│  • No central control, no surveillance                          │
 │                                                                 │
 │               ┌─────────────────────────┐                       │
-│               │      Jetzt beitreten    │                       │
+│               │        Join now         │                       │
 │               └─────────────────────────┘                       │
 │                                                                 │
-│  Bereits Mitglied? [Anmelden]                                   │
+│  Already a member? [Sign in]                                    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Schritt 2: Web of Trust Beitritt
+## Step 2: Join the Web of Trust
 
-### 2.1 Schlüsselpaar generieren
+### 2.1 Generate key pair
 
-**User sieht:**
-```
+**User sees:**
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│                  Deine digitale Identität                       │
+│                  Your digital identity                          │
 │                                                                 │
-│  Wir erstellen jetzt dein persönliches Schlüsselpaar.           │
-│  Das ist wie ein digitaler Fingerabdruck – einzigartig          │
-│  und nur für dich.                                              │
+│  We are now creating your personal key pair.                    │
+│  Think of it as a digital fingerprint — unique                  │
+│  and only yours.                                                │
 │                                                                 │
-│                    [Spinner/Animation]                          │
+│                    [Spinner / animation]                        │
 │                                                                 │
-│              Schlüssel wird generiert...                        │
+│              Generating keys...                                 │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Technisch (im Hintergrund):**
+**Under the hood:**
 
 ```typescript
-// 1. Entropy generieren (128 bit für 12 Wörter)
+// 1. Generate 128-bit entropy for 12 words
 const entropy = crypto.getRandomValues(new Uint8Array(16));
 
-// 2. Mnemonic aus Entropy ableiten (BIP39)
-const mnemonic = entropyToMnemonic(entropy); // 12 Wörter
+// 2. Derive mnemonic from entropy (BIP39, German wordlist)
+const mnemonic = entropyToMnemonic(entropy, germanWordlist); // 12 words
 
-// 3. Seed aus Mnemonic ableiten (PBKDF2-SHA512, 2048 Iterationen)
+// 3. Derive seed from mnemonic (BIP39 standard)
 const seed = await mnemonicToSeed(mnemonic);
 
-// 4. Ed25519 Keypair aus Seed generieren (Web Crypto API 2026)
-const keyPair = await crypto.subtle.generateKey(
-  {
-    name: "Ed25519",
-  },
-  false, // extractable: false!
-  ["sign", "verify"]
-);
-
-// Alternative: Deterministisch aus Seed (falls Browser es unterstützt)
-const keyPair = await crypto.subtle.importKey(
-  "raw",
-  seed.slice(0, 32),
-  { name: "Ed25519" },
+// 4. Derive HKDF master key (non-extractable)
+const masterKey = await crypto.subtle.importKey(
+  'raw', seed,
+  { name: 'HKDF' },
   false, // non-extractable
-  ["sign"]
+  ['deriveKey', 'deriveBits']
 );
 
-// 5. DID aus Public Key erstellen
-const publicKeyBytes = await crypto.subtle.exportKey("raw", keyPair.publicKey);
-const did = createDidFromPublicKey(publicKeyBytes); // did:key:z6Mk...
+// 5. Derive Ed25519 signing key via HKDF
+const signingKeyBytes = await crypto.subtle.deriveBits(
+  { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: encode('sign') },
+  masterKey,
+  256
+);
 
-// 6. Private Key in IndexedDB speichern (non-extractable CryptoKey Objekt)
-await keyStorage.store(keyPair.privateKey);
+// 6. Compute DID from public key
+const publicKey = ed25519.getPublicKey(new Uint8Array(signingKeyBytes));
+const did = createDidFromPublicKey(publicKey); // did:key:z6Mk...
+
+// 7. Store master key in IndexedDB (non-extractable CryptoKey object)
+await keyStorage.store(masterKey);
 ```
 
-### 2.2 Recovery Phrase anzeigen
+### 2.2 Show recovery phrase
 
-**KRITISCH:** Die Recovery Phrase wird EINMAL angezeigt und ist der EINZIGE Weg, die Identität wiederherzustellen.
+**CRITICAL:** The recovery phrase is shown ONCE and is the ONLY way to restore the identity.
 
-**User sieht:**
-```
+**User sees:**
+
+```text
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
-│              ⚠️  Deine Recovery Phrase                         │
+│              ⚠️  Your recovery phrase                          │
 │                                                                │
-│  Diese 12 Wörter sind der EINZIGE Weg, deine Identität         │
-│  wiederherzustellen. Schreibe sie JETZT auf Papier.            │
+│  These 12 words are the ONLY way to restore your identity.     │
+│  Write them down on paper RIGHT NOW.                           │
 │                                                                │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │                                                         │   │
-│  │   1. apple      2. banana     3. cherry                 │   │
-│  │   4. dragon     5. eagle      6. forest                 │   │
-│  │   7. garden     8. harbor     9. island                 │   │
-│  │  10. jungle    11. kitchen   12. lemon                  │   │
+│  │   1. absurd      2. banane     3. chaos                 │   │
+│  │   4. donner      5. eiche      6. falke                 │   │
+│  │   7. garten      8. hafen      9. insel                 │   │
+│  │  10. jagd       11. kiste     12. lampe                 │   │
 │  │                                                         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ □ Ich habe die Wörter auf Papier geschrieben            │   │
-│  │ □ Ich verstehe, dass ich ohne diese Wörter keinen       │   │
-│  │   Zugang mehr zu meiner Identität habe                  │   │
+│  │ □ I have written the words on paper                     │   │
+│  │ □ I understand that without these words I lose          │   │
+│  │   access to my identity                                 │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                │
 │               ┌─────────────────────────┐                      │
-│               │        Weiter           │ (disabled bis ✓✓)    │
+│               │        Continue         │  (disabled until ✓✓) │
 │               └─────────────────────────┘                      │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-**UI-Regeln:**
-- Keine Screenshot-Möglichkeit (soweit technisch möglich)
-- Navigation blockiert bis Checkboxen gesetzt
-- Kein "Zurück" – Wörter werden nur einmal angezeigt
-- Kein Kopieren in Zwischenablage
+**UI rules:**
 
-### 2.3 Recovery Phrase Quiz
+- No screenshot capability (where technically possible)
+- Navigation blocked until both checkboxes are ticked
+- No "Back" button — words are shown only once
+- No copy to clipboard
 
-**User sieht:**
-```
+### 2.3 Recovery phrase quiz
+
+**User sees:**
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│                    Sicherheits-Check                            │
+│                    Security check                               │
 │                                                                 │
-│  Bitte bestätige, dass du die Wörter aufgeschrieben hast.      │
+│  Please confirm that you have written down the words.           │
 │                                                                 │
-│  Was ist das 4. Wort?                                          │
+│  What is the 4th word?                                          │
 │                                                                 │
-│     ○ cherry                                                    │
-│     ○ dragon    ←                                              │
-│     ○ forest                                                    │
-│     ○ garden                                                    │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  Was ist das 9. Wort?                                          │
-│                                                                 │
-│     ○ harbor                                                    │
-│     ○ island    ←                                              │
-│     ○ jungle                                                    │
-│     ○ kitchen                                                   │
+│     ○ chaos                                                     │
+│     ○ donner    ←                                              │
+│     ○ eiche                                                     │
+│     ○ falke                                                     │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Was ist das 11. Wort?                                         │
+│  What is the 9th word?                                          │
 │                                                                 │
-│     ○ island                                                    │
-│     ○ jungle                                                    │
-│     ○ kitchen   ←                                              │
-│     ○ lemon                                                     │
+│     ○ hafen                                                     │
+│     ○ insel     ←                                              │
+│     ○ jagd                                                      │
+│     ○ kiste                                                     │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  What is the 11th word?                                         │
+│                                                                 │
+│     ○ insel                                                     │
+│     ○ jagd                                                      │
+│     ○ kiste     ←                                              │
+│     ○ lampe                                                     │
 │                                                                 │
 │               ┌─────────────────────────┐                      │
-│               │       Bestätigen        │                      │
+│               │        Confirm          │                      │
 │               └─────────────────────────┘                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Logik:**
-- 3 zufällige Positionen aus 12
-- Multiple Choice mit 4 Optionen (1 richtig, 3 falsch aus der Wortliste)
-- Bei Fehler: Zurück zur Recovery Phrase Anzeige
+**Logic:**
+
+- 3 random positions out of 12
+- Multiple choice with 4 options (1 correct, 3 wrong from word list)
+- On failure: return to recovery phrase display
 
 ---
 
-## Schritt 3: Profil erstellen
+## Step 3: Create profile
 
-### User sieht:
-```
+### User sees
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│                    Dein Profil                                  │
+│                    Your profile                                 │
 │                                                                 │
 │  ┌──────────────┐                                              │
 │  │              │                                              │
-│  │   [Kamera]   │  Foto hinzufügen (optional)                  │
+│  │   [Camera]   │  Add photo (optional)                        │
 │  │              │                                              │
 │  └──────────────┘                                              │
 │                                                                 │
@@ -248,220 +257,152 @@ await keyStorage.store(keyPair.privateKey);
 │  │ Lisa                                                    │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  Kurzbeschreibung                                               │
+│  Short description                                              │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Gärtnerin & Gemeinschaftsmensch                         │   │
+│  │ Gardener & community person                             │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  Was ich anbiete (optional)                                     │
+│  What I offer (optional)                                        │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Gartenarbeit, Kräuterwissen, Marmeladen                 │   │
+│  │ Gardening, herbal knowledge, jam                        │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  Kontakt (optional, wird auf deinem Profil angezeigt)          │
+│  Contact (optional, shown on your profile)                      │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ Email: lisa@example.com                                 │   │
 │  └─────────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Telefon: +49 123 456789                                 │   │
-│  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 │               ┌─────────────────────────┐                      │
-│               │    Profil erstellen     │                      │
+│               │      Create profile     │                      │
 │               └─────────────────────────┘                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Technisch:**
+**Under the hood:**
 
 ```typescript
-// Profil-Daten signieren
 const profile = {
   did: "did:key:z6Mk...",
   name: "Lisa",
-  bio: "Gärtnerin & Gemeinschaftsmensch",
-  offerings: ["Gartenarbeit", "Kräuterwissen", "Marmeladen"],
+  bio: "Gardener & community person",
+  offerings: ["Gardening", "herbal knowledge", "jam"],
   contact: {
-    email: "lisa@example.com",
-    phone: "+49 123 456789"
+    email: "lisa@example.com"
   },
   portrait: "base64...", // optional
-  createdAt: "2026-01-28T...",
-  updatedAt: "2026-01-28T..."
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
 };
 
-// Mit privatem Schlüssel signieren (JWS)
-const signedProfile = await signJws(profile, privateKey);
+// Sign with JWS
+const signedProfile = await identity.signJws(profile);
 
-// Lokal speichern
-await storage.saveProfile(signedProfile);
+// Store in PersonalDoc CRDT (Y.Map)
+personalDoc.profile.set('data', signedProfile);
 
-// Optional: An Sync-Server senden (verschlüsselt)
-await syncService.uploadProfile(signedProfile);
+// Push to wot-profiles server (public discovery)
+await profileService.signProfile(profile);
 ```
 
 ---
 
-## Schritt 4: Erste Verifizierung
+## Step 4: First verification
 
-Nach dem Beitritt ist der Einladende automatisch der erste Kontakt.
+After joining, the inviter automatically becomes the first contact.
 
-**User sieht:**
-```
+**User sees:**
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│             ✓ Willkommen im Web of Trust, Lisa!                │
+│             ✓ Welcome to Web of Trust, Lisa!                   │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │                                                         │   │
-│  │  Dein erster Kontakt:                                   │   │
+│  │  Your first contact:                                    │   │
 │  │                                                         │   │
 │  │  ┌────────┐                                            │   │
-│  │  │ [Foto] │  Timo                                      │   │
-│  │  └────────┘  hat dich eingeladen                       │   │
+│  │  │ [Photo]│  Timo                                      │   │
+│  │  └────────┘  invited you                               │   │
 │  │                                                         │   │
-│  │  Status: Verbindung ausstehend                         │   │
+│  │  Status: Connection pending                            │   │
 │  │                                                         │   │
-│  │  Tipp: Wenn du Timo das nächste Mal persönlich         │   │
-│  │  triffst, scannt gegenseitig eure QR-Codes um          │   │
-│  │  die Verbindung zu verifizieren.                       │   │
+│  │  Tip: Next time you meet Timo in person, scan          │   │
+│  │  each other's QR codes to verify the connection.      │   │
 │  │                                                         │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Was möchtest du als nächstes tun?                             │
+│  What would you like to do next?                               │
 │                                                                 │
 │  ┌─────────────────────────┐  ┌─────────────────────────┐     │
-│  │  Eigene Zeitgutscheine  │  │    Weitere Personen     │     │
-│  │       bestellen         │  │       einladen          │     │
+│  │    Invite others        │  │    View my profile      │     │
 │  └─────────────────────────┘  └─────────────────────────┘     │
 │                                                                 │
-│  ┌─────────────────────────┐  ┌─────────────────────────┐     │
-│  │    Mein Profil          │  │      QR-Code            │     │
-│  │      ansehen            │  │     herunterladen       │     │
-│  └─────────────────────────┘  └─────────────────────────┘     │
+│  ┌─────────────────────────┐                                   │
+│  │    Download QR code     │                                   │
+│  └─────────────────────────┘                                   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Schritt 5: Zeitgutscheine bestellen (optional)
+## Step 5: Invite others
 
-Wenn der User "Eigene Zeitgutscheine bestellen" wählt, wird er zum Schein-Designer weitergeleitet.
+Every user can create invitations after joining.
 
-**Wichtig:** Die Profil-Daten werden vorausgefüllt!
+**User sees:**
 
-**User sieht:**
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│                   Deine Zeitgutscheine                          │
+│                   Invite others                                 │
 │                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                     VORSCHAU                            │   │
-│  │  ┌─────────────┐  ┌─────────────┐                      │   │
-│  │  │ Vorderseite │  │ Rückseite   │                      │   │
-│  │  │             │  │             │                      │   │
-│  │  │  [Portrait] │  │  Lisa       │                      │   │
-│  │  │             │  │  lisa@...   │                      │   │
-│  │  │   5 Std     │  │  [QR-Code]  │ ← Dein WoT-Profil   │   │
-│  │  └─────────────┘  └─────────────┘                      │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ─────────────────────────── Anpassen ──────────────────────── │
-│                                                                 │
-│  Portrait                                                       │
-│  [Foto aus Profil übernommen]  [Anderes Foto wählen]           │
-│                                                                 │
-│  Wert                                                           │
-│  ○ 1 Stunde  ● 5 Stunden  ○ 10 Stunden  ○ Eigener Text        │
-│                                                                 │
-│  Text auf der Rückseite                                         │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Für diesen Schein erhältst du 5 Stunden meiner Zeit    │   │
-│  │ oder ein gleichwertiges Dankeschön.                     │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Kontaktdaten (aus Profil übernommen)                          │
-│  ☑ Email: lisa@example.com                                     │
-│  ☑ Telefon: +49 123 456789                                     │
-│                                                                 │
-│  ─────────────────────────── Bestellen ─────────────────────── │
-│                                                                 │
-│  ○ 50 Scheine  - 39,99€                                        │
-│  ● 100 Scheine - 59,99€                                        │
-│  ○ 200 Scheine - 79,99€                                        │
-│                                                                 │
-│               ┌─────────────────────────┐                      │
-│               │   Zur Kasse (59,99€)    │                      │
-│               └─────────────────────────┘                      │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Der QR-Code auf dem Schein:**
-```
-Inhalt: https://web-of-trust.de/p/z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK
-
-Kurzform möglich: https://wot.de/z6MkhaXg (erste 8 Zeichen, Redirect auf volle URL)
-```
-
----
-
-## Schritt 6: Andere einladen
-
-Jeder User kann nach dem Beitritt selbst Einladungen erstellen.
-
-**User sieht:**
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│                   Lade andere ein                               │
-│                                                                 │
-│  Teile deinen Einladungslink:                                   │
+│  Share your invite link:                                        │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ https://web-of-trust.de/join/z6MkhaXg/L9X2K7            │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  [Kopieren]  [WhatsApp]  [Telegram]  [Email]                   │
+│  [Copy]  [WhatsApp]  [Telegram]  [Email]                        │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Oder zeige deinen QR-Code:                                     │
+│  Or show your QR code:                                          │
 │                                                                 │
 │           ┌───────────────────┐                                │
 │           │                   │                                │
-│           │     [QR-Code]     │                                │
+│           │     [QR code]     │                                │
 │           │                   │                                │
 │           └───────────────────┘                                │
 │                                                                 │
-│  [Als Bild speichern]  [Drucken]                               │
+│  [Save as image]  [Print]                                       │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Deine Einladungen:                                             │
+│  Your invitations:                                              │
 │                                                                 │
-│  • L9X2K7 - Noch nicht eingelöst                               │
-│  • M4N8P2 - Max (beigetreten am 25.01.2026)                    │
-│  • K7R3W9 - Noch nicht eingelöst                               │
+│  • L9X2K7 — Not yet redeemed                                   │
+│  • M4N8P2 — Max (joined 25.01.2026)                            │
+│  • K7R3W9 — Not yet redeemed                                   │
 │                                                                 │
-│  [Neue Einladung erstellen]                                     │
+│  [Create new invitation]                                        │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Öffentliche Profil-Seite
+## Public profile page
 
-URL: `https://web-of-trust.de/p/{did}` oder Kurzform `https://web-of-trust.de/p/{did-fragment}`
+URL: `https://web-of-trust.de/p/{did}` or short form `https://web-of-trust.de/p/{did-fragment}`
 
-**Ansicht für Besucher:**
-```
+**View for visitors:**
+
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -469,45 +410,38 @@ URL: `https://web-of-trust.de/p/{did}` oder Kurzform `https://web-of-trust.de/p/
 │  │                    [Portrait]                            │  │
 │  │                                                          │  │
 │  │                       Lisa                               │  │
-│  │             Gärtnerin & Gemeinschaftsmensch              │  │
+│  │             Gardener & community person                  │  │
 │  │                                                          │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Was ich anbiete:                                               │
-│  • Gartenarbeit                                                 │
-│  • Kräuterwissen                                                │
-│  • Marmeladen                                                   │
+│  What I offer:                                                  │
+│  • Gardening                                                    │
+│  • Herbal knowledge                                             │
+│  • Jam                                                          │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
-│  Kontakt:                                                       │
+│  Contact:                                                       │
 │  📧 lisa@example.com                                            │
-│  📱 +49 123 456789                                              │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ ✓ Verifizierte Identität                                 │  │
+│  │ ✓ Verified identity                                      │  │
 │  │                                                          │  │
-│  │ Dieses Profil ist kryptografisch signiert.               │  │
-│  │ DID: did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnn... │  │
+│  │ This profile is cryptographically signed.                │  │
+│  │ DID: did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2Qt...       │  │
 │  │                                                          │  │
-│  │ Mitglied seit: Januar 2026                               │  │
-│  │ Verifiziert von: 3 Personen                              │  │
+│  │ Member since: January 2026                               │  │
+│  │ Verified by: 3 people                                    │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ─────────────────────────────────────────────────────────────  │
 │                                                                 │
 │               ┌─────────────────────────┐                      │
-│               │  Eigene Scheine drucken │                      │
-│               └─────────────────────────┘                      │
-│            (Link zum Shop mit ref={did-fragment})              │
-│                                                                 │
-│               ┌─────────────────────────┐                      │
-│               │   Auch dem Web of Trust │                      │
-│               │        beitreten        │                      │
+│               │   Join Web of Trust     │                      │
 │               └─────────────────────────┘                      │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -515,217 +449,169 @@ URL: `https://web-of-trust.de/p/{did}` oder Kurzform `https://web-of-trust.de/p/
 
 ---
 
-## Technische Architektur
+## Technical architecture
 
-### Komponenten
+### Components
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        FRONTEND                                 │
 │                   (web-of-trust.de)                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │  Join Flow  │  │   Profile   │  │   Invite    │            │
-│  │  (Beitritt) │  │   Editor    │  │   Manager   │            │
+│  │  Join flow  │  │   Profile   │  │   Invite    │            │
+│  │             │  │   editor    │  │   manager   │            │
 │  └─────────────┘  └─────────────┘  └─────────────┘            │
 │         │                │                │                    │
 │         └────────────────┼────────────────┘                    │
 │                          │                                      │
 │                          ▼                                      │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   Identity Service                       │   │
-│  │  • generateMnemonic()                                    │   │
-│  │  • createKeyPair(mnemonic)                               │   │
-│  │  • signProfile(profile)                                  │   │
-│  │  • createDid(publicKey)                                  │   │
+│  │                   WotIdentity                            │   │
+│  │  • generateMnemonic()     (BIP39, German wordlist)       │   │
+│  │  • unlock(mnemonic)       (HKDF master key)              │   │
+│  │  • signJws(payload)       (Ed25519)                      │   │
+│  │  • getDid()               (did:key:z6Mk...)              │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                          │                                      │
-│         ┌────────────────┼────────────────┐                    │
-│         ▼                ▼                ▼                    │
-│  ┌───────────┐    ┌───────────┐    ┌───────────┐              │
-│  │ IndexedDB │    │  Web      │    │   Sync    │              │
-│  │ (Keys)    │    │  Crypto   │    │  Server   │              │
-│  └───────────┘    └───────────┘    └───────────┘              │
+│         ┌────────────────┼──────────────────┐                  │
+│         ▼                ▼                  ▼                  │
+│  ┌───────────┐    ┌───────────┐    ┌─────────────┐            │
+│  │ IndexedDB │    │  Web      │    │  PersonalDoc│            │
+│  │ (keys)    │    │  Crypto   │    │  CRDT (Yjs) │            │
+│  └───────────┘    └───────────┘    └─────────────┘            │
 │                                          │                      │
 └──────────────────────────────────────────┼──────────────────────┘
                                            │
                                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     OPTIONAL: SYNC SERVER                       │
+│              RELAY + VAULT + PROFILES                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  • Speichert verschlüsselte Profile (für Recovery)              │
-│  • Speichert Einladungscodes                                    │
-│  • Keine Klartextdaten, keine Private Keys                      │
+│  • Relay (wss://relay.utopia-lab.org) — real-time sync          │
+│  • Vault — encrypted PersonalDoc backup (recovery)             │
+│  • wot-profiles (https://profiles.utopia-lab.org) — discovery  │
+│  No plaintext data, no private keys ever leave the device       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Datenfluss: Beitritt
+### Onboarding data flow
 
+```text
+1. User opens invite link
+   ↓
+2. Frontend checks: invite code valid?
+   ↓
+3. User clicks "Join"
+   ↓
+4. Browser generates:
+   - 128-bit entropy → 12-word mnemonic (BIP39, German wordlist)
+   - Mnemonic → seed (BIP39 standard)
+   - Seed → HKDF master key (Web Crypto API, non-extractable)
+   - HKDF → Ed25519 signing key → did:key:z6Mk...
+   ↓
+5. User sees mnemonic, writes it down, passes quiz
+   ↓
+6. User fills in profile
+   ↓
+7. Profile signed with JWS (WotIdentity.signJws())
+   ↓
+8. Master key → IndexedDB (non-extractable CryptoKey)
+   Profile → PersonalDoc CRDT (Y.Map)
+   Signed profile → wot-profiles server (public discovery)
+   ↓
+9. Invite code marked as redeemed
+   Connection to inviter created (pending verification)
+   ↓
+10. User has profile + can invite others
 ```
-1. User öffnet Einladungslink
-   ↓
-2. Frontend prüft: Einladungscode gültig?
-   ↓
-3. User klickt "Beitreten"
-   ↓
-4. Browser generiert:
-   - 128 bit Entropy → 12 Wort Mnemonic (BIP39)
-   - Mnemonic → Seed (PBKDF2-SHA512)
-   - Seed → Ed25519 Keypair (Web Crypto API, non-extractable)
-   ↓
-5. User sieht Mnemonic, schreibt auf, bestätigt Quiz
-   ↓
-6. User füllt Profil aus
-   ↓
-7. Profil wird signiert (JWS mit Private Key)
-   ↓
-8. Private Key → IndexedDB (non-extractable CryptoKey)
-   Signiertes Profil → IndexedDB
-   Optional: Verschlüsseltes Profil → Sync Server
-   ↓
-9. Einladungscode als "eingelöst" markieren
-   Verbindung zum Einladenden erstellen
-   ↓
-10. User hat Profil + kann einladen
-```
 
-### URL-Routing
+### URL routing
 
-| URL | Funktion |
+| URL | Function |
 |-----|----------|
-| `/join/{did-fragment}/{code}` | Einladung annehmen |
-| `/p/{did}` | Öffentliches Profil (volle DID) |
-| `/p/{did-fragment}` | Öffentliches Profil (Kurzform, Redirect) |
-| `/invite` | Einladungen verwalten (eingeloggt) |
-| `/profile` | Eigenes Profil bearbeiten (eingeloggt) |
-| `/recover` | Identität wiederherstellen |
+| `/join/{did-fragment}/{code}` | Accept invitation |
+| `/p/{did}` | Public profile (full DID) |
+| `/p/{did-fragment}` | Public profile (short form, redirect) |
+| `/invite` | Manage invitations (logged in) |
+| `/profile` | Edit own profile (logged in) |
+| `/recover` | Restore identity |
 
 ---
 
-## Integration mit Money Printer Shop
+## Security aspects
 
-### Affiliate-Tracking
+### Private key / master key
 
-Der QR-Code auf dem Zeitgutschein enthält die DID des Schein-Inhabers.
+- **Never** extractable (`extractable: false`)
+- **Never** sent to any server
+- **Only** in IndexedDB as a non-extractable CryptoKey object
+- **Only** recoverable via the recovery phrase
 
-**Flow:**
-```
-1. Empfänger scannt QR-Code auf Schein
-   → web-of-trust.de/p/z6MkhaXg...
+### Recovery phrase
 
-2. Empfänger klickt "Eigene Scheine drucken"
-   → Redirect zu: shop.zeitgutschein.de/?ref=z6MkhaXg
+- **Shown once**, never again
+- **Never** stored (neither locally nor remotely)
+- **User** is responsible for safe storage
+- **Loss** = loss of identity
 
-3. Shop speichert ref in Session/Cookie
+### Profile signature
 
-4. Bei Bestellung: ref wird mitgespeichert
+- Every profile is signed with JWS (Ed25519)
+- Signature verifiable with public key (derivable from DID)
+- Tampering is detectable
 
-5. Provision wird dem DID zugeordnet
-```
+### Invite codes
 
-### Profil-Daten Übernahme
-
-Wenn ein User vom Web of Trust zum Shop wechselt:
-
-```typescript
-// Web of Trust speichert Profil-Daten in localStorage (nur öffentliche!)
-const publicProfile = {
-  did: "did:key:z6Mk...",
-  name: "Lisa",
-  portrait: "base64...",
-  contact: {
-    email: "lisa@example.com",
-    phone: "+49 123 456789"
-  }
-};
-localStorage.setItem('wot-public-profile', JSON.stringify(publicProfile));
-
-// Shop liest diese Daten und füllt Formular vor
-const profile = JSON.parse(localStorage.getItem('wot-public-profile'));
-if (profile) {
-  prefillForm(profile);
-}
-```
+- Single-use
+- Optional: expiry date
+- Prevent spam joins
+- Enable tracing (who invited whom)
 
 ---
 
-## Sicherheitsaspekte
+## Open decisions
 
-### Private Key
-
-- **Nie** extrahierbar (`extractable: false`)
-- **Nie** an Server gesendet
-- **Nur** in IndexedDB als CryptoKey Objekt
-- **Nur** über Recovery Phrase wiederherstellbar
-
-### Recovery Phrase
-
-- **Einmal** angezeigt, dann nie wieder
-- **Nie** gespeichert (weder lokal noch remote)
-- **User** ist verantwortlich für sichere Aufbewahrung
-- **Verlust** = Verlust der Identität
-
-### Profil-Signatur
-
-- Jedes Profil ist mit JWS signiert
-- Signatur verifizierbar mit öffentlichem Schlüssel (aus DID ableitbar)
-- Manipulation erkennbar
-
-### Einladungscodes
-
-- Einmalig verwendbar
-- Optional: Ablaufdatum
-- Verhindern Spam-Beitritte
-- Ermöglichen Tracking (wer hat wen eingeladen)
+1. **Invite limit:** How many invitations can a user create?
+2. **Required profile fields:** Name only, or more?
+3. **Short links:** Own domain or subdomain?
 
 ---
 
-## Offene Entscheidungen
+## Implementation order
 
-1. **Sync Server:** Brauchen wir einen für MVP, oder reicht lokale Speicherung?
+### Phase 1: Core identity (Priority: High)
 
-2. **Einladungslimit:** Wie viele Einladungen kann ein User erstellen?
+1. MnemonicService (BIP39, German wordlist)
+2. WotIdentity.unlock() (HKDF master key)
+3. Non-extractable key storage (IndexedDB)
+4. DID generation — already exists
+5. Profile signing (JWS) — already exists
 
-3. **Profil-Pflichtfelder:** Nur Name, oder mehr?
+### Phase 2: Onboarding UI (Priority: High)
 
-4. **Kurzlinks:** Eigene Domain (wot.de) oder Subdomain?
+1. Join flow landing page
+2. Mnemonic display + quiz
+3. Profile editor
+4. Welcome screen
 
-5. **Shop-Integration:** Gleiche Domain oder separate?
+### Phase 3: Profile & invitations (Priority: High)
 
----
+1. Public profile page
+2. Invite link generation
+3. Invitation management UI
 
-## Implementierungsreihenfolge
+### Phase 4: Sync & recovery (Priority: Medium)
 
-### Phase 1: Core Identity (Priorität: Hoch)
-1. MnemonicService (BIP39)
-2. Seed → Keypair (Web Crypto API)
-3. Non-extractable Key Storage (IndexedDB)
-4. DID-Generierung (existiert bereits)
-5. Profil-Signierung (JWS existiert bereits)
+1. Vault backup on profile creation
+2. Recovery flow (WotIdentity.unlock() + Vault restore)
+3. Multi-device support
 
-### Phase 2: Onboarding UI (Priorität: Hoch)
-1. Join-Flow Landing Page
-2. Mnemonic Display + Quiz
-3. Profil-Editor
-4. Willkommens-Seite
+### Phase 5: Shop integration (OUT OF SCOPE)
 
-### Phase 3: Profil & Einladungen (Priorität: Hoch)
-1. Öffentliche Profil-Seite
-2. Einladungslink-Generierung
-3. Einladungs-Management UI
-
-### Phase 4: Shop-Integration (Priorität: Mittel)
-1. QR-Code mit DID
-2. Affiliate-Tracking
-3. Profil-Daten Übernahme
-
-### Phase 5: Sync & Recovery (Priorität: Niedrig für MVP)
-1. Sync Server Setup
-2. Recovery Flow
-3. Multi-Device Support
+> The Zeitgutschein shop, QR codes on vouchers, and affiliate tracking are out of scope for the current implementation phase. These will be revisited separately if and when a shop integration is planned.
 
 ---
 
-*Dokument erstellt: Januar 2026*
-*Version: 1.0*
+*Document created: January 2026*
+*Version: 1.1 — Updated to English, HKDF, PersonalDoc CRDT, Relay + Vault architecture*

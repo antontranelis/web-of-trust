@@ -1,495 +1,462 @@
-# Ausblenden-Flow (Technische Perspektive)
+# Hide Flow (Technical Perspective)
 
-> Wie Kontakte ausgeblendet und wiederhergestellt werden
+> How contacts are hidden and restored
 
-## Datenmodell
+## Data model
 
-### Kontakt-Status
+### Contact status state machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending: Einseitig verifiziert
+    [*] --> Pending: One-sided verification
 
-    Pending --> Active: Gegenseitig verifiziert
+    Pending --> Active: Mutually verified
 
-    Active --> Hidden: Ausblenden
+    Active --> Hidden: Hide
 
-    Hidden --> Active: Wiederherstellen
+    Hidden --> Active: Restore
 
     state Active {
         [*] --> InAutoGroup
-        InAutoGroup: In Auto-Gruppe
-        InAutoGroup: Erhält neue Item Keys
+        InAutoGroup: In auto-group
+        InAutoGroup: Receives new item keys
     }
 
     state Hidden {
         [*] --> NotInAutoGroup
-        NotInAutoGroup: Nicht in Auto-Gruppe
-        NotInAutoGroup: Erhält keine neuen Item Keys
+        NotInAutoGroup: Not in auto-group
+        NotInAutoGroup: Receives no new item keys
     }
 ```
 
-### Contact Record
+### Contact record in PersonalDoc CRDT (Y.Map)
 
 ```json
 {
-  "did": "did:wot:ben456",
+  "did": "did:key:z6MkBen...",
   "publicKey": "ed25519:base64...",
   "name": "Ben Schmidt",
   "status": "hidden",
+  "statusChangedAt": "2026-01-08T14:00:00Z",
+  "statusReason": "user_initiated",
   "statusHistory": [
     {
       "status": "pending",
-      "timestamp": "2025-01-05T10:00:00Z"
+      "timestamp": "2026-01-05T10:00:00Z"
     },
     {
       "status": "active",
-      "timestamp": "2025-01-05T10:05:00Z"
+      "timestamp": "2026-01-05T10:05:00Z"
     },
     {
       "status": "hidden",
-      "timestamp": "2025-01-08T14:00:00Z",
+      "timestamp": "2026-01-08T14:00:00Z",
       "reason": "user_initiated"
     }
   ],
-  "verifiedAt": "2025-01-05T10:05:00Z",
+  "verifiedAt": "2026-01-05T10:05:00Z",
   "myVerification": "urn:uuid:123...",
   "theirVerification": "urn:uuid:456..."
 }
 ```
 
+All contact data lives in the **PersonalDoc CRDT (Y.Map)** — there is no separate SQL or Dexie table.
+
 ---
 
-## Hauptflow: Kontakt ausblenden
+## Main flow: Hide a contact
 
 ```mermaid
 flowchart TD
-    Start(["Nutzer tippt Ausblenden"]) --> Confirm["Zeige Bestätigungsdialog"]
+    Start(["User taps Hide"]) --> Confirm["Show confirmation dialog"]
 
-    Confirm --> UserChoice{"Bestätigt?"}
+    Confirm --> UserChoice{"Confirmed?"}
 
-    UserChoice -->|Nein| Cancel["Abbrechen"]
+    UserChoice -->|No| Cancel["Cancel"]
 
-    UserChoice -->|Ja| UpdateStatus["Status = hidden"]
+    UserChoice -->|Yes| UpdateStatus["PersonalDoc: contact.status = hidden"]
 
-    UpdateStatus --> RemoveFromGroup["Aus Auto-Gruppe entfernen"]
+    UpdateStatus --> RemoveFromGroup["PersonalDoc: remove from auto-group members"]
 
-    RemoveFromGroup --> RotateKey["Group Key rotieren (optional)"]
+    RemoveFromGroup --> RotateKey["Group key rotation (optional)"]
 
-    RotateKey --> SyncStatus["Sync Status-Änderung"]
+    RotateKey --> Sync["Sync PersonalDoc via Relay"]
 
-    SyncStatus --> Done(["Fertig"])
+    Sync --> Done(["Done"])
 ```
 
 ---
 
-## Sequenzdiagramm: Ausblenden
+## Sequence diagram: Hide
 
 ```mermaid
 sequenceDiagram
     participant UI as Anna UI
     participant App as Anna App
-    participant DB as Local DB
-    participant Sync as Sync Server
+    participant CRDT as PersonalDoc CRDT
+    participant Relay as Relay + Vault
 
     UI->>App: hideContact(ben.did)
 
     App->>UI: showConfirmDialog()
     UI->>App: confirm()
 
-    App->>DB: updateContactStatus(ben.did, 'hidden')
+    App->>CRDT: contacts[ben.did].status = 'hidden'
+    App->>CRDT: contacts[ben.did].statusChangedAt = now()
 
-    App->>DB: removeFromAutoGroup(ben.did)
+    App->>CRDT: autoGroup.members.delete(ben.did)
+    App->>CRDT: autoGroup.excludedMembers.add(ben.did)
 
-    opt Group Key Rotation
+    opt Group key rotation
         App->>App: generateNewGroupKey()
-        App->>DB: updateAutoGroupKey(newKey)
-        App->>App: reencryptGroupKeyForMembers()
+        App->>CRDT: autoGroup.groupKey = newKey (encrypted per member)
     end
 
-    App->>Sync: pushContactStatusChange()
+    App->>Relay: push encrypted PersonalDoc update
 
     App->>UI: showSuccess()
 ```
 
 ---
 
-## Auto-Gruppe Verwaltung
+## Auto-group management in PersonalDoc
 
-### Struktur
+### Structure (Y.Map entries)
 
 ```json
 {
-  "id": "urn:uuid:autogroup-anna",
+  "id": "autogroup-anna",
   "type": "AutoContactGroup",
-  "owner": "did:wot:anna123",
+  "owner": "did:key:z6MkAnna...",
   "members": [
-    "did:wot:carla789",
-    "did:wot:tom012"
+    "did:key:z6MkCarla...",
+    "did:key:z6MkTom..."
   ],
   "excludedMembers": [
-    "did:wot:ben456"
+    "did:key:z6MkBen..."
   ],
   "groupKey": {
     "current": {
       "key": "aes256:encrypted...",
       "version": 3,
-      "createdAt": "2025-01-08T14:00:00Z"
+      "createdAt": "2026-01-08T14:00:00Z"
     },
     "previous": [
       {
         "key": "aes256:encrypted...",
         "version": 2,
-        "validUntil": "2025-01-08T14:00:00Z"
+        "validUntil": "2026-01-08T14:00:00Z"
       }
     ]
   }
 }
 ```
 
-### Ausblenden aus Auto-Gruppe
+### Removing from auto-group
 
 ```mermaid
 flowchart TD
-    Hide(["Kontakt ausblenden"]) --> GetGroup["Lade Auto-Gruppe"]
+    Hide(["Hide contact"]) --> GetGroup["Read auto-group from PersonalDoc"]
 
-    GetGroup --> RemoveMember["Entferne aus members[]"]
+    GetGroup --> RemoveMember["Remove from members[]"]
 
-    RemoveMember --> AddExcluded["Füge zu excludedMembers[] hinzu"]
+    RemoveMember --> AddExcluded["Add to excludedMembers[]"]
 
-    AddExcluded --> ShouldRotate{"Key rotieren?"}
+    AddExcluded --> ShouldRotate{"Rotate key?"}
 
-    ShouldRotate -->|Ja| Rotate["Generiere neuen Group Key"]
-    Rotate --> Distribute["Verteile an verbleibende Members"]
+    ShouldRotate -->|Yes| Rotate["Generate new group key"]
+    Rotate --> Distribute["Re-encrypt for remaining members"]
 
-    ShouldRotate -->|Nein| Skip["Überspringe Rotation"]
+    ShouldRotate -->|No| Skip["Skip rotation"]
 
-    Distribute --> Save["Speichern"]
+    Distribute --> Save["Write to PersonalDoc CRDT"]
     Skip --> Save
 ```
 
 ---
 
-## Key Rotation (Optional)
+## Key rotation (optional)
 
-### Wann rotieren?
+### When to rotate?
 
-| Szenario | Key rotieren? |
-| -------- | ------------- |
-| Normales Ausblenden | Optional (Empfohlen: Nein) |
-| Sicherheitsbedenken | Ja |
-| Nutzer wünscht es explizit | Ja |
+| Scenario | Rotate key? |
+| -------- | ----------- |
+| Normal hide | Optional (recommended: No) |
+| Security concern | Yes |
+| User explicitly requests | Yes |
 
-### Warum optional?
+### Why optional?
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  💡 Design-Entscheidung         │
+│  Design decision                │
 │                                 │
-│  Key Rotation bei Ausblenden    │
-│  ist NICHT standardmäßig,       │
-│  weil:                          │
+│  Key rotation on hide is NOT    │
+│  the default, because:          │
 │                                 │
-│  1. Der ausgeblendete Kontakt   │
-│     hat bereits alle alten      │
-│     Item Keys                   │
+│  1. The hidden contact already  │
+│     has all old item keys       │
 │                                 │
-│  2. Neue Items werden sowieso   │
-│     nicht mehr für ihn          │
-│     verschlüsselt               │
+│  2. New items will not be       │
+│     encrypted for them anyway   │
 │                                 │
-│  3. Rotation ist aufwendig      │
-│     (alle Members neu           │
-│     verschlüsseln)              │
+│  3. Rotation is expensive       │
+│     (re-encrypt for all members)│
 │                                 │
-│  Bei echten Sicherheitsbedenken │
-│  kann Rotation explizit         │
-│  ausgelöst werden.              │
+│  For genuine security concerns  │
+│  rotation can be triggered      │
+│  explicitly.                    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Rotation-Flow
+### Rotation flow
 
 ```mermaid
 sequenceDiagram
     participant App as App
-    participant DB as DB
-    participant Members as Verbleibende Members
+    participant CRDT as PersonalDoc CRDT
+    participant Members as Remaining members
 
     App->>App: generateGroupKey()
-    Note over App: AES-256 Zufallsschlüssel
+    Note over App: AES-256 random key
 
     App->>App: incrementKeyVersion()
 
-    loop Für jeden verbleibenden Member
+    loop For each remaining member
         App->>App: encryptGroupKey(member.publicKey)
-        App->>DB: storeEncryptedGroupKey(member, encryptedKey)
+        App->>CRDT: store encrypted key for member
     end
 
-    App->>DB: archivePreviousKey()
+    App->>CRDT: archive previous key
 
-    App->>Members: notifyKeyRotation()
+    App->>Members: notifyKeyRotation() via Relay
 ```
 
 ---
 
-## Kontakt wiederherstellen
+## Restore a contact
 
 ```mermaid
 flowchart TD
-    Restore(["Wiederherstellen"]) --> Confirm["Bestätigungsdialog"]
+    Restore(["Restore"]) --> Confirm["Confirmation dialog"]
 
-    Confirm --> UpdateStatus["Status = active"]
+    Confirm --> UpdateStatus["PersonalDoc: contact.status = active"]
 
-    UpdateStatus --> AddToGroup["Zur Auto-Gruppe hinzufügen"]
+    UpdateStatus --> AddToGroup["PersonalDoc: add to auto-group members"]
 
-    AddToGroup --> ReencryptItems["Item Keys für neuen Content verschlüsseln"]
+    AddToGroup --> ReencryptItems["Encrypt item keys for new content"]
 
-    ReencryptItems --> DistributeGroupKey["Group Key an Kontakt verteilen"]
+    ReencryptItems --> DistributeGroupKey["Share group key with contact via Relay"]
 
-    DistributeGroupKey --> Sync["Sync"]
+    DistributeGroupKey --> Sync["Sync PersonalDoc"]
 
-    Sync --> Done(["Fertig"])
+    Sync --> Done(["Done"])
 ```
 
-### Sequenzdiagramm
+### Sequence diagram
 
 ```mermaid
 sequenceDiagram
     participant UI as Anna UI
     participant App as Anna App
-    participant DB as Local DB
-    participant Sync as Sync Server
+    participant CRDT as PersonalDoc CRDT
+    participant Relay as Relay
 
     UI->>App: restoreContact(ben.did)
     App->>UI: showConfirmDialog()
     UI->>App: confirm()
 
-    App->>DB: updateContactStatus(ben.did, 'active')
+    App->>CRDT: contacts[ben.did].status = 'active'
+    App->>CRDT: contacts[ben.did].statusChangedAt = now()
 
-    App->>DB: addToAutoGroup(ben.did)
+    App->>CRDT: autoGroup.members.add(ben.did)
+    App->>CRDT: autoGroup.excludedMembers.delete(ben.did)
 
-    App->>DB: getItemsWithVisibilityAll()
+    App->>CRDT: read items with visibility = 'all' (created after restore)
 
-    loop Für jedes Item (erstellt nach heute)
+    loop For each new item
         App->>App: encryptItemKey(ben.publicKey)
-        App->>DB: storeItemKey(item.id, ben.did, encryptedKey)
+        App->>CRDT: store item key for ben.did
     end
 
     App->>App: encryptGroupKey(ben.publicKey)
-    App->>DB: storeGroupKeyForMember(ben.did)
+    App->>CRDT: store group key for ben.did
 
-    App->>Sync: pushChanges()
+    App->>Relay: push encrypted PersonalDoc update
 
     App->>UI: showSuccess()
 ```
 
 ---
 
-## Was wird NICHT geteilt nach Wiederherstellen?
+## What is NOT shared after restore?
 
 ```mermaid
 flowchart TD
-    Timeline["Zeitlinie"]
+    Timeline["Timeline"]
 
-    subgraph Before["VOR Ausblenden"]
-        B1["Item A - geteilt"]
-        B2["Item B - geteilt"]
+    subgraph Before["BEFORE hiding"]
+        B1["Item A — shared"]
+        B2["Item B — shared"]
     end
 
-    subgraph During["WÄHREND Ausblenden"]
-        D1["Item C - NICHT geteilt"]
-        D2["Item D - NICHT geteilt"]
+    subgraph During["DURING hiding"]
+        D1["Item C — NOT shared"]
+        D2["Item D — NOT shared"]
     end
 
-    subgraph After["NACH Wiederherstellen"]
-        A1["Item E - geteilt"]
-        A2["Item F - geteilt"]
+    subgraph After["AFTER restore"]
+        A1["Item E — shared"]
+        A2["Item F — shared"]
     end
 
     Timeline --> Before --> During --> After
 ```
 
-**Begründung:** Items während der "Ausblenden-Zeit" wurden nie für den Kontakt verschlüsselt. Sie nachträglich zu teilen wäre inkonsistent mit der Entscheidung, diesen Kontakt auszublenden.
-
----
-
-## Speicher-Schema
-
-```sql
--- Erweiterung der contacts Tabelle
-ALTER TABLE contacts ADD COLUMN status TEXT DEFAULT 'active';
-ALTER TABLE contacts ADD COLUMN status_changed_at DATETIME;
-ALTER TABLE contacts ADD COLUMN status_reason TEXT;
-
--- Status-History
-CREATE TABLE contact_status_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    contact_did TEXT NOT NULL,
-    status TEXT NOT NULL,
-    changed_at DATETIME NOT NULL,
-    reason TEXT,
-    FOREIGN KEY (contact_did) REFERENCES contacts(did)
-);
-
-CREATE INDEX idx_status_history ON contact_status_history(contact_did, changed_at);
-
--- Excluded Members in Auto-Gruppe
-CREATE TABLE auto_group_excluded (
-    contact_did TEXT PRIMARY KEY,
-    excluded_at DATETIME NOT NULL,
-    FOREIGN KEY (contact_did) REFERENCES contacts(did)
-);
-```
+**Rationale:** Items created during the "hidden period" were never encrypted for the contact. Sharing them retroactively would be inconsistent with the decision to hide that contact.
 
 ---
 
 ## API
 
-### Ausblenden
+### Hide
 
-```javascript
-async function hideContact(contactDid) {
-  // 1. Validierung
-  const contact = await db.contacts.get(contactDid);
+```typescript
+async function hideContact(contactDid: string): Promise<void> {
+  // 1. Validate
+  const contact = personalDoc.contacts[contactDid];
   if (!contact || contact.status !== 'active') {
-    throw new Error('Kontakt nicht aktiv');
+    throw new Error('Contact not active');
   }
 
-  // 2. Status ändern
-  await db.contacts.update(contactDid, {
+  // 2. Update status in PersonalDoc CRDT
+  personalDoc.contacts[contactDid] = {
+    ...contact,
     status: 'hidden',
     statusChangedAt: new Date().toISOString(),
-    statusReason: 'user_initiated'
-  });
+    statusReason: 'user_initiated',
+    statusHistory: [
+      ...(contact.statusHistory ?? []),
+      { status: 'hidden', timestamp: new Date().toISOString(), reason: 'user_initiated' }
+    ]
+  };
 
-  // 3. Status-History
-  await db.contactStatusHistory.add({
-    contactDid,
-    status: 'hidden',
-    changedAt: new Date().toISOString(),
-    reason: 'user_initiated'
-  });
-
-  // 4. Aus Auto-Gruppe entfernen
+  // 3. Remove from auto-group
   await removeFromAutoGroup(contactDid);
 
-  // 5. Sync
-  await syncQueue.add({
-    type: 'contact_status_change',
-    contactDid,
-    newStatus: 'hidden'
-  });
+  // 4. Sync via Relay (immediate, no debounce)
+  await relay.pushUpdate(encryptedPersonalDocUpdate());
 }
 ```
 
-### Wiederherstellen
+### Restore
 
-```javascript
-async function restoreContact(contactDid) {
-  // 1. Validierung
-  const contact = await db.contacts.get(contactDid);
+```typescript
+async function restoreContact(contactDid: string): Promise<void> {
+  // 1. Validate
+  const contact = personalDoc.contacts[contactDid];
   if (!contact || contact.status !== 'hidden') {
-    throw new Error('Kontakt nicht ausgeblendet');
+    throw new Error('Contact not hidden');
   }
 
-  // 2. Status ändern
-  await db.contacts.update(contactDid, {
+  // 2. Update status in PersonalDoc CRDT
+  personalDoc.contacts[contactDid] = {
+    ...contact,
     status: 'active',
     statusChangedAt: new Date().toISOString(),
-    statusReason: 'user_restored'
-  });
+    statusReason: 'user_restored',
+    statusHistory: [
+      ...(contact.statusHistory ?? []),
+      { status: 'active', timestamp: new Date().toISOString(), reason: 'user_restored' }
+    ]
+  };
 
-  // 3. Zur Auto-Gruppe hinzufügen
+  // 3. Add back to auto-group
   await addToAutoGroup(contactDid);
 
-  // 4. Neue Items teilen
+  // 4. Re-encrypt recent items for contact
   await reencryptRecentItemsForContact(contactDid);
 
-  // 5. Group Key teilen
+  // 5. Share group key
   await shareGroupKeyWithContact(contactDid);
 
-  // 6. Sync
-  await syncQueue.add({
-    type: 'contact_status_change',
-    contactDid,
-    newStatus: 'active'
-  });
+  // 6. Sync via Relay
+  await relay.pushUpdate(encryptedPersonalDocUpdate());
 }
 ```
 
 ---
 
-## Sicherheitsüberlegungen
+## Security considerations
 
-### Was der ausgeblendete Kontakt noch hat
+### What the hidden contact still has access to
 
-| Daten | Zugriff nach Ausblenden |
-| ----- | ----------------------- |
-| Alte Item Keys | Ja (bereits entschlüsselt) |
-| Alter Content | Ja (lokal gespeichert) |
-| Alte Attestationen | Ja (unveränderlich) |
-| Alter Group Key | Ja (wenn nicht rotiert) |
-| **Neuer Content** | **Nein** |
-| **Neue Item Keys** | **Nein** |
+| Data | Access after hiding |
+| ---- | ------------------- |
+| Old item keys | Yes (already decrypted) |
+| Old content | Yes (stored locally) |
+| Old attestations | Yes (immutable) |
+| Old group key | Yes (if not rotated) |
+| **New content** | **No** |
+| **New item keys** | **No** |
 
-### Signalisierung an den Kontakt
+### Signalling to the contact
 
-Der Sync-Server könnte dem Kontakt signalisieren, dass er ausgeblendet wurde. **Empfehlung:** Nicht tun.
+The Relay could signal to the contact that they have been hidden. **Recommendation:** Do not do this.
 
 | Option | Pro | Con |
 | ------ | --- | --- |
-| Signalisieren | Transparenz | Kann zu Konflikten führen |
-| Nicht signalisieren | Privatsphäre | Kontakt merkt es eventuell |
+| Signal | Transparency | May cause conflict |
+| No signal | Privacy | Contact may notice |
 
-**Empfehlung:** Keine explizite Signalisierung. Der Kontakt merkt es, wenn er keinen neuen Content mehr sieht.
+**Recommendation:** No explicit signalling. The contact will notice when they stop receiving new content.
 
 ---
 
-## Edge Cases
+## Edge cases
 
-### Beide blenden sich gegenseitig aus
+### Both sides hide each other
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant B as Ben
 
-    A->>A: Blendet Ben aus
-    B->>B: Blendet Anna aus
+    A->>A: Hides Ben
+    B->>B: Hides Anna
 
-    Note over A,B: Beide Status: hidden
+    Note over A,B: Both status: hidden
 
-    Note over A: Annas Sicht: Ben ist ausgeblendet
-    Note over B: Bens Sicht: Anna ist ausgeblendet
+    Note over A: Anna's view: Ben is hidden
+    Note over B: Ben's view: Anna is hidden
 
-    A->>A: Stellt Ben wieder her
-    Note over A: Annas Status für Ben: active
-    Note over B: Bens Status für Anna: hidden
+    A->>A: Restores Ben
+    Note over A: Anna's status for Ben: active
+    Note over B: Ben's status for Anna: hidden
 
-    Note over A: Anna sieht Bens Content nicht (weil Ben sie ausgeblendet hat)
-    Note over B: Ben sieht Annas Content nicht (weil er sie ausgeblendet hat)
+    Note over A: Anna does not see Ben's content (Ben hid her)
+    Note over B: Ben does not see Anna's content (he hid her)
 ```
 
-### Ausblenden während Offline
+### Hiding while offline
 
 ```mermaid
 flowchart TD
-    Offline(["Offline"]) --> Hide["Ausblenden lokal"]
+    Offline(["Offline"]) --> Hide["Hide locally in PersonalDoc"]
 
-    Hide --> Queue["In Sync-Queue"]
+    Hide --> Queue["Queued in outbox"]
 
-    Queue --> Later["Später online"]
+    Queue --> Later["Later online"]
 
-    Later --> Sync["Sync Status-Änderung"]
+    Later --> Sync["Sync PersonalDoc update via Relay"]
 
-    Sync --> Note["Kontakt erhält keine neuen Items mehr"]
+    Sync --> Note["Contact receives no new items"]
 ```
 
-**Hinweis:** Während der Offline-Zeit erstellte Items für "alle Kontakte" werden beim Sync nicht mehr an den ausgeblendeten Kontakt verteilt.
+**Note:** Items created for "all contacts" while offline will not be distributed to the hidden contact when syncing.
 
-### Kontakt wird während Ausblenden-Zeit gelöscht
+### Contact cannot be deleted
 
-Nicht möglich. Kontakte können nicht gelöscht werden, nur ausgeblendet.
+Contacts cannot be deleted, only hidden. This is intentional: the verification record is immutable and remains as historical fact.

@@ -1,87 +1,94 @@
 # Encrypted Blob Store
 
-> Konzept fur verschlusselte Binardaten (Profilbilder, Anhange) im Web of Trust
+> Concept for encrypted binary data (profile pictures, attachments) in the Web of Trust
+
+**Status:** Planned — not yet implemented
+**Priority:** MVP phase
+
+---
 
 ## Problem
 
-Binardaten (Bilder, Dokumente) durfen **nicht** in Automerge-Docs landen:
-- Jeder `transact`-Delta enthalt die Binardaten als Change
-- `requestSync` schickt den gesamten Doc-Snapshot inkl. aller Blobs
-- Ein Space mit 10 Profilbildern a 100KB = 1MB pro Sync
+Binary data (images, documents) must **not** end up in CRDT docs:
 
-Gleichzeitig wollen Nutzer bestimmte Daten (z.B. Profilbild) nicht offentlich machen,
-aber trotzdem mit vertrauensvollen Kontakten teilen.
+- Every `transact` delta includes the binary data as a change
+- `requestSync` sends the entire doc snapshot including all blobs
+- A space with 10 profile pictures at 100KB each = 1MB per sync
 
-## Drei Sichtbarkeitsstufen
+At the same time, users want certain data (e.g. a profile picture) to remain private,
+but still be shareable with trusted contacts.
 
-| Stufe | Beispiel | Speicherort | Zugriff |
-|-------|----------|-------------|---------|
-| **Offentlich** | Name, Bio | wot-profiles (`GET /p/{did}`) | Jeder |
-| **Kontakte** | Profilbild, Telefon | Encrypted Blob Store | Wer den Key hat |
-| **Space** | Projekt-Dateien | Encrypted Blob Store (Space-Key) | Space-Mitglieder |
+## Three Visibility Levels
 
-## Architektur
+| Level | Example | Storage | Access |
+|-------|---------|---------|--------|
+| **Public** | Name, bio | wot-profiles (`GET /p/{did}`) | Anyone |
+| **Contacts** | Profile picture, phone | Encrypted Blob Store | Whoever has the key |
+| **Space** | Project files | Encrypted Blob Store (space key) | Space members |
 
-```
-Nutzer                          Server (wot-profiles)
-------                          ---------------------
-
-Profilbild (Klartext)
-    |
-    v
-AES-256-GCM verschlusseln
-(mit "Kontakt-Blob-Key")
-    |
-    v
-PUT /blob/{did}/{hash}  ------>  Speichert Ciphertext
-                                 (versteht Inhalt nicht)
-
-Kontakt will Bild sehen:
-GET /blob/{did}/{hash}  <------  Liefert Ciphertext
-    |
-    v
-AES-256-GCM entschlusseln
-(mit Kontakt-Blob-Key)
-    |
-    v
-Profilbild (Klartext)
-```
-
-## Key-Verteilung
-
-Der Blob-Key wird **einmalig** bei Kontaktaufnahme per ECIES geteilt:
+## Architecture
 
 ```
-Anton verifiziert Bob
+User                            Server (wot-profiles)
+----                            ---------------------
+
+Profile picture (plaintext)
+    |
+    v
+AES-256-GCM encrypt
+(with "contact blob key")
+    |
+    v
+PUT /blob/{did}/{hash}  ------>  Stores ciphertext
+                                 (cannot read content)
+
+Contact wants to see picture:
+GET /blob/{did}/{hash}  <------  Returns ciphertext
+    |
+    v
+AES-256-GCM decrypt
+(with contact blob key)
+    |
+    v
+Profile picture (plaintext)
+```
+
+## Key Distribution
+
+The blob key is shared **once** at contact time via ECIES:
+
+```
+Anton verifies Bob
     |
     v
 ECIES(blob-key, bob-encryption-pubkey) ---> Bob
     |
-    Bob speichert Antons blob-key lokal
-    Bob kann ab jetzt alle privaten Blobs von Anton lesen
+    Bob stores Anton's blob-key locally
+    Bob can now read all of Anton's private blobs
 ```
 
-### Vorteile gegenuber Messaging-Ansatz
+### Advantages over a Messaging Approach
 
-| Aspekt | Messaging (schlecht) | Blob Store (besser) |
-|--------|---------------------|---------------------|
-| Bild andern | n Nachrichten an n Kontakte | 1 PUT, Kontakte holen selbst |
-| Neuer Kontakt | Nochmal schicken | Key teilen, Kontakt holt |
-| Kontakt offline | Redelivery-Problem | Holt wenn online |
-| Cache geloscht | Nochmal schicken | Nochmal holen |
-| Bandbreite | n x Bildgrosse | 1 x Bildgrosse + n x Keygrosse |
+| Aspect | Messaging (worse) | Blob Store (better) |
+|--------|-------------------|---------------------|
+| Change picture | n messages to n contacts | 1 PUT, contacts fetch themselves |
+| New contact | Send again | Share key, contact fetches |
+| Contact offline | Redelivery problem | Fetches when online |
+| Cache cleared | Send again | Fetch again |
+| Bandwidth | n × image size | 1 × image size + n × key size |
 
-### Warum nicht einfach das Bild fur jeden Kontakt einzeln verschlusseln?
+### Why not encrypt the image separately for each contact?
 
-Das ware O(n) Verschlusselungsoperationen pro Blob-Upload. Stattdessen:
-- **1 symmetrischer Key pro Sichtbarkeitsstufe** (z.B. "Kontakte-Key")
-- Blob wird 1x mit diesem Key verschlusselt
-- Der Key wird per ECIES an jeden Kontakt geteilt (einmalig, bei Kontaktaufnahme)
-- Key-Rotation bei Kontakt-Entfernung (analog zu Space Group Key Rotation)
+That would be O(n) encryption operations per blob upload. Instead:
 
-## Referenzierung
+- **1 symmetric key per visibility level** (e.g. "contacts key")
+- Blob is encrypted once with this key
+- The key is shared via ECIES to each contact (once, at contact time)
+- Key rotation when a contact is removed (analogous to space group key rotation)
 
-Im Automerge-Doc oder Profil-JSON steht nur die Referenz:
+## Referencing
+
+The CRDT doc or profile JSON stores only the reference:
 
 ```json
 {
@@ -92,87 +99,91 @@ Im Automerge-Doc oder Profil-JSON steht nur die Referenz:
 }
 ```
 
-Der Client lost auf:
-1. `hash` -> `GET /blob/{did}/{hash}`
-2. `scope: "contacts"` -> lokalen Kontakt-Blob-Key verwenden
-3. Entschlusseln + anzeigen
+The client resolves:
 
-## Integration mit wot-profiles
+1. `hash` → `GET /blob/{did}/{hash}`
+2. `scope: "contacts"` → use local contact blob key
+3. Decrypt + display
 
-wot-profiles wird um einen Blob-Endpunkt erweitert:
+## Integration with wot-profiles
+
+wot-profiles would be extended with a blob endpoint:
 
 ```
-GET  /p/{did}              -- Offentliches Profil (JSON, Klartext)
-PUT  /p/{did}              -- Offentliches Profil aktualisieren (JWS-signiert)
+GET  /p/{did}              -- Public profile (JSON, plaintext)
+PUT  /p/{did}              -- Update public profile (JWS-signed)
 
-GET  /blob/{did}/{hash}    -- Verschlusselten Blob abrufen
-PUT  /blob/{did}/{hash}    -- Verschlusselten Blob hochladen (JWS-signiert)
-DELETE /blob/{did}/{hash}  -- Blob loschen (JWS-signiert)
+GET  /blob/{did}/{hash}    -- Fetch encrypted blob
+PUT  /blob/{did}/{hash}    -- Upload encrypted blob (JWS-signed)
+DELETE /blob/{did}/{hash}  -- Delete blob (JWS-signed)
 ```
 
-Der Server speichert nur Ciphertext. Er kann weder den Inhalt noch den Typ
-(Bild vs. Dokument) erkennen.
+The server stores only ciphertext. It cannot determine the content type
+(image vs. document) or read the payload.
 
-## Scope-Keys
+## Scope Keys
 
-| Scope | Key | Geteilt mit | Rotation |
+| Scope | Key | Shared with | Rotation |
 |-------|-----|-------------|----------|
-| `contacts` | Kontakt-Blob-Key | Alle verifizierten Kontakte | Bei Kontakt-Entfernung |
-| `space:{id}` | Space Group Key | Space-Mitglieder | Bei Member-Remove (schon implementiert) |
-| `public` | Kein Key (Klartext) | Alle | Nie |
+| `contacts` | Contact blob key | All verified contacts | On contact removal |
+| `space:{id}` | Space group key | Space members | On member removal (already implemented) |
+| `public` | No key (plaintext) | Everyone | Never |
 
-Fur Spaces konnen wir den bestehenden **GroupKeyService** wiederverwenden --
-der Space Group Key verschlusselt dann sowohl Automerge-Changes als auch Blobs.
+For spaces we can reuse the existing **GroupKeyService** —
+the space group key then encrypts both CRDT changes and blobs.
 
-## Prioritat
+## Priority
 
-- **POC:** Nicht nötig. Profilbilder offentlich uber wot-profiles oder gar nicht.
-- **MVP:** Kontakt-Blob-Key fur private Profilbilder implementieren.
-- **Produktion:** Scope-Keys, Space-Blobs, Key-Rotation.
+- **POC:** Not needed. Profile pictures public via wot-profiles or not at all.
+- **MVP:** Implement contact blob key for private profile pictures.
+- **Production:** Scope keys, space blobs, key rotation.
 
-## Abgrenzung zu Item-Keys und Auto-Gruppe
+## Relationship to Item-Keys and Auto-Group
 
-### Zwei Verschlusselungsmechanismen — bewusst getrennt
+### Two Encryption Mechanisms — Intentionally Separate
 
-Das WoT nutzt zwei komplementare Verschlusselungsansatze:
+The WoT uses two complementary encryption approaches:
 
-|  | Item-Keys | Kontakt-Blob-Key (Blob Store) |
+|  | Item-Keys | Contact Blob Key (Blob Store) |
 |--|-----------|-------------------------------|
-| **Datentyp** | Strukturierte Items (Kalender, Notizen, Attestationen) | Binardaten (Profilbilder, Thumbnails) |
-| **Granularitat** | Pro Item wahlbar (`contacts`, `selective`, `groups`) | Pro Scope (alle Kontakte oder Space) |
-| **Selektive Sichtbarkeit** | Ja — Item X nur fur Anna und Ben | Nein — alle Kontakte oder niemand |
-| **Kosten pro Datum** | O(N) Verschlusselungen pro Item | O(1) pro Blob |
-| **Key-Verteilung** | Pro Item, pro Empfanger | Einmalig bei Kontaktaufnahme |
+| **Data type** | Structured items (calendar, notes, attestations) | Binary data (profile pictures, thumbnails) |
+| **Granularity** | Selectable per item (`contacts`, `selective`, `groups`) | Per scope (all contacts or space) |
+| **Selective visibility** | Yes — item X only for Anna and Ben | No — all contacts or nobody |
+| **Cost per item** | O(N) encryptions per item | O(1) per blob |
+| **Key distribution** | Per item, per recipient | Once at contact time |
 
-### Rolle der Auto-Gruppe
+### Role of the Auto-Group
 
-Die [Auto-Gruppe](../architecture/entities.md#auto-gruppe) ist **keine Verschlusselungsmechanik**,
-sondern eine **Empfangerliste**: Sie beantwortet die Frage *"Wer sind alle meine aktiven Kontakte?"*
+The auto-group is **not an encryption mechanism**,
+it is a **recipient list**: it answers the question *"Who are all my active contacts?"*
 
-- Bei **Item-Keys** mit `visibility: contacts`: Item-Key wird fur jeden in der Auto-Gruppe gewrappt
-- Beim **Blob Store** mit `scope: contacts`: Kontakt-Blob-Key wird einmalig an jeden in der Auto-Gruppe verteilt
+- With **Item-Keys** and `visibility: contacts`: item key is wrapped for each member of the auto-group
+- With the **Blob Store** and `scope: contacts`: contact blob key is distributed once to each member of the auto-group
 
-Der Kontakt-Blob-Key ist konzeptionell ein **Group Key fur die Auto-Gruppe** —
-analog zum Space Group Key, nur fur die implizite Gruppe aller aktiven Kontakte.
-Die `excludedMembers`-Mechanik der Auto-Gruppe gilt fur beide Ansatze:
-- Item-Keys: Ausgeblendeter Kontakt bekommt keinen neuen Item-Key
-- Blob Store: Key-Rotation bei Kontakt-Entfernung (analog zu Space Group Key Rotation)
+The contact blob key is conceptually a **group key for the auto-group** —
+analogous to the space group key, but for the implicit group of all active contacts.
+The `excludedMembers` mechanism of the auto-group applies to both approaches:
 
-### Warum nicht einfach Item-Keys auch fur Blobs?
+- Item-Keys: excluded contact does not receive a new item key
+- Blob Store: key rotation on contact removal (analogous to space group key rotation)
 
-Item-Keys sind fur **viele kleine Items** optimiert, die sich selten andern.
-Ein Profilbild ist ein **einzelner grosser Blob**, der sich selten andert —
-aber von vielen Kontakten oft abgerufen wird. Dafur ist ein geteilter Scope-Key effizienter:
-- Kein O(N) pro Blob-Upload
-- Kein Redelivery-Problem bei Offline-Kontakten
-- Kontakte holen den Blob selbst, wenn sie online sind
+### Why not use Item-Keys for blobs too?
 
-## Abgrenzung
+Item-Keys are optimized for **many small items** that change infrequently.
+A profile picture is a **single large blob** that changes infrequently —
+but is frequently fetched by many contacts. A shared scope key is more efficient:
 
-Dieser Blob Store ist **kein** generischer Dateispeicher. Er ist optimiert fur:
-- Kleine bis mittlere Blobs (Profilbilder, Thumbnails: < 1MB)
-- Seltene Schreibvorgange (Profilbild andern)
-- Haufige Lesevorgange (Kontakt zeigt Profilbild an)
+- No O(N) per blob upload
+- No redelivery problem for offline contacts
+- Contacts fetch the blob themselves when they come online
 
-Fur grosse Dateien (Videos, Dokumente) in Spaces ware ein anderer Ansatz notig
-(z.B. Chunking + Content-Addressing), aber das ist nicht Teil des aktuellen Scope.
+## Scope
+
+This blob store is **not** a generic file storage system. It is optimized for:
+
+- Small to medium blobs (profile pictures, thumbnails: < 1MB)
+- Infrequent writes (changing a profile picture)
+- Frequent reads (contact displays profile picture)
+
+For large files (videos, documents) in spaces a different approach would be needed
+(e.g. chunking + content addressing), but that is outside the current scope.

@@ -1,81 +1,81 @@
-# Recovery-Flow (Nutzer-Perspektive)
+# Recovery Flow (User Perspective)
 
-> Wie eine Identität wiederhergestellt wird
+> How an identity is restored after losing access
 
-## Wann brauche ich Recovery?
+## When do I need recovery?
 
-| Situation | Recovery nötig? |
-| --------- | --------------- |
-| Gerät verloren | Ja |
-| Gerät gestohlen | Ja |
-| App gelöscht | Ja |
-| Browserdaten gelöscht (Web) | Ja |
-| Neues Gerät | Ja (oder Multi-Device Setup) |
-| App-Update | Nein |
-| Passwort vergessen | Es gibt kein Passwort |
+| Situation | Recovery needed? |
+| --------- | ---------------- |
+| Device lost | Yes |
+| Device stolen | Yes |
+| App deleted | Yes |
+| Browser data cleared (Web) | Yes |
+| New device | Yes (or Multi-Device Setup) |
+| App update | No |
+| Password forgotten | There is no password |
 
 ---
 
-## Voraussetzung: Recovery-Phrase
+## Prerequisite: Recovery Phrase
 
-Die Recovery-Phrase ist der **einzige Weg**, deine Identität wiederherzustellen.
+The recovery phrase is the **only way** to restore your identity.
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ⚠️  WICHTIG                    │
+│  ⚠️  IMPORTANT                  │
 │                                 │
-│  Deine Recovery-Phrase wurde    │
-│  dir EINMALIG bei der ID-       │
-│  Erstellung angezeigt.          │
+│  Your recovery phrase was       │
+│  shown to you ONCE when you     │
+│  created your identity.         │
 │                                 │
-│  Sie kann NICHT erneut          │
-│  abgerufen werden.              │
+│  It CANNOT be retrieved         │
+│  again.                         │
 │                                 │
-│  Ohne sie ist deine Identität   │
-│  VERLOREN.                      │
+│  Without it your identity       │
+│  is LOST.                       │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Hauptflow: Identität wiederherstellen
+## Main flow: Restore identity
 
 ```mermaid
 sequenceDiagram
-    participant U as Nutzer
-    participant App as Neue App
-    participant Server as Server
+    participant U as User
+    participant App as New App
+    participant Relay as Relay + Vault
 
-    Note over U: Neues Gerät / App neu installiert
+    Note over U: New device / App freshly installed
 
-    U->>App: Öffnet App
-    App->>U: Willkommen! Neu hier oder wiederherstellen?
+    U->>App: Opens app
+    App->>U: Welcome! New here or restore?
 
-    U->>App: Tippt "Wiederherstellen"
+    U->>App: Taps "Restore"
 
-    App->>U: Recovery-Phrase eingeben
+    App->>U: Enter recovery phrase
 
-    U->>App: Gibt 12 Wörter ein
+    U->>App: Types 12 words
 
-    App->>App: Validiert Wörter (BIP39)
-    App->>App: Generiert Schlüssel aus Phrase
-    App->>App: Berechnet DID
+    App->>App: Validates words (BIP39)
+    App->>App: Derives master key via HKDF
+    App->>App: Computes DID
 
-    App->>Server: Frage nach Daten für DID
-    Server->>App: Verschlüsselte Daten
+    App->>Relay: Fetch data for DID (Vault restore)
+    Relay->>App: Encrypted PersonalDoc snapshot
 
-    App->>App: Entschlüsselt mit Private Key
+    App->>App: Decrypts with derived key
 
-    App->>U: Willkommen zurück!
+    App->>U: Welcome back!
 ```
 
 ---
 
-## Was der Nutzer sieht
+## What the user sees
 
-### Startbildschirm (neue Installation)
+### Start screen (fresh install)
 
 ```
 ┌─────────────────────────────────┐
@@ -86,44 +86,44 @@ sequenceDiagram
 │                                 │
 │  ┌─────────────────────────┐    │
 │  │                         │    │
-│  │  🆕 Neu hier?            │    │
+│  │  New here?              │    │
 │  │                         │    │
-│  │  Erstelle eine neue     │    │
-│  │  Identität              │    │
+│  │  Create a new           │    │
+│  │  identity               │    │
 │  │                         │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
 │  │                         │    │
-│  │  🔄 Wiederherstellen     │    │
+│  │  Restore                │    │
 │  │                         │    │
-│  │  Ich habe bereits       │    │
-│  │  eine Identität         │    │
+│  │  I already have         │    │
+│  │  an identity            │    │
 │  │                         │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Recovery-Phrase eingeben
+### Enter recovery phrase
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  🔄 Identität wiederherstellen  │
+│  Restore identity               │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Gib deine 12 Wörter ein:       │
+│  Enter your 12 words:           │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 1. apple                │    │
+│  │ 1. absurd               │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
-│  │ 2. banana               │    │
+│  │ 2. banane               │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
-│  │ 3. cherry               │    │
+│  │ 3. chaos                │    │
 │  └─────────────────────────┘    │
 │  ┌─────────────────────────┐    │
 │  │ 4.                      │    │
@@ -133,137 +133,136 @@ sequenceDiagram
 │  │ 12.                     │    │
 │  └─────────────────────────┘    │
 │                                 │
-│  [ Wiederherstellen ]           │
+│  [ Restore ]                    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Wiederherstellung läuft
+### Restoration in progress
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  🔄 Stelle wieder her...        │
+│  Restoring...                   │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
 │  ████████████░░░░░░░ 60%        │
 │                                 │
-│  ✅ Schlüssel generiert         │
-│  ✅ Identität gefunden          │
-│  🔄 Lade Daten...               │
-│  ⬜ Kontakte laden              │
-│  ⬜ Content laden               │
+│  ✅ Keys derived                │
+│  ✅ Identity found              │
+│  ⏳ Loading data...             │
+│  ⬜ Loading contacts            │
+│  ⬜ Loading content             │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Wiederherstellung erfolgreich
+### Restoration successful
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ✅ Willkommen zurück!          │
+│  ✅ Welcome back!               │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Deine Identität wurde          │
-│  wiederhergestellt:             │
+│  Your identity has been         │
+│  restored:                      │
 │                                 │
-│         📷 [Profilbild]         │
+│         [Profile photo]         │
 │          Anna Müller            │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  Wiederhergestellt:             │
+│  Restored:                      │
 │                                 │
-│  👥 23 Kontakte                 │
-│  📜 47 Attestationen            │
-│  📅 12 Kalender-Einträge        │
-│  📍 8 Karten-Markierungen       │
+│  👥 23 contacts                 │
+│  📜 47 attestations             │
+│  📅 12 calendar entries         │
+│  📍 8 map markers               │
 │                                 │
-│  [ Los geht's ]                 │
+│  [ Let's go ]                   │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Fehlerfall: Falsche Phrase
+## Error case: Wrong phrase
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ❌ Ungültige Phrase            │
+│  ❌ Invalid phrase              │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Die eingegebene Recovery-      │
-│  Phrase ist ungültig.           │
+│  The recovery phrase you        │
+│  entered is not valid.          │
 │                                 │
-│  Mögliche Ursachen:             │
+│  Possible reasons:              │
 │                                 │
-│  • Wort falsch geschrieben      │
-│  • Wörter in falscher           │
-│    Reihenfolge                  │
-│  • Falsches Wort verwendet      │
+│  • Word misspelled              │
+│  • Words in wrong order         │
+│  • Wrong word used              │
 │                                 │
-│  Bitte prüfe deine Notizen      │
-│  und versuche es erneut.        │
+│  Please check your notes        │
+│  and try again.                 │
 │                                 │
-│  [ Erneut versuchen ]           │
+│  [ Try again ]                  │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Fehlerfall: Keine Recovery-Phrase
+## Error case: No recovery phrase
 
 ```mermaid
 flowchart TD
-    Lost(["Gerät verloren"]) --> HasPhrase{"Recovery-Phrase vorhanden?"}
+    Lost(["Device lost"]) --> HasPhrase{"Recovery phrase available?"}
 
-    HasPhrase -->|Ja| Recover["Wiederherstellen"]
-    Recover --> Success["Alles wiederhergestellt"]
+    HasPhrase -->|Yes| Recover["Restore"]
+    Recover --> Success["Everything restored"]
 
-    HasPhrase -->|Nein| Gone["Identität verloren"]
-    Gone --> NewID["Neue Identität erstellen"]
-    NewID --> Reverify["Alle Kontakte müssen dich neu verifizieren"]
-    NewID --> LostAttestations["Alte Attestationen verloren"]
+    HasPhrase -->|No| Gone["Identity lost"]
+    Gone --> NewID["Create new identity"]
+    NewID --> Reverify["All contacts must verify you again"]
+    NewID --> LostAttestations["Old attestations lost"]
 
-    style Gone fill:#FF6B6B
-    style LostAttestations fill:#FF6B6B
+    style Gone stroke:#FF6B6B,color:#FF6B6B
+    style LostAttestations stroke:#FF6B6B,color:#FF6B6B
 ```
 
-### Was verloren ist
+### What is lost
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  😔 Ohne Recovery-Phrase        │
+│  Without recovery phrase        │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Leider können wir deine        │
-│  Identität nicht wiederherstellen.│
+│  Unfortunately we cannot        │
+│  restore your identity.         │
 │                                 │
-│  Was verloren ist:              │
+│  What is lost:                  │
 │                                 │
-│  ❌ Deine Identität (DID)       │
-│  ❌ Alle Verifizierungen        │
-│  ❌ Alle erhaltenen Attestationen│
-│  ❌ Dein Profil                 │
+│  ❌ Your identity (DID)         │
+│  ❌ All verifications           │
+│  ❌ All received attestations   │
+│  ❌ Your profile                │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  Du kannst eine neue Identität  │
-│  erstellen, aber du musst:      │
+│  You can create a new identity, │
+│  but you will need to:          │
 │                                 │
-│  • Alle Kontakte neu treffen    │
-│  • Neue Attestationen sammeln   │
+│  • Meet all contacts again      │
+│  • Collect new attestations     │
 │                                 │
-│  [ Neue Identität erstellen ]   │
+│  [ Create new identity ]        │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -272,97 +271,94 @@ flowchart TD
 
 ## Personas
 
-### Greta verliert ihr Handy
-
-
+### Greta loses her phone
 
 ```mermaid
 sequenceDiagram
     participant G as Greta
-    participant T as Tom (Nachbar)
-    participant App as Neue App
+    participant T as Tom (neighbor)
+    participant App as New App
 
-    Note over G: Handy gestohlen
+    Note over G: Phone stolen
 
-        Note over G,T: Tom hilft Greta beim Backup
+    Note over G,T: Tom helps Greta with backup
 
+    G->>G: Gets notebook with phrase
 
-    G->>G: Holt Notizbuch mit Phrase
+    G->>App: Installs app on new phone
 
-    G->>App: Installiert App auf neuem Handy
+    G->>App: Taps "Restore"
 
-    G->>App: Tippt "Wiederherstellen"
+    G->>App: Types 12 words (with reading glasses)
 
-    G->>App: Gibt 12 Wörter ein (mit Lesebrille)
+    App->>G: Welcome back, Greta!
 
-    App->>G: Willkommen zurück, Greta!
-
-    Note over G: Alle Daten sind wieder da
+    Note over G: All data is back
 ```
 
-### Lena (Skeptikerin) testet Recovery
+### Lena (skeptic) tests recovery
 
 ```mermaid
 sequenceDiagram
     participant L as Lena
-    participant Phone as Handy
+    participant Phone as Phone
     participant Web as Browser
 
-    Note over L: Testet das System
+    Note over L: Testing the system
 
-    L->>Phone: Erstellt Identität
+    L->>Phone: Creates identity
 
-    L->>L: Notiert Recovery-Phrase
+    L->>L: Notes recovery phrase
 
-    L->>Web: Öffnet Web-App
-    L->>Web: Gibt Recovery-Phrase ein
+    L->>Web: Opens web app
+    L->>Web: Enters recovery phrase
 
-    Web->>L: Identität wiederhergestellt
+    Web->>L: Identity restored
 
-    Note over L: Gleiche Identität auf beiden Geräten
-    Note over L: System funktioniert wie dokumentiert
+    Note over L: Same identity on both devices
+    Note over L: System works as documented
 ```
 
-### Familie Yilmaz ohne Phrase
+### Familie Yilmaz without phrase
 
 ```mermaid
 sequenceDiagram
     participant Y as Familie Yilmaz
     participant App as App
 
-    Note over Y: Handy kaputt, Phrase nicht notiert
+    Note over Y: Phone broken, phrase not written down
 
-    Y->>App: Versucht Wiederherstellung
+    Y->>App: Attempts restoration
 
-    App->>Y: Recovery-Phrase eingeben
+    App->>Y: Enter recovery phrase
 
-    Y->>Y: Phrase nicht aufgeschrieben...
+    Y->>Y: Phrase not written down...
 
-    App->>Y: Ohne Phrase keine Wiederherstellung
+    App->>Y: No restoration without phrase
 
-    Note over Y: Muss neue Identität erstellen
-    Note over Y: Muss alle Kontakte neu treffen
+    Note over Y: Must create new identity
+    Note over Y: Must meet all contacts again
 ```
 
 ---
 
-## Recovery auf verschiedenen Plattformen
+## Recovery on different platforms
 
 ### iOS / Android
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  Nach Wiederherstellung:        │
+│  After restoration:             │
 │                                 │
-│  ✅ Private Key im Keychain/    │
-│     Keystore gespeichert        │
+│  ✅ Master key derived via HKDF │
+│     stored in secure storage    │
 │                                 │
-│  ✅ Alle Daten vom Server       │
-│     geladen                     │
+│  ✅ All data loaded             │
+│     from Vault                  │
 │                                 │
-│  ✅ Push-Benachrichtigungen     │
-│     aktiviert                   │
+│  ✅ Push notifications          │
+│     activated                   │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -372,117 +368,116 @@ sequenceDiagram
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ⚠️ Web-Hinweis                 │
+│  ⚠️  Web note                   │
 │                                 │
-│  Im Browser wird dein           │
-│  Schlüssel durch die Web        │
-│  Crypto API geschützt und       │
-│  kann nicht ausgelesen werden.  │
+│  In the browser your key is     │
+│  protected by the Web Crypto    │
+│  API and cannot be extracted.   │
 │                                 │
-│  ACHTUNG: Wenn du "Browser-     │
-│  daten löschen" verwendest,     │
-│  musst du erneut mit der        │
-│  Recovery-Phrase wiederherstellen.│
+│  WARNING: If you use "Clear     │
+│  browser data" you will need    │
+│  to restore again using         │
+│  your recovery phrase.          │
 │                                 │
-│  [ Verstanden ]                 │
+│  [ Understood ]                 │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Was passiert mit laufenden Prozessen?
+## What happens to ongoing processes?
 
-### Ausstehende Verifizierungen
+### Pending verifications
 
 ```mermaid
 flowchart TD
-    Before(["Vor dem Verlust"]) --> Pending["Pending Verifizierung mit Ben"]
+    Before(["Before the loss"]) --> Pending["Pending verification with Ben"]
 
-    Pending --> Lost["Gerät verloren"]
+    Pending --> Lost["Device lost"]
 
-    Lost --> Recover["Recovery auf neuem Gerät"]
+    Lost --> Recover["Recovery on new device"]
 
-    Recover --> Status{"Pending-Status?"}
+    Recover --> Status{"Pending status?"}
 
-    Status --> StillPending["Immer noch pending"]
-    StillPending --> Continue["Ben kann dich jetzt verifizieren"]
+    Status --> StillPending["Still pending"]
+    StillPending --> Continue["Ben can now verify you"]
 ```
 
-**Ergebnis:** Pending-Verifizierungen bleiben erhalten. Der andere kann dich weiterhin verifizieren.
+**Result:** Pending verifications are preserved. The other person can still verify you.
 
-### Unveröffentlichte Änderungen
+### Unsynced changes
 
 ```mermaid
 flowchart TD
-    Before(["Vor dem Verlust"]) --> Unsaved["3 Änderungen nicht synchronisiert"]
+    Before(["Before the loss"]) --> Unsaved["3 changes not yet synced"]
 
-    Unsaved --> Lost["Gerät verloren"]
+    Unsaved --> Lost["Device lost"]
 
     Lost --> Recover["Recovery"]
 
-    Recover --> OnlyServer["Nur Server-Daten verfügbar"]
+    Recover --> OnlyVault["Only Vault data available"]
 
-    OnlyServer --> Missing["Unsynchronisierte Änderungen verloren"]
+    OnlyVault --> Missing["Unsynced changes lost"]
 
-    style Missing fill:#FFE4B5
+    style Missing stroke:#FFE4B5,color:#FFE4B5
 ```
 
-**Ergebnis:** Änderungen, die nicht synchronisiert wurden, sind verloren.
+**Result:** Changes that were not synced before the loss are gone.
 
 ---
 
-## Sicherheitshinweise
+## Security notes
 
-### Phrase sicher aufbewahren
+### Store your phrase safely
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  📝 Empfehlungen                │
+│  Recommendations                │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  ✅ Auf Papier aufschreiben     │
+│  ✅ Write on paper              │
 │                                 │
-│  ✅ An sicherem Ort aufbewahren │
-│     (nicht im Handy!)           │
+│  ✅ Store in a safe place       │
+│     (not on your phone!)        │
 │                                 │
-│  ✅ Eventuell zweite Kopie an   │
-│     anderem Ort                 │
+│  ✅ Consider a second copy      │
+│     at a different location     │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  ❌ Nicht digital speichern     │
-│     (Fotos, Notiz-Apps, Cloud)  │
+│  ❌ Do not store digitally      │
+│     (photos, note apps, cloud)  │
 │                                 │
-│  ❌ Nicht per Email/Chat senden │
+│  ❌ Do not send via email/chat  │
 │                                 │
-│  ❌ Keinen Screenshot machen    │
+│  ❌ Do not take a screenshot    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Bei Verdacht auf Kompromittierung
+### If you suspect compromise
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│  ⚠️ Phrase kompromittiert?      │
+│  ⚠️  Phrase compromised?        │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Wenn du glaubst, dass jemand   │
-│  deine Phrase kennt:            │
+│  If you believe someone         │
+│  knows your phrase:             │
 │                                 │
-│  1. Erstelle eine NEUE Identität│
+│  1. Create a NEW identity       │
 │                                 │
-│  2. Informiere deine Kontakte   │
+│  2. Inform your contacts        │
 │                                 │
-│  3. Lass dich neu verifizieren  │
+│  3. Get re-verified             │
 │                                 │
-│  Die alte Identität sollte      │
-│  nicht mehr verwendet werden.   │
+│  The old identity should        │
+│  no longer be used.             │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -491,14 +486,14 @@ flowchart TD
 
 ## FAQ
 
-**Kann ich meine Phrase ändern?**
-Nein. Die Phrase ist fest mit deiner Identität verbunden. Eine neue Phrase bedeutet eine neue Identität.
+**Can I change my phrase?**
+No. The phrase is permanently bound to your identity. A new phrase means a new identity.
 
-**Was wenn ich ein Wort falsch notiert habe?**
-Die App prüft, ob alle Wörter gültig sind (BIP39-Wortliste). Wenn ein Wort falsch ist, wird die Phrase nicht akzeptiert.
+**What if I wrote down a word incorrectly?**
+The app checks whether all words are valid (BIP39 word list). If a word is wrong, the phrase is rejected.
 
-**Kann der Support mir helfen?**
-Nein. Niemand außer dir kennt deine Phrase. Das ist Absicht - so kann sie auch niemand stehlen.
+**Can support help me?**
+No. Nobody but you knows your phrase. That is intentional — so nobody can steal it.
 
-**Kann ich die Phrase nachträglich anzeigen lassen?**
-Nein. Die Phrase wird nur einmal bei der ID-Erstellung angezeigt und danach nirgendwo gespeichert.
+**Can I view the phrase again later?**
+No. The phrase is shown only once at identity creation and is not stored anywhere afterwards.

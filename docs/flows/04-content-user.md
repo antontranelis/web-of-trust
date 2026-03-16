@@ -1,237 +1,247 @@
-# Content-Flow (Nutzer-Perspektive)
+# Content Flow (User Perspective)
 
-> Wie Nutzer Inhalte erstellen und teilen
+> How users create and share content
 
-## Content-Typen
+> **Status: Planned — not yet implemented in the demo app.**
+> The content types described here (Calendar, Map, Offers, Requests, Projects) are part of the planned feature set. The current demo app implements Attestations and Group Spaces. Content types will be built on the same infrastructure (PersonalDoc CRDT, Relay, Vault).
 
-Das Web of Trust unterstützt verschiedene Content-Typen:
+## Content Types
 
-| Typ | Beschreibung | Beispiel |
-| --- | ------------ | -------- |
-| Kalender | Termine und Events | "Gartentreffen am Samstag" |
-| Karte | Orte und Markierungen | "Werkzeugverleih bei Anna" |
-| Projekt | Kooperative Vorhaben | "Gemeinschaftsgarten 2025" |
-| Angebot | Was ich anbiete | "Kann Fahrräder reparieren" |
-| Gesuch | Was ich suche | "Suche Hilfe beim Umzug" |
+The Web of Trust supports several content types:
+
+| Type | Description | Example |
+| --- | --- | --- |
+| Calendar | Events and appointments | "Garden meetup on Saturday" |
+| Map | Locations and markers | "Tool lending at Anna's" |
+| Project | Collaborative initiatives | "Community Garden 2025" |
+| Offer | What I can offer | "Can repair bikes" |
+| Request | What I'm looking for | "Need help moving" |
 
 ---
 
-## Hauptflow: Content erstellen
+## Main Flow: Creating Content
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
-    participant App as Anna App
+    participant App as Anna's App
 
-    A->>App: Tippt + Button
-    App->>A: Zeigt Content-Typen
+    A->>App: Taps + button
+    App->>A: Shows content types
 
-    A->>App: Wählt Kalender
+    A->>App: Selects Calendar
 
-    App->>A: Zeigt Formular
+    App->>A: Shows form
 
-    A->>App: Gibt ein: Titel, Datum, Ort, Beschreibung
+    A->>App: Enters: title, date, location, description
 
-    A->>App: Wählt Sichtbarkeit
-    Note over App: Alle Kontakte / Ausgewählte / Gruppe
+    A->>App: Selects visibility
+    Note over App: All contacts / Selected / Group
 
-    A->>App: Tippt Erstellen
+    A->>App: Taps Create
 
-    App->>App: Verschlüsselt für gewählte Empfänger
-    App->>App: Speichert lokal
-    App->>App: Sync zum Server
+    App->>App: Encrypts for chosen recipients
+    App->>App: Stores in PersonalDoc CRDT
+    App->>App: Syncs via Relay
 
-    App->>A: Termin erstellt!
+    App->>A: Event created!
 ```
 
 ---
 
-## Sichtbarkeit steuern
+## Controlling Visibility
 
-### Optionen beim Erstellen
+### Options When Creating
 
 ```mermaid
 flowchart TD
-    Create(["Content erstellen"]) --> Visibility{"Wer soll es sehen?"}
+    Create(["Create content"]) --> Visibility{"Who should see it?"}
 
-    Visibility --> All["Alle meine Kontakte"]
-    Visibility --> Selected["Ausgewählte Personen"]
-    Visibility --> Groups["Eine oder mehrere Gruppen"]
+    Visibility --> All["All my contacts"]
+    Visibility --> Selected["Selected people"]
+    Visibility --> Groups["One or more groups"]
 
-    All --> AutoGroup["Verschlüsselt mit Auto-Gruppe Key"]
-    Selected --> Individual["Verschlüsselt für jeden einzeln"]
-    Groups --> GroupKeys["Verschlüsselt mit Group Key(s)"]
+    All --> AutoGroup["Encrypted with auto-group key"]
+    Selected --> Individual["Encrypted individually per recipient"]
+    Groups --> GroupKeys["Encrypted with group key(s)"]
 
-    AutoGroup --> Sync["Sync"]
+    AutoGroup --> Sync["Sync via Relay"]
     Individual --> Sync
     GroupKeys --> Sync
+
+    style Create stroke:#888,fill:none,color:inherit
+    style Visibility stroke:#888,fill:none,color:inherit
+    style All stroke:#888,fill:none,color:inherit
+    style Selected stroke:#888,fill:none,color:inherit
+    style Groups stroke:#888,fill:none,color:inherit
+    style AutoGroup stroke:#888,fill:none,color:inherit
+    style Individual stroke:#888,fill:none,color:inherit
+    style GroupKeys stroke:#888,fill:none,color:inherit
+    style Sync stroke:#5a5,fill:none,color:inherit
 ```
 
-### Sichtbarkeit nachträglich ändern
+### Changing Visibility Later
 
-Content kann nach dem Erstellen erweitert werden (mehr Personen hinzufügen), aber nicht eingeschränkt werden (bereits geteilte Kopien existieren).
+Content visibility can be expanded after creation (add more recipients), but not restricted (copies already shared cannot be recalled).
 
 ---
 
-## Was der Nutzer sieht
+## What the User Sees
 
-### Neuen Content erstellen
+### Create New Content
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│   + Neuer Inhalt                │
+│   + New Content                 │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
 │   ┌─────────────────────────┐   │
-│   │  📅 Kalender-Eintrag    │   │
-│   │     Termin oder Event   │   │
+│   │  📅 Calendar Entry      │   │
+│   │     Event or appointment│   │
 │   └─────────────────────────┘   │
 │                                 │
 │   ┌─────────────────────────┐   │
-│   │  📍 Karten-Markierung   │   │
-│   │     Ort oder Adresse    │   │
+│   │  📍 Map Marker          │   │
+│   │     Location or address │   │
 │   └─────────────────────────┘   │
 │                                 │
 │   ┌─────────────────────────┐   │
-│   │  📋 Projekt             │   │
-│   │     Gemeinsames         │   │
-│   │     Vorhaben            │   │
+│   │  📋 Project             │   │
+│   │     Collaborative       │   │
+│   │     initiative          │   │
 │   └─────────────────────────┘   │
 │                                 │
 │   ┌─────────────────────────┐   │
-│   │  🤝 Angebot             │   │
-│   │     Was ich anbiete     │   │
+│   │  🤝 Offer               │   │
+│   │     What I can offer    │   │
 │   └─────────────────────────┘   │
 │                                 │
 │   ┌─────────────────────────┐   │
-│   │  🔍 Gesuch              │   │
-│   │     Was ich suche       │   │
+│   │  🔍 Request             │   │
+│   │     What I'm looking for│   │
 │   └─────────────────────────┘   │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Kalender-Eintrag erstellen
+### Create Calendar Entry
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│   📅 Neuer Termin               │
+│   📅 New Event                  │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│   Titel *                       │
+│   Title *                       │
 │   ┌─────────────────────────┐   │
-│   │ Gartentreffen           │   │
+│   │ Garden meetup           │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Datum *                       │
+│   Date *                        │
 │   ┌─────────────────────────┐   │
-│   │ Sa, 15.01.2025  14:00   │   │
+│   │ Sat, 15.01.2025  14:00  │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Ort                           │
+│   Location                      │
 │   ┌─────────────────────────┐   │
-│   │ Gemeinschaftsgarten     │   │
+│   │ Community Garden        │   │
 │   │ Sonnenberg              │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Beschreibung                  │
+│   Description                   │
 │   ┌─────────────────────────┐   │
-│   │ Wir bereiten die Beete  │   │
-│   │ für das Frühjahr vor.   │   │
-│   │ Bitte Handschuhe        │   │
-│   │ mitbringen!             │   │
+│   │ We'll be preparing the  │   │
+│   │ beds for spring.        │   │
+│   │ Please bring gloves!    │   │
 │   └─────────────────────────┘   │
 │                                 │
 │   ━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
 │                                 │
-│   Wer soll es sehen?            │
+│   Who should see this?          │
 │                                 │
-│   (•) Alle meine Kontakte       │
-│   ( ) Ausgewählte Personen      │
-│   ( ) Gruppen:                  │
-│       [ ] Gemeinschaftsgarten   │
-│       [ ] Nachbarschaftshilfe   │
-│       [ ] Reparatur-Café        │
+│   (•) All my contacts           │
+│   ( ) Selected people           │
+│   ( ) Groups:                   │
+│       [ ] Community Garden      │
+│       [ ] Neighborhood Help     │
+│       [ ] Repair Café           │
 │                                 │
-│   [ Termin erstellen ]          │
+│   [ Create Event ]              │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Karten-Markierung erstellen
+### Create Map Marker
 
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│   📍 Neue Markierung            │
+│   📍 New Marker                 │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
 │   ┌─────────────────────────┐   │
 │   │                         │   │
-│   │      [Karte mit Pin]    │   │
+│   │      [Map with pin]     │   │
 │   │           📍            │   │
 │   │                         │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Titel *                       │
+│   Title *                       │
 │   ┌─────────────────────────┐   │
-│   │ Werkzeugverleih         │   │
+│   │ Tool lending            │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Kategorie                     │
+│   Category                      │
 │   ┌─────────────────────────┐   │
-│   │ Ausleihen            ▼  │   │
+│   │ Lending              ▼  │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   Beschreibung                  │
+│   Description                   │
 │   ┌─────────────────────────┐   │
-│   │ Hier kann man sich      │   │
-│   │ Werkzeug ausleihen.     │   │
-│   │ Einfach klingeln!       │   │
+│   │ Tools available to      │   │
+│   │ borrow here. Just ring! │   │
 │   └─────────────────────────┘   │
 │                                 │
-│   [ Markierung erstellen ]      │
+│   [ Create Marker ]             │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Content-Übersicht (Feed)
+### Content Overview (Feed)
 
 ```
 ┌─────────────────────────────────┐
-│  Neuigkeiten                    │
+│  News                           │
 ├─────────────────────────────────┤
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📅 Gartentreffen        │    │
-│  │    Sa, 15.01. 14:00     │    │
+│  │ 📅 Garden meetup        │    │
+│  │    Sat, 15.01. 14:00    │    │
 │  │                         │    │
-│  │    👩 Anna · vor 2h      │    │
-│  │    📍 Gemeinschaftsgarten│    │
+│  │    👩 Anna · 2h ago      │    │
+│  │    📍 Community Garden   │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 🤝 Angebot              │    │
-│  │    Kann bei Umzug       │    │
-│  │    helfen               │    │
+│  │ 🤝 Offer                │    │
+│  │    Can help with moving │    │
 │  │                         │    │
-│  │    👨 Ben · vor 1 Tag    │    │
+│  │    👨 Ben · 1 day ago    │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 🔍 Gesuch               │    │
-│  │    Suche Bohrmaschine   │    │
-│  │    zum Ausleihen        │    │
+│  │ 🔍 Request              │    │
+│  │    Looking for a drill  │    │
+│  │    to borrow            │    │
 │  │                         │    │
-│  │    👴 Tom · vor 3 Tagen  │    │
+│  │    👴 Tom · 3 days ago   │    │
 │  └─────────────────────────┘    │
 │                                 │
-│  [ Mehr laden ]                 │
+│  [ Load more ]                  │
 │                                 │
 └─────────────────────────────────┘
 ```
@@ -240,113 +250,126 @@ Content kann nach dem Erstellen erweitert werden (mehr Personen hinzufügen), ab
 
 ## Personas
 
-### Anna teilt einen Termin
+### Anna shares an event
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
     participant App as App
-    participant Contacts as Annas Kontakte
+    participant Contacts as Anna's Contacts
 
-    Note over A: Plant Gartentreffen
+    Note over A: Planning a garden meetup
 
-    A->>App: Neuer Kalender-Eintrag
-    A->>App: Gartentreffen, Sa 14:00
-    A->>App: Sichtbarkeit: Alle Kontakte
-    A->>App: Erstellen
+    A->>App: New calendar entry
+    A->>App: Garden meetup, Sat 14:00
+    A->>App: Visibility: All contacts
+    A->>App: Create
 
-    App->>App: Verschlüsselt für Auto-Gruppe
-    App->>App: Sync
+    App->>App: Encrypt for auto-group
+    App->>App: Sync via Relay
 
-    Note over Contacts: Ben, Tom, Carla sehen den Termin
+    Note over Contacts: Ben, Tom, Carla see the event
 ```
 
-### Kemal erstellt Angebote nach Reparatur-Café
+### Kemal creates offers after Repair Café
 
 ```mermaid
 sequenceDiagram
     participant K as Kemal
     participant App as App
 
-    Note over K: Nach dem Reparatur-Café
+    Note over K: After the Repair Café
 
-    loop Für jeden Helfer
-        K->>App: Neues Angebot
-        K->>App: "Max kann Fahrräder reparieren"
-        K->>App: Sichtbarkeit: Alle Kontakte
-        K->>App: Erstellen
+    loop For each helper
+        K->>App: New offer
+        K->>App: "Max can repair bikes"
+        K->>App: Visibility: All contacts
+        K->>App: Create
     end
 
-    Note over K: 5 Angebote in 3 Minuten dokumentiert
+    Note over K: 5 offers documented in 3 minutes
 ```
 
-### Familie Yilmaz sucht Hilfe
+### The Yilmaz family needs help
 
 ```mermaid
 sequenceDiagram
-    participant Y as Familie Yilmaz
+    participant Y as Yilmaz family
     participant App as App
-    participant N as Nachbarn
+    participant N as Neighbors
 
-    Note over Y: Neu in der Gegend, brauchen Hilfe beim Umzug
+    Note over Y: New to the area, need help moving
 
-    Y->>App: Neues Gesuch
-    Y->>App: "Suche Hilfe beim Umzug am Samstag"
-    Y->>App: Sichtbarkeit: Alle Kontakte
-    Y->>App: Erstellen
+    Y->>App: New request
+    Y->>App: "Looking for help moving on Saturday"
+    Y->>App: Visibility: All contacts
+    Y->>App: Create
 
-    App->>App: Sync
+    App->>App: Sync via Relay
 
-    Note over N: Nachbarn sehen das Gesuch
+    Note over N: Neighbors see the request
 
-    N->>App: Kommentieren oder Kontakt aufnehmen
+    N->>App: Reply or get in touch
 ```
 
 ---
 
-## Content bearbeiten und löschen
+## Editing and Deleting Content
 
-### Bearbeiten
-
-```mermaid
-flowchart TD
-    Edit(["Content bearbeiten"]) --> Change["Änderung vornehmen"]
-
-    Change --> NewVersion["Neue Version erstellen"]
-
-    NewVersion --> Encrypt["Neu verschlüsseln für alle Empfänger"]
-
-    Encrypt --> Sync["Sync - ersetzt alte Version"]
-```
-
-**Hinweis:** Empfänger, die die alte Version bereits haben, behalten diese lokal. Die neue Version wird beim nächsten Sync überschrieben.
-
-### Löschen
+### Editing
 
 ```mermaid
 flowchart TD
-    Delete(["Content löschen"]) --> Confirm{"Wirklich löschen?"}
+    Edit(["Edit content"]) --> Change["Make changes"]
 
-    Confirm -->|Ja| MarkDeleted["Als gelöscht markieren"]
-    Confirm -->|Nein| Cancel["Abbrechen"]
+    Change --> NewVersion["Create new version"]
 
-    MarkDeleted --> Sync["Sync Löschmarkierung"]
+    NewVersion --> Encrypt["Re-encrypt for all recipients"]
 
-    Sync --> Note["Empfänger werden benachrichtigt"]
+    Encrypt --> Sync["Sync via Relay — replaces old version"]
+
+    style Edit stroke:#888,fill:none,color:inherit
+    style Change stroke:#888,fill:none,color:inherit
+    style NewVersion stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Sync stroke:#5a5,fill:none,color:inherit
 ```
 
-**Hinweis:** Gelöschter Content wird bei Empfängern als "nicht mehr verfügbar" angezeigt. Die verschlüsselten Daten können nicht remote gelöscht werden.
+**Note:** Recipients who already have the old version retain it locally. The new version overwrites on the next sync.
+
+### Deleting
+
+```mermaid
+flowchart TD
+    Delete(["Delete content"]) --> Confirm{"Really delete?"}
+
+    Confirm -->|Yes| MarkDeleted["Mark as deleted"]
+    Confirm -->|No| Cancel["Cancel"]
+
+    MarkDeleted --> Sync["Sync deletion marker via Relay"]
+
+    Sync --> Note["Recipients are notified"]
+
+    style Delete stroke:#888,fill:none,color:inherit
+    style Confirm stroke:#888,fill:none,color:inherit
+    style MarkDeleted stroke:#a55,fill:none,color:inherit
+    style Cancel stroke:#888,fill:none,color:inherit
+    style Sync stroke:#888,fill:none,color:inherit
+    style Note stroke:#888,fill:none,color:inherit
+```
+
+**Note:** Deleted content is shown to recipients as "no longer available". Encrypted data cannot be remotely deleted.
 
 ---
 
-## Kalender-Ansicht
+## Calendar View
 
 ```
 ┌─────────────────────────────────┐
-│  📅 Januar 2025                 │
+│  📅 January 2025                │
 │  ◄                          ►   │
 ├─────────────────────────────────┤
-│  Mo Di Mi Do Fr Sa So           │
+│  Mo Tu We Th Fr Sa Su           │
 │                    1  2  3  4   │
 │   5  6  7  8  9 10 11           │
 │  12 13 14[15]16 17 18           │
@@ -354,20 +377,20 @@ flowchart TD
 │  26 27 28 29 30 31              │
 ├─────────────────────────────────┤
 │                                 │
-│  Sa, 15. Januar                 │
+│  Sat, 15 January                │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 14:00 Gartentreffen     │    │
+│  │ 14:00 Garden meetup     │    │
 │  │       👩 Anna            │    │
-│  │       📍 Gemeinschafts-  │    │
-│  │          garten         │    │
+│  │       📍 Community       │    │
+│  │          Garden          │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 18:00 Reparatur-Café    │    │
+│  │ 18:00 Repair Café       │    │
 │  │       👨 Kemal           │    │
-│  │       📍 Nachbarschafts- │    │
-│  │          haus           │    │
+│  │       📍 Community       │    │
+│  │          Center          │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
@@ -375,59 +398,59 @@ flowchart TD
 
 ---
 
-## Karten-Ansicht
+## Map View
 
 ```
 ┌─────────────────────────────────┐
-│  🗺️ Karte                       │
-│  Filter: [Alle ▼]               │
+│  🗺️ Map                         │
+│  Filter: [All ▼]                │
 ├─────────────────────────────────┤
 │                                 │
 │   ┌─────────────────────────┐   │
 │   │                         │   │
-│   │     📍 Werkzeug         │   │
-│   │          📍 Garten      │   │
+│   │     📍 Tools            │   │
+│   │          📍 Garden      │   │
 │   │                    📍   │   │
 │   │        📍               │   │
-│   │     Reparatur           │   │
+│   │     Repair              │   │
 │   │                         │   │
 │   └─────────────────────────┘   │
 │                                 │
 ├─────────────────────────────────┤
-│  In der Nähe:                   │
+│  Nearby:                        │
 │                                 │
-│  📍 Werkzeugverleih (200m)      │
-│     Ausleihen · Anna            │
+│  📍 Tool lending (200m)         │
+│     Lending · Anna              │
 │                                 │
-│  📍 Gemeinschaftsgarten (350m)  │
-│     Garten · Gruppe             │
+│  📍 Community Garden (350m)     │
+│     Garden · Group              │
 │                                 │
-│  📍 Reparatur-Café (500m)       │
-│     Reparieren · Kemal          │
+│  📍 Repair Café (500m)          │
+│     Repair · Kemal              │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Benachrichtigungen
+## Notifications
 
-Nutzer werden benachrichtigt bei:
+Users are notified when:
 
-| Ereignis | Benachrichtigung |
-| -------- | ---------------- |
-| Neuer Content von Kontakt | "Anna hat einen Termin geteilt" |
-| Content wurde aktualisiert | "Termin wurde geändert" |
-| Content wurde gelöscht | "Termin ist nicht mehr verfügbar" |
-| Termin steht bevor | "Gartentreffen in 1 Stunde" |
+| Event | Notification |
+| --- | --- |
+| New content from contact | "Anna shared an event" |
+| Content was updated | "Event was changed" |
+| Content was deleted | "Event is no longer available" |
+| Upcoming event | "Garden meetup in 1 hour" |
 
 ---
 
-## Einschränkungen
+## Constraints
 
-| Was | Einschränkung |
-| --- | ------------- |
-| Sichtbarkeit einschränken | Nicht möglich nach dem Teilen |
-| Sichtbarkeit erweitern | Jederzeit möglich |
-| Content löschen | Markiert als gelöscht, nicht physisch entfernt |
-| Offline erstellen | Möglich, Sync bei Verbindung |
+| What | Constraint |
+| --- | --- |
+| Restrict visibility | Not possible after sharing |
+| Expand visibility | Possible at any time |
+| Delete content | Marked as deleted, not physically removed |
+| Create offline | Possible, synced on reconnect via Relay |

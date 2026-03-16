@@ -1,51 +1,56 @@
-# Export-Flow (Technische Perspektive)
+# Export Flow (Technical Perspective)
 
-> Wie Daten exportiert und formatiert werden
+> **Status: NOT YET IMPLEMENTED**
+> This document describes the planned export feature. It has not been built yet.
 
-## Übersicht
+---
+
+> How data is exported and formatted
+
+## Overview
 
 ```mermaid
 flowchart TD
-    Start(["Export starten"]) --> Select["Datentypen auswählen"]
+    Start(["Start export"]) --> Select["Select data types"]
 
-    Select --> Collect["Daten aus lokaler DB sammeln"]
+    Select --> Collect["Read from PersonalDoc CRDT (Y.Map)"]
 
-    Collect --> Decrypt["Verschlüsselte Daten entschlüsseln"]
+    Collect --> Decrypt["Decrypt encrypted fields"]
 
-    Decrypt --> Transform["In Export-Format transformieren"]
+    Decrypt --> Transform["Transform to export format"]
 
-    Transform --> Format{"Ausgabeformat?"}
+    Transform --> Format{"Output format?"}
 
-    Format -->|JSON| JSON["JSON generieren"]
-    Format -->|CSV| CSV["CSV generieren"]
-    Format -->|PDF| PDF["PDF generieren"]
-    Format -->|ZIP| ZIP["Alle Formate + ZIP"]
+    Format -->|JSON| JSON["Generate JSON"]
+    Format -->|CSV| CSV["Generate CSV"]
+    Format -->|PDF| PDF["Generate PDF"]
+    Format -->|ZIP| ZIP["All formats + ZIP"]
 
-    JSON --> Save["Datei speichern"]
+    JSON --> Save["Save file"]
     CSV --> Save
     PDF --> Save
     ZIP --> Save
 
-    Save --> Done(["Export fertig"])
+    Save --> Done(["Export done"])
 ```
 
 ---
 
-## Export-Datenstruktur
+## Export data structure
 
-### Vollständiger Export (JSON)
+### Complete export (JSON)
 
 ```json
 {
-  "$schema": "https://weboftrust.app/schemas/export-v1.json",
+  "$schema": "https://web-of-trust.de/schemas/export-v1.json",
   "exportVersion": "1.0",
-  "exportedAt": "2025-01-08T15:00:00Z",
-  "exportedBy": "did:wot:anna123",
+  "exportedAt": "2026-01-08T15:00:00Z",
+  "exportedBy": "did:key:z6MkAnna...",
 
   "profile": {
-    "did": "did:wot:anna123",
+    "did": "did:key:z6MkAnna...",
     "name": "Anna Müller",
-    "bio": "Aktiv im Gemeinschaftsgarten Sonnenberg",
+    "bio": "Active in the community garden Sonnenberg",
     "photo": {
       "format": "jpeg",
       "data": "base64...",
@@ -53,18 +58,18 @@ flowchart TD
     },
     "publicKey": {
       "type": "Ed25519VerificationKey2020",
-      "publicKeyMultibase": "z6Mkf..."
+      "publicKeyMultibase": "z6Mk..."
     },
-    "createdAt": "2025-01-01T10:00:00Z",
-    "updatedAt": "2025-01-08T12:00:00Z"
+    "createdAt": "2026-01-01T10:00:00Z",
+    "updatedAt": "2026-01-08T12:00:00Z"
   },
 
   "contacts": [
     {
-      "did": "did:wot:ben456",
+      "did": "did:key:z6MkBen...",
       "name": "Ben Schmidt",
       "status": "active",
-      "verifiedAt": "2025-01-05T10:05:00Z",
+      "verifiedAt": "2026-01-05T10:05:00Z",
       "myVerificationId": "urn:uuid:123..."
     }
   ],
@@ -73,32 +78,32 @@ flowchart TD
     {
       "id": "urn:uuid:123...",
       "type": "IdentityVerification",
-      "from": "did:wot:anna123",
-      "to": "did:wot:ben456",
-      "timestamp": "2025-01-05T10:05:00Z",
-      "proof": { ... }
+      "from": "did:key:z6MkAnna...",
+      "to": "did:key:z6MkBen...",
+      "timestamp": "2026-01-05T10:05:00Z",
+      "proof": { }
     }
   ],
 
   "attestationsReceived": [
     {
       "id": "urn:uuid:456...",
-      "from": "did:wot:tom012",
-      "claim": "Hat 3 Stunden im Garten geholfen",
-      "tags": ["garten", "helfen"],
-      "createdAt": "2025-01-08T14:00:00Z",
-      "proof": { ... }
+      "from": "did:key:z6MkTom...",
+      "claim": "Helped for 3 hours in the garden",
+      "tags": ["garden", "helping"],
+      "createdAt": "2026-01-08T14:00:00Z",
+      "proof": { }
     }
   ],
 
   "attestationsGiven": [
     {
       "id": "urn:uuid:789...",
-      "to": "did:wot:ben456",
-      "claim": "Kennt sich mit Fahrrädern aus",
-      "tags": ["handwerk", "fahrrad"],
-      "createdAt": "2025-01-06T10:00:00Z",
-      "proof": { ... }
+      "to": "did:key:z6MkBen...",
+      "claim": "Knows a lot about bicycles",
+      "tags": ["craft", "bicycle"],
+      "createdAt": "2026-01-06T10:00:00Z",
+      "proof": { }
     }
   ],
 
@@ -106,21 +111,21 @@ flowchart TD
     {
       "id": "urn:uuid:item1...",
       "type": "CalendarItem",
-      "title": "Gartentreffen",
+      "title": "Garden meeting",
       "content": {
-        "startDate": "2025-01-15T14:00:00Z",
-        "location": "Gemeinschaftsgarten"
+        "startDate": "2026-01-15T14:00:00Z",
+        "location": "Community garden"
       },
-      "createdAt": "2025-01-08T10:00:00Z"
+      "createdAt": "2026-01-08T10:00:00Z"
     }
   ],
 
-  "groups": [
+  "spaces": [
     {
-      "did": "did:wot:group:gemeinschaftsgarten",
-      "name": "Gemeinschaftsgarten Sonnenberg",
+      "id": "urn:uuid:space1...",
+      "name": "Community garden Sonnenberg",
       "role": "member",
-      "joinedAt": "2025-01-02T10:00:00Z"
+      "joinedAt": "2026-01-02T10:00:00Z"
     }
   ],
 
@@ -130,7 +135,7 @@ flowchart TD
     "totalAttestationsReceived": 47,
     "totalAttestationsGiven": 12,
     "totalItems": 34,
-    "totalGroups": 3,
+    "totalSpaces": 3,
     "exportSizeBytes": 2456789
   }
 }
@@ -138,26 +143,26 @@ flowchart TD
 
 ---
 
-## Hauptflow: Export
+## Main flow: Export
 
 ```mermaid
 sequenceDiagram
     participant UI as UI
     participant App as App
-    participant DB as Local DB
-    participant Crypto as Crypto
-    participant FS as Dateisystem
+    participant CRDT as PersonalDoc CRDT
+    participant Crypto as WotIdentity
+    participant FS as File system
 
     UI->>App: startExport(options)
 
     App->>App: validateOptions()
 
-    loop Für jeden ausgewählten Datentyp
-        App->>DB: query(dataType)
-        DB->>App: encryptedData[]
+    loop For each selected data type
+        App->>CRDT: read Y.Map collection
+        CRDT->>App: raw entries (may contain encrypted fields)
 
-        loop Für jeden Eintrag
-            App->>Crypto: decrypt(entry, privateKey)
+        loop For each entry
+            App->>Crypto: decryptField(entry, derivedKey)
             Crypto->>App: plaintext
             App->>App: addToExport(plaintext)
         end
@@ -184,22 +189,20 @@ sequenceDiagram
 
 ---
 
-## Datensammlung
+## Data collection from PersonalDoc CRDT
 
-### Profile exportieren
+### Export profile
 
-```javascript
-async function exportProfile(privateKey) {
-  const profile = await db.profile.get();
+```typescript
+async function exportProfile(personalDoc: PersonalDoc): Promise<ExportProfile> {
+  const profile = personalDoc.profile.toJSON();
 
-  // Foto laden falls vorhanden
   let photoData = null;
-  if (profile.photoId) {
-    const photo = await db.media.get(profile.photoId);
+  if (profile.avatarData) {
     photoData = {
-      format: photo.mimeType.split('/')[1],
-      data: arrayBufferToBase64(photo.data),
-      hash: await sha256(photo.data)
+      format: 'jpeg',
+      data: arrayBufferToBase64(profile.avatarData),
+      hash: await sha256hex(profile.avatarData)
     };
   }
 
@@ -215,93 +218,100 @@ async function exportProfile(privateKey) {
 }
 ```
 
-### Kontakte exportieren
+### Export contacts
 
-```javascript
-async function exportContacts() {
-  const contacts = await db.contacts
-    .where('status')
-    .notEqual('deleted')
-    .toArray();
+```typescript
+async function exportContacts(personalDoc: PersonalDoc): Promise<ExportContact[]> {
+  const contacts = Object.values(personalDoc.contacts.toJSON());
 
-  return contacts.map(contact => ({
-    did: contact.did,
-    name: contact.name,
-    status: contact.status,
-    verifiedAt: contact.verifiedAt,
-    myVerificationId: contact.myVerification
-  }));
+  return contacts
+    .filter(c => c.status !== 'deleted')
+    .map(contact => ({
+      did: contact.did,
+      name: contact.name,
+      status: contact.status,
+      verifiedAt: contact.verifiedAt,
+      myVerificationId: contact.myVerification
+    }));
 }
 ```
 
-### Items exportieren
+### Export items
 
-```javascript
-async function exportItems(privateKey) {
-  const items = await db.items
-    .where('ownerDid')
-    .equals(myDid)
-    .and(item => !item.deleted)
-    .toArray();
+```typescript
+async function exportItems(
+  personalDoc: PersonalDoc,
+  identity: WotIdentity
+): Promise<ExportItem[]> {
+  const items = Object.values(personalDoc.items?.toJSON() ?? {});
+  const myDid = identity.getDid();
 
-  return Promise.all(items.map(async item => {
-    // Entschlüsseln
-    const content = await decryptItem(item, privateKey);
+  return Promise.all(
+    items
+      .filter(item => item.ownerDid === myDid && !item.deleted)
+      .map(async item => {
+        // Decrypt content if encrypted
+        let content = item.content;
+        if (item.encrypted && item.itemKey) {
+          const vaultKey = await identity.deriveFrameworkKey('item-key');
+          content = await decryptSymmetric(item.encryptedContent, vaultKey);
+        }
 
-    return {
-      id: item.id,
-      type: item.type,
-      title: item.title,
-      content: content,
-      visibility: item.visibility,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    };
-  }));
+        return {
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          content,
+          visibility: item.visibility,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        };
+      })
+  );
 }
 ```
 
 ---
 
-## Format-Konvertierung
+## Format conversion
 
 ### JSON
 
-```javascript
-function generateJSON(exportData) {
+```typescript
+function generateJSON(exportData: ExportData): string {
   return JSON.stringify(exportData, null, 2);
 }
 ```
 
 ### CSV
 
-```javascript
-function generateCSV(data, type) {
+```typescript
+function generateCSV(data: unknown[], type: 'contacts' | 'attestations' | 'items'): string {
   const configs = {
     contacts: {
-      headers: ['Name', 'DID', 'Status', 'Verifiziert am'],
-      row: (c) => [c.name, c.did, c.status, c.verifiedAt]
+      headers: ['Name', 'DID', 'Status', 'Verified on'],
+      row: (c: ExportContact) => [c.name, c.did, c.status, c.verifiedAt]
     },
     attestations: {
-      headers: ['Von', 'An', 'Text', 'Tags', 'Datum'],
-      row: (a) => [
-        a.from || '-',
-        a.to || '-',
+      headers: ['From', 'To', 'Text', 'Tags', 'Date'],
+      row: (a: ExportAttestation) => [
+        a.from ?? '-',
+        a.to ?? '-',
         `"${a.claim.replace(/"/g, '""')}"`,
         a.tags.join(';'),
         a.createdAt
       ]
     },
     items: {
-      headers: ['Typ', 'Titel', 'Erstellt', 'Aktualisiert'],
-      row: (i) => [i.type, i.title, i.createdAt, i.updatedAt]
+      headers: ['Type', 'Title', 'Created', 'Updated'],
+      row: (i: ExportItem) => [i.type, i.title, i.createdAt, i.updatedAt]
     }
   };
 
   const config = configs[type];
   const lines = [
     config.headers.join(','),
-    ...data.map(item => config.row(item).join(','))
+    ...data.map(item => (config.row as (x: unknown) => unknown[])(item).join(','))
   ];
 
   return lines.join('\n');
@@ -310,60 +320,49 @@ function generateCSV(data, type) {
 
 ### PDF
 
-```javascript
-async function generatePDF(exportData) {
+```typescript
+async function generatePDF(exportData: ExportData): Promise<Uint8Array> {
   const doc = new PDFDocument();
 
   // Header
   doc.fontSize(24).text('Web of Trust Export');
   doc.fontSize(12).text(exportData.profile.name);
-  doc.text(new Date().toLocaleDateString('de-DE'));
-
+  doc.text(new Date().toLocaleDateString('en-GB'));
   doc.moveDown();
 
-  // Profil
-  doc.fontSize(16).text('Profil');
+  // Profile
+  doc.fontSize(16).text('Profile');
   doc.fontSize(10)
      .text(`DID: ${exportData.profile.did}`)
      .text(`Name: ${exportData.profile.name}`)
-     .text(`Bio: ${exportData.profile.bio || '-'}`);
-
+     .text(`Bio: ${exportData.profile.bio ?? '-'}`);
   doc.moveDown();
 
-  // Kontakte
-  doc.fontSize(16).text(`Kontakte (${exportData.contacts.length})`);
+  // Contacts
+  doc.fontSize(16).text(`Contacts (${exportData.contacts.length})`);
   for (const contact of exportData.contacts) {
-    doc.fontSize(10)
-       .text(`• ${contact.name} - ${contact.status}`);
+    doc.fontSize(10).text(`• ${contact.name} — ${contact.status}`);
   }
-
   doc.moveDown();
 
-  // Attestationen
-  doc.fontSize(16).text('Attestationen');
-
-  doc.fontSize(12).text('Erhalten:');
+  // Attestations
+  doc.fontSize(16).text('Attestations');
+  doc.fontSize(12).text('Received:');
   for (const att of exportData.attestationsReceived) {
-    doc.fontSize(10)
-       .text(`• "${att.claim}" - von ${att.fromName || att.from}`);
+    doc.fontSize(10).text(`• "${att.claim}" — from ${att.fromName ?? att.from}`);
   }
 
-  // ... weitere Abschnitte
-
-  return doc;
+  return doc.getBuffer();
 }
 ```
 
-### ZIP-Archiv
+### ZIP archive
 
-```javascript
-async function generateZipArchive(exportData) {
+```typescript
+async function generateZipArchive(exportData: ExportData): Promise<Blob> {
   const zip = new JSZip();
 
-  // JSON
   zip.file('export.json', generateJSON(exportData));
-
-  // CSV files
   zip.file('contacts.csv', generateCSV(exportData.contacts, 'contacts'));
   zip.file('attestations-received.csv',
     generateCSV(exportData.attestationsReceived, 'attestations'));
@@ -371,14 +370,12 @@ async function generateZipArchive(exportData) {
     generateCSV(exportData.attestationsGiven, 'attestations'));
   zip.file('items.csv', generateCSV(exportData.items, 'items'));
 
-  // PDF
   const pdf = await generatePDF(exportData);
   zip.file('summary.pdf', pdf);
 
-  // Media
   if (exportData.profile.photo) {
-    const mediaFolder = zip.folder('media');
-    mediaFolder.file(
+    const media = zip.folder('media')!;
+    media.file(
       `profile-photo.${exportData.profile.photo.format}`,
       exportData.profile.photo.data,
       { base64: true }
@@ -391,144 +388,126 @@ async function generateZipArchive(exportData) {
 
 ---
 
-## Export-Optionen
+## Export options
 
-### Konfiguration
+### Configuration
 
 ```typescript
 interface ExportOptions {
-  // Was exportieren
+  // What to export
   includeProfile: boolean;
   includeContacts: boolean;
   includeVerifications: boolean;
   includeAttestationsReceived: boolean;
   includeAttestationsGiven: boolean;
   includeItems: boolean;
-  includeGroups: boolean;
+  includeSpaces: boolean;
   includeMedia: boolean;
 
   // Format
   format: 'json' | 'csv' | 'pdf' | 'zip';
 
-  // Filter
+  // Filters
   dateFrom?: Date;
   dateTo?: Date;
   contactFilter?: string[]; // DIDs
 
-  // Optionen
+  // Options
   prettyPrint: boolean;
   includeProofs: boolean;
 }
 ```
 
-### Standard-Optionen
+### Default options
 
-```javascript
-const defaultExportOptions = {
+```typescript
+const defaultExportOptions: ExportOptions = {
   includeProfile: true,
   includeContacts: true,
   includeVerifications: true,
   includeAttestationsReceived: true,
   includeAttestationsGiven: true,
   includeItems: true,
-  includeGroups: true,
+  includeSpaces: true,
   includeMedia: true,
 
   format: 'zip',
 
   prettyPrint: true,
-  includeProofs: false  // Signaturen sind groß
+  includeProofs: false  // Signatures are large
 };
 ```
 
 ---
 
-## Sicherheitsüberlegungen
+## Security considerations
 
-### Was NICHT exportiert wird
+### What is NEVER exported
 
-```javascript
+```typescript
 const NEVER_EXPORT = [
   'privateKey',
   'mnemonic',
   'recoveryPhrase',
   'groupKeys',
   'itemKeys',
-  'encryptedBlobs'
+  'encryptedBlobs',
+  'vaultKey'
 ];
 
-function sanitizeForExport(data) {
+function sanitizeForExport(data: Record<string, unknown>): Record<string, unknown> {
   const sanitized = { ...data };
-
   for (const key of NEVER_EXPORT) {
     delete sanitized[key];
   }
-
   return sanitized;
 }
 ```
 
-### Warnung bei sensiblen Daten
+### Warning before export
 
-```javascript
-function showExportWarning() {
+```typescript
+function buildExportWarning(): ConfirmDialogOptions {
   return {
-    title: 'Export enthält persönliche Daten',
-    message: `
-      Der Export enthält:
-      • Deinen Namen und dein Profil
-      • Alle deine Kontakte
-      • Alle Attestationen
-
-      Behandle die Datei vertraulich.
-      Teile sie nicht öffentlich.
-    `,
-    confirmText: 'Verstanden, exportieren'
+    title: 'Export contains personal data',
+    message: [
+      'The export contains:',
+      '• Your name and profile',
+      '• All your contacts',
+      '• All attestations',
+      '',
+      'Treat the file confidentially.',
+      'Do not share it publicly.'
+    ].join('\n'),
+    confirmText: 'Understood, export'
   };
 }
 ```
 
 ---
 
-## Speicher-Schema für Export-History
+## Main API
 
-```sql
-CREATE TABLE export_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    exported_at DATETIME NOT NULL,
-    format TEXT NOT NULL,
-    options TEXT NOT NULL,
-    file_name TEXT NOT NULL,
-    file_size INTEGER NOT NULL,
-    items_exported INTEGER NOT NULL
-);
+### Start export
 
-CREATE INDEX idx_export_history_date ON export_history(exported_at);
-```
-
----
-
-## API
-
-### Export starten
-
-```javascript
-async function startExport(options) {
-  // 1. Optionen validieren
+```typescript
+async function startExport(
+  options: ExportOptions,
+  personalDoc: PersonalDoc,
+  identity: WotIdentity
+): Promise<ExportResult> {
+  // 1. Validate options
   validateExportOptions(options);
 
-  // 2. Warnung anzeigen
+  // 2. Show warning
   const confirmed = await showExportWarning();
   if (!confirmed) return null;
 
-  // 3. Private Key holen
-  const privateKey = await getPrivateKey();
+  // 3. Collect data from PersonalDoc CRDT
+  const exportData = await collectExportData(options, personalDoc, identity);
 
-  // 4. Daten sammeln
-  const exportData = await collectExportData(options, privateKey);
-
-  // 5. Format generieren
-  let output;
+  // 4. Generate format
+  let output: string | Blob | Uint8Array;
   switch (options.format) {
     case 'json':
       output = generateJSON(exportData);
@@ -544,95 +523,79 @@ async function startExport(options) {
       break;
   }
 
-  // 6. Datei speichern
+  // 5. Save file
   const fileName = generateFileName(options.format);
-  const filePath = await saveFile(fileName, output);
-
-  // 7. History speichern
-  await db.exportHistory.add({
-    exportedAt: new Date().toISOString(),
-    format: options.format,
-    options: JSON.stringify(options),
-    fileName,
-    fileSize: output.size || output.length,
-    itemsExported: countExportedItems(exportData)
-  });
+  const filePath = await saveFilePlatform(fileName, output);
 
   return {
     filePath,
     fileName,
-    fileSize: output.size || output.length,
+    fileSize: output instanceof Blob ? output.size : (output as string).length,
     stats: exportData.metadata
   };
 }
 ```
 
-### Dateiname generieren
+### Generate filename
 
-```javascript
-function generateFileName(format) {
+```typescript
+function generateFileName(format: ExportOptions['format']): string {
   const date = new Date().toISOString().split('T')[0];
-  const extension = format === 'zip' ? 'zip' : format;
-  return `wot-export-${date}.${extension}`;
+  const ext = format === 'zip' ? 'zip' : format;
+  return `wot-export-${date}.${ext}`;
 }
 ```
 
 ---
 
-## Plattform-spezifische Speicherung
+## Platform-specific file saving
 
 ### iOS
 
-```javascript
-// Share Sheet verwenden
-async function saveFileIOS(filename, data) {
+```typescript
+async function saveFileIOS(filename: string, data: Blob): Promise<string> {
   const tempPath = `${RNFS.CachesDirectoryPath}/${filename}`;
-  await RNFS.writeFile(tempPath, data, 'base64');
+  await RNFS.writeFile(tempPath, await blobToBase64(data), 'base64');
 
   await Share.open({
     url: `file://${tempPath}`,
     type: getMimeType(filename)
   });
+  return tempPath;
 }
 ```
 
 ### Android
 
-```javascript
-// Downloads-Ordner oder Share
-async function saveFileAndroid(filename, data) {
+```typescript
+async function saveFileAndroid(filename: string, data: Blob): Promise<string> {
   const downloadPath = `${RNFS.DownloadDirectoryPath}/${filename}`;
-  await RNFS.writeFile(downloadPath, data, 'base64');
-
+  await RNFS.writeFile(downloadPath, await blobToBase64(data), 'base64');
   return downloadPath;
 }
 ```
 
 ### Web
 
-```javascript
-// Download-Link erstellen
-function saveFileWeb(filename, data) {
-  const blob = new Blob([data], { type: getMimeType(filename) });
-  const url = URL.createObjectURL(blob);
-
+```typescript
+function saveFileWeb(filename: string, data: Blob): void {
+  const url = URL.createObjectURL(data);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
-
   URL.revokeObjectURL(url);
 }
 ```
 
 ---
 
-## Export-Schema (JSON Schema)
+## Export JSON Schema
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://weboftrust.app/schemas/export-v1.json",
+  "$id": "https://web-of-trust.de/schemas/export-v1.json",
   "title": "Web of Trust Export",
   "type": "object",
   "required": ["exportVersion", "exportedAt", "exportedBy", "profile"],
@@ -647,7 +610,7 @@ function saveFileWeb(filename, data) {
     },
     "exportedBy": {
       "type": "string",
-      "pattern": "^did:wot:"
+      "pattern": "^did:key:z6Mk"
     },
     "profile": {
       "$ref": "#/definitions/Profile"
@@ -658,10 +621,10 @@ function saveFileWeb(filename, data) {
     }
   },
   "definitions": {
-    "Profile": { ... },
-    "Contact": { ... },
-    "Attestation": { ... },
-    "Item": { ... }
+    "Profile": { },
+    "Contact": { },
+    "Attestation": { },
+    "Item": { }
   }
 }
 ```

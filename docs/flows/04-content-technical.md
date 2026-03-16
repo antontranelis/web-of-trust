@@ -1,8 +1,11 @@
-# Content-Flow (Technische Perspektive)
+# Content Flow (Technical Perspective)
 
-> Wie Content erstellt, verschlüsselt und verteilt wird
+> How content is created, encrypted, and distributed
 
-## Datenmodell
+> **Status: Planned — not yet implemented in the demo app.**
+> The content types described here (Calendar, Map, Offers, Requests, Projects) are part of the planned feature set. The current demo app implements Attestations and Group Spaces. Content types will be built on the same infrastructure (PersonalDoc CRDT, Relay, Vault).
+
+## Data Model
 
 ```mermaid
 erDiagram
@@ -17,9 +20,9 @@ erDiagram
         string type "calendar, map, project, offer, request"
         string ownerDid FK
         string title
-        string content "JSON, verschlüsselt"
+        string content "JSON, encrypted"
         string visibility "contacts, groups, selective"
-        array groupDids "bei visibility=groups"
+        array groupDids "when visibility=groups"
         datetime createdAt
         datetime updatedAt
         boolean deleted
@@ -28,40 +31,42 @@ erDiagram
     ITEM_KEY {
         string itemId FK
         string recipientDid FK
-        string encryptedKey "Mit recipient PK verschlüsselt"
+        string encryptedKey "Encrypted with recipient public key"
     }
 
     GROUP {
         string did PK
         string name
-        string groupKey "Symmetrisch"
+        string groupKey "Symmetric"
     }
 
-    USER ||--o{ ITEM : "erstellt"
-    ITEM ||--o{ ITEM_KEY : "hat"
-    USER ||--o{ ITEM_KEY : "empfängt"
-    ITEM }o--o{ GROUP : "gehört zu"
+    USER ||--o{ ITEM : "creates"
+    ITEM ||--o{ ITEM_KEY : "has"
+    USER ||--o{ ITEM_KEY : "receives"
+    ITEM }o--o{ GROUP : "belongs to"
 ```
 
-## Item-Dokument Struktur
+> **Storage:** When implemented, items will be stored in the owner's **PersonalDoc CRDT (Y.Map)**, not in a SQL/Dexie database. The PersonalDoc is persisted via CompactStore (IDB), synced via Relay (WebSocket), and backed up via Vault (HTTP).
 
-### Kalender-Eintrag
+## Item Document Structure
+
+### Calendar Entry
 
 ```json
 {
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "CalendarItem",
   "id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
-  "owner": "did:key:anna123",
-  "title": "Gartentreffen",
+  "owner": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "title": "Garden meetup",
   "content": {
     "startDate": "2025-01-15T14:00:00Z",
     "endDate": "2025-01-15T17:00:00Z",
     "location": {
-      "name": "Gemeinschaftsgarten Sonnenberg",
+      "name": "Community Garden Sonnenberg",
       "coordinates": [51.0504, 13.7373]
     },
-    "description": "Wir bereiten die Beete für das Frühjahr vor."
+    "description": "We'll be preparing the beds for spring."
   },
   "visibility": {
     "type": "contacts"
@@ -70,102 +75,118 @@ erDiagram
   "updatedAt": "2025-01-08T10:00:00Z",
   "proof": {
     "type": "Ed25519Signature2020",
-    "verificationMethod": "did:key:anna123#key-1",
+    "verificationMethod": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#key-1",
     "proofValue": "z58DAdFfa9..."
   }
 }
 ```
 
-### Karten-Markierung
+### Map Marker
 
 ```json
 {
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "MapItem",
   "id": "urn:uuid:660e8400-e29b-41d4-a716-446655440001",
-  "owner": "did:key:anna123",
-  "title": "Werkzeugverleih",
+  "owner": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "title": "Tool lending",
   "content": {
     "coordinates": [51.0504, 13.7373],
     "category": "lending",
-    "description": "Hier kann man sich Werkzeug ausleihen."
+    "description": "Tools available to borrow here."
   },
   "visibility": {
     "type": "contacts"
   },
   "createdAt": "2025-01-08T10:00:00Z",
-  "proof": { ... }
+  "proof": { }
 }
 ```
 
-### Angebot / Gesuch
+### Offer / Request
 
 ```json
 {
   "@context": "https://w3id.org/weboftrust/v1",
   "type": "OfferItem",
   "id": "urn:uuid:770e8400-e29b-41d4-a716-446655440002",
-  "owner": "did:key:ben456",
-  "title": "Kann bei Umzug helfen",
+  "owner": "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuias8sisDArDJF6K2",
+  "title": "Can help with moving",
   "content": {
     "category": "help",
-    "description": "Habe ein Auto und kann schwere Sachen transportieren.",
-    "availability": "Wochenenden"
+    "description": "I have a car and can carry heavy things.",
+    "availability": "Weekends"
   },
   "visibility": {
     "type": "contacts"
   },
   "createdAt": "2025-01-08T10:00:00Z",
-  "proof": { ... }
+  "proof": { }
 }
 ```
 
 ---
 
-## Hauptflow: Content erstellen
+## Main Flow: Creating Content
 
 ```mermaid
 flowchart TD
-    Start(["Nutzer erstellt Content"]) --> Input["Eingabe: Typ, Titel, Inhalt"]
+    Start(["User creates content"]) --> Input["Input: type, title, content"]
 
-    Input --> Validate{"Eingaben valide?"}
+    Input --> Validate{"Input valid?"}
 
-    Validate -->|Nein| Error["Fehler anzeigen"]
+    Validate -->|No| Error["Show error"]
     Error --> Input
 
-    Validate -->|Ja| BuildDoc["Baue Item-Dokument"]
+    Validate -->|Yes| BuildDoc["Build item document"]
 
-    BuildDoc --> Sign["Signiere mit Private Key"]
+    BuildDoc --> Sign["Sign with private key"]
 
-    Sign --> GenItemKey["Generiere Item Key AES-256"]
+    Sign --> GenItemKey["Generate item key AES-256"]
 
-    GenItemKey --> EncryptContent["Verschlüssele Content mit Item Key"]
+    GenItemKey --> EncryptContent["Encrypt content with item key"]
 
-    EncryptContent --> Visibility{"Sichtbarkeit?"}
+    EncryptContent --> Visibility{"Visibility?"}
 
-    Visibility -->|Alle Kontakte| EncryptAll["Verschlüssele Item Key für jeden aktiven Kontakt"]
-    Visibility -->|Ausgewählte| EncryptSelected["Verschlüssele Item Key für ausgewählte"]
-    Visibility -->|Gruppen| EncryptGroups["Verschlüssele Item Key mit Group Key(s)"]
+    Visibility -->|All contacts| EncryptAll["Encrypt item key for each active contact"]
+    Visibility -->|Selected| EncryptSelected["Encrypt item key for selected recipients"]
+    Visibility -->|Groups| EncryptGroups["Encrypt item key with group key(s)"]
 
-    EncryptAll --> Store["Speichere lokal"]
+    EncryptAll --> Store["Store in PersonalDoc CRDT (Y.Map)"]
     EncryptSelected --> Store
     EncryptGroups --> Store
 
-    Store --> Queue["In Sync-Queue"]
+    Store --> Relay["Sync via Relay (WebSocket)"]
 
-    Queue --> Done(["Fertig"])
+    Relay --> Done(["Done"])
+
+    style Start stroke:#888,fill:none,color:inherit
+    style Done stroke:#5a5,fill:none,color:inherit
+    style Error stroke:#e55,fill:none,color:inherit
+    style Input stroke:#888,fill:none,color:inherit
+    style Validate stroke:#888,fill:none,color:inherit
+    style BuildDoc stroke:#888,fill:none,color:inherit
+    style Sign stroke:#888,fill:none,color:inherit
+    style GenItemKey stroke:#888,fill:none,color:inherit
+    style EncryptContent stroke:#888,fill:none,color:inherit
+    style Visibility stroke:#888,fill:none,color:inherit
+    style EncryptAll stroke:#888,fill:none,color:inherit
+    style EncryptSelected stroke:#888,fill:none,color:inherit
+    style EncryptGroups stroke:#888,fill:none,color:inherit
+    style Store stroke:#888,fill:none,color:inherit
+    style Relay stroke:#888,fill:none,color:inherit
 ```
 
 ---
 
-## Sequenzdiagramm: Content erstellen und verteilen
+## Sequence Diagram: Create and Distribute Content
 
 ```mermaid
 sequenceDiagram
     participant A_UI as Anna UI
     participant A_App as Anna App
-    participant A_Store as Anna Local Store
-    participant Sync as Sync Server
+    participant A_Doc as Anna PersonalDoc CRDT
+    participant Relay as Relay (WebSocket)
     participant B_App as Ben App
 
     A_UI->>A_App: createContent(type, data, visibility)
@@ -179,57 +200,58 @@ sequenceDiagram
 
     alt Visibility: contacts
         A_App->>A_App: getActiveContacts()
-        loop Für jeden Kontakt
+        loop For each contact
             A_App->>A_App: encryptItemKey(contact.publicKey)
         end
     else Visibility: selective
-        loop Für jeden ausgewählten
+        loop For each selected recipient
             A_App->>A_App: encryptItemKey(selected.publicKey)
         end
     else Visibility: groups
-        loop Für jede ausgewählte Gruppe
+        loop For each selected group
             A_App->>A_App: encryptItemKey(group.groupKey)
         end
     end
 
-    A_App->>A_Store: saveItem(encryptedItem, itemKeys)
+    A_App->>A_Doc: items.set(id, encryptedItem)
+    A_App->>A_Doc: itemKeys.set(id, itemKeys)
 
-    A_App->>Sync: pushItem(encryptedItem, itemKeys)
+    A_App->>Relay: push(encryptedItem, itemKeys)
 
     A_App->>A_UI: showSuccess()
 
-    Sync->>B_App: notifyNewItem()
-    B_App->>Sync: pullItem()
+    Relay->>B_App: notifyNewItem()
+    B_App->>Relay: pullItem()
     B_App->>B_App: findMyItemKey()
     B_App->>B_App: decryptItemKey(privateKey)
     B_App->>B_App: decryptContent(itemKey)
     B_App->>B_App: verifySignature(owner.publicKey)
-    B_App->>B_App: storeItem()
+    B_App->>B_App: storeItem() in PersonalDoc CRDT
 ```
 
 ---
 
-## Verschlüsselungsschema
+## Encryption Schema
 
-### Item Key Verteilung
+### Item Key Distribution
 
 ```mermaid
 flowchart LR
-    subgraph Creation["Item Erstellung"]
-        Item["Item Klartext"]
-        ItemKey["Item Key generieren"]
+    subgraph Creation["Item creation"]
+        Item["Item plaintext"]
+        ItemKey["Generate item key"]
     end
 
-    subgraph Encryption["Verschlüsselung"]
-        EncContent["Content verschlüsseln"]
-        EncKey1["Key für Anna"]
-        EncKey2["Key für Ben"]
-        EncKey3["Key für Carla"]
+    subgraph Encryption["Encryption"]
+        EncContent["Encrypt content"]
+        EncKey1["Key for Anna"]
+        EncKey2["Key for Ben"]
+        EncKey3["Key for Carla"]
     end
 
-    subgraph Storage["Speicherung"]
-        EncItem["Verschlüsseltes Item"]
-        Keys["Item Key Tabelle"]
+    subgraph Storage["PersonalDoc CRDT (Y.Map)"]
+        EncItem["Encrypted item"]
+        Keys["Item key table"]
     end
 
     Item --> ItemKey
@@ -246,24 +268,24 @@ flowchart LR
     EncKey3 --> Keys
 ```
 
-### Datenstruktur
+### Data Structure
 
 ```json
 {
   "encryptedItem": {
     "id": "urn:uuid:550e8400...",
-    "owner": "did:key:anna123",
+    "owner": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
     "ciphertext": "base64...",
     "nonce": "base64...",
-    "proof": { ... }
+    "proof": { }
   },
   "itemKeys": [
     {
-      "recipientDid": "did:key:anna123",
+      "recipientDid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
       "encryptedKey": "base64..."
     },
     {
-      "recipientDid": "did:key:ben456",
+      "recipientDid": "did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuias8sisDArDJF6K2",
       "encryptedKey": "base64..."
     }
   ]
@@ -272,99 +294,132 @@ flowchart LR
 
 ---
 
-## Detailflow: Content empfangen
+## Detail Flow: Receiving Content
 
 ```mermaid
 flowchart TD
-    Receive(["Item empfangen"]) --> FindKey{"Item Key für mich vorhanden?"}
+    Receive(["Item received"]) --> FindKey{"Item key for me present?"}
 
-    FindKey -->|Nein| Reject["Ignorieren - nicht für mich"]
+    FindKey -->|No| Reject["Ignore — not addressed to me"]
 
-    FindKey -->|Ja| DecryptKey["Entschlüssele Item Key mit Private Key"]
+    FindKey -->|Yes| DecryptKey["Decrypt item key with private key"]
 
-    DecryptKey --> DecryptContent["Entschlüssele Content mit Item Key"]
+    DecryptKey --> DecryptContent["Decrypt content with item key"]
 
-    DecryptContent --> VerifySig{"Signatur gültig?"}
+    DecryptContent --> VerifySig{"Signature valid?"}
 
-    VerifySig -->|Nein| RejectInvalid["Ablehnen - ungültige Signatur"]
+    VerifySig -->|No| RejectInvalid["Reject — invalid signature"]
 
-    VerifySig -->|Ja| CheckOwner{"Owner bekannt?"}
+    VerifySig -->|Yes| CheckOwner{"Owner known?"}
 
-    CheckOwner -->|Nein| RejectUnknown["Ablehnen - unbekannter Owner"]
+    CheckOwner -->|No| RejectUnknown["Reject — unknown owner"]
 
-    CheckOwner -->|Ja| Store["Speichern und anzeigen"]
+    CheckOwner -->|Yes| Store["Store in PersonalDoc CRDT and display"]
+
+    style Receive stroke:#888,fill:none,color:inherit
+    style FindKey stroke:#888,fill:none,color:inherit
+    style Reject stroke:#e55,fill:none,color:inherit
+    style DecryptKey stroke:#888,fill:none,color:inherit
+    style DecryptContent stroke:#888,fill:none,color:inherit
+    style VerifySig stroke:#888,fill:none,color:inherit
+    style RejectInvalid stroke:#e55,fill:none,color:inherit
+    style CheckOwner stroke:#888,fill:none,color:inherit
+    style RejectUnknown stroke:#e55,fill:none,color:inherit
+    style Store stroke:#5a5,fill:none,color:inherit
 ```
 
 ---
 
-## Sichtbarkeits-Optionen
+## Visibility Options
 
-### Typ: contacts (Alle Kontakte)
-
-```mermaid
-flowchart TD
-    All(["Sichtbarkeit: contacts"]) --> GetContacts["Lade alle aktiven Kontakte"]
-
-    GetContacts --> Loop{"Für jeden Kontakt"}
-
-    Loop --> Encrypt["Verschlüssele Item Key mit Contact Public Key"]
-
-    Encrypt --> Next["Nächster Kontakt"]
-    Next --> Loop
-
-    Loop -->|Fertig| Store["Speichere alle verschlüsselten Keys"]
-```
-
-**Bei neuem Kontakt:** Wenn Anna später einen neuen Kontakt verifiziert, werden alle Items mit `visibility: contacts` automatisch für diesen Kontakt neu verschlüsselt.
-
-### Typ: selective (Ausgewählte)
+### Type: contacts (All Contacts)
 
 ```mermaid
 flowchart TD
-    Selected(["Sichtbarkeit: selective"]) --> Choose["Nutzer wählt Personen"]
+    All(["Visibility: contacts"]) --> GetContacts["Load all active contacts"]
 
-    Choose --> Loop{"Für jeden Ausgewählten"}
+    GetContacts --> Loop{"For each contact"}
 
-    Loop --> Encrypt["Verschlüssele Item Key"]
+    Loop --> Encrypt["Encrypt item key with contact public key"]
 
-    Encrypt --> Next["Nächster"]
+    Encrypt --> Next["Next contact"]
     Next --> Loop
 
-    Loop -->|Fertig| Store["Speichere"]
+    Loop -->|Done| Store["Store all encrypted keys in PersonalDoc CRDT"]
+
+    style All stroke:#888,fill:none,color:inherit
+    style GetContacts stroke:#888,fill:none,color:inherit
+    style Loop stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Next stroke:#888,fill:none,color:inherit
+    style Store stroke:#5a5,fill:none,color:inherit
 ```
 
-**Bei neuem Kontakt:** Neue Kontakte sehen diesen Content NICHT automatisch.
+**On new contact:** When Anna later verifies a new contact, all items with `visibility: contacts` are automatically re-encrypted for that contact.
 
-### Typ: groups (Eine oder mehrere Gruppen)
+### Type: selective (Selected Recipients)
 
 ```mermaid
 flowchart TD
-    Groups(["Sichtbarkeit: groups"]) --> Select["Nutzer wählt Gruppen"]
+    Selected(["Visibility: selective"]) --> Choose["User selects people"]
 
-    Select --> Loop{"Für jede Gruppe"}
+    Choose --> Loop{"For each selected"}
 
-    Loop --> GetKey["Lade Group Key"]
-    GetKey --> Encrypt["Verschlüssele Item Key mit Group Key"]
+    Loop --> Encrypt["Encrypt item key"]
 
-    Encrypt --> Next["Nächste Gruppe"]
+    Encrypt --> Next["Next"]
     Next --> Loop
 
-    Loop -->|Fertig| Store["Speichere alle verschlüsselten Keys"]
+    Loop -->|Done| Store["Store in PersonalDoc CRDT"]
+
+    style Selected stroke:#888,fill:none,color:inherit
+    style Choose stroke:#888,fill:none,color:inherit
+    style Loop stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Next stroke:#888,fill:none,color:inherit
+    style Store stroke:#5a5,fill:none,color:inherit
 ```
 
-**Multi-Gruppen:** Ein Item kann für mehrere Gruppen gleichzeitig freigegeben werden. Jede Gruppe erhält einen eigenen verschlüsselten Item Key.
+**On new contact:** New contacts do NOT automatically see this content.
 
-**Effizienz:** Pro Gruppe nur eine Verschlüsselung nötig, egal wie viele Gruppenmitglieder.
+### Type: groups (One or More Groups)
+
+```mermaid
+flowchart TD
+    Groups(["Visibility: groups"]) --> Select["User selects groups"]
+
+    Select --> Loop{"For each group"}
+
+    Loop --> GetKey["Load group key"]
+    GetKey --> Encrypt["Encrypt item key with group key"]
+
+    Encrypt --> Next["Next group"]
+    Next --> Loop
+
+    Loop -->|Done| Store["Store all encrypted keys in PersonalDoc CRDT"]
+
+    style Groups stroke:#888,fill:none,color:inherit
+    style Select stroke:#888,fill:none,color:inherit
+    style Loop stroke:#888,fill:none,color:inherit
+    style GetKey stroke:#888,fill:none,color:inherit
+    style Encrypt stroke:#888,fill:none,color:inherit
+    style Next stroke:#888,fill:none,color:inherit
+    style Store stroke:#5a5,fill:none,color:inherit
+```
+
+**Multi-group:** An item can be shared with multiple groups simultaneously. Each group gets its own encrypted item key.
+
+**Efficiency:** Only one encryption operation per group, regardless of how many members it has.
 
 ---
 
-## Content aktualisieren
+## Updating Content
 
 ```mermaid
 sequenceDiagram
     participant A as Anna App
-    participant Store as Local Store
-    participant Sync as Sync Server
+    participant Doc as PersonalDoc CRDT
+    participant Relay as Relay (WebSocket)
     participant B as Ben App
 
     A->>A: loadItem(id)
@@ -375,17 +430,17 @@ sequenceDiagram
     A->>A: signItem(privateKey)
     A->>A: encryptContent(existingItemKey)
 
-    A->>Store: updateItem()
-    A->>Sync: pushUpdate()
+    A->>Doc: items.set(id, updatedItem)
+    A->>Relay: pushUpdate()
 
-    Sync->>B: notifyItemUpdate()
-    B->>Sync: pullUpdate()
+    Relay->>B: notifyItemUpdate()
+    B->>Relay: pullUpdate()
     B->>B: verifySignature()
-    B->>B: checkVersion() - höher als lokal?
-    B->>B: replaceItem()
+    B->>B: checkVersion() — higher than local?
+    B->>B: replaceItem() in PersonalDoc CRDT
 ```
 
-### Versionierung
+### Versioning
 
 ```json
 {
@@ -398,24 +453,32 @@ sequenceDiagram
 
 ---
 
-## Content löschen
+## Deleting Content
 
 ```mermaid
 flowchart TD
-    Delete(["Löschen angefordert"]) --> MarkDeleted["Setze deleted: true"]
+    Delete(["Delete requested"]) --> MarkDeleted["Set deleted: true"]
 
-    MarkDeleted --> Sign["Signiere Lösch-Marker"]
+    MarkDeleted --> Sign["Sign deletion marker"]
 
-    Sign --> Store["Speichere lokal"]
+    Sign --> Store["Store in PersonalDoc CRDT"]
 
-    Store --> Sync["Sync Lösch-Marker"]
+    Store --> Relay["Sync deletion marker via Relay"]
 
-    Sync --> Recipients["Empfänger erhalten Marker"]
+    Relay --> Recipients["Recipients receive marker"]
 
-    Recipients --> Hide["Content wird als gelöscht angezeigt"]
+    Recipients --> Hide["Content shown as deleted"]
+
+    style Delete stroke:#888,fill:none,color:inherit
+    style MarkDeleted stroke:#a55,fill:none,color:inherit
+    style Sign stroke:#888,fill:none,color:inherit
+    style Store stroke:#888,fill:none,color:inherit
+    style Relay stroke:#888,fill:none,color:inherit
+    style Recipients stroke:#888,fill:none,color:inherit
+    style Hide stroke:#888,fill:none,color:inherit
 ```
 
-### Lösch-Marker
+### Deletion Marker
 
 ```json
 {
@@ -424,103 +487,69 @@ flowchart TD
   "deletedAt": "2025-01-08T16:00:00Z",
   "proof": {
     "type": "Ed25519Signature2020",
-    "verificationMethod": "did:key:anna123#key-1",
+    "verificationMethod": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK#key-1",
     "proofValue": "z58DAdFfa9..."
   }
 }
 ```
 
-**Wichtig:** Der verschlüsselte Content wird nicht physisch gelöscht. Empfänger, die ihn bereits entschlüsselt haben, behalten eine lokale Kopie.
+**Important:** The encrypted content is not physically deleted. Recipients who already decrypted it retain a local copy in their PersonalDoc CRDT.
 
 ---
 
-## Speicher-Schema
+## Storage: PersonalDoc CRDT
 
-```sql
-CREATE TABLE items (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
-    owner_did TEXT NOT NULL,
-    title TEXT,
-    encrypted_content TEXT NOT NULL,
-    nonce TEXT NOT NULL,
-    visibility_type TEXT NOT NULL,
-    visibility_target TEXT,
-    version INTEGER DEFAULT 1,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    deleted BOOLEAN DEFAULT FALSE,
-    signature TEXT NOT NULL,
-    raw_json TEXT NOT NULL
-);
+When implemented, content items will live in the owner's PersonalDoc CRDT alongside attestations, contacts, and other user data:
 
-CREATE TABLE item_keys (
-    item_id TEXT,
-    recipient_did TEXT,
-    encrypted_key TEXT NOT NULL,
-    PRIMARY KEY (item_id, recipient_did)
-);
-
-CREATE INDEX idx_items_owner ON items(owner_did);
-CREATE INDEX idx_items_type ON items(type);
-CREATE INDEX idx_items_deleted ON items(deleted);
-CREATE INDEX idx_item_keys_recipient ON item_keys(recipient_did);
+```typescript
+// PersonalDoc structure (planned extension)
+PersonalDoc {
+  profile:             Y.Map  // profile data
+  contacts:            Y.Map  // verified contacts
+  attestations:        Y.Map  // received attestations
+  attestationMetadata: Y.Map  // accepted, deliveryStatus
+  outbox:              Y.Map  // pending deliveries
+  spaces:              Y.Map  // group space metadata
+  groupKeys:           Y.Map  // group encryption keys
+  // planned:
+  items:               Y.Map  // content items (calendar, map, offers, ...)
+  itemKeys:            Y.Map  // per-recipient encrypted keys
+}
 ```
 
----
+Access pattern (planned):
 
-## Abfragen
+```typescript
+// Store a new item
+doc.items[item.id] = encryptedItem;
+doc.itemKeys[item.id] = itemKeys;
 
-### Alle Items eines Typs
+// Query calendar items
+const calendarItems = Object.values(doc.items)
+  .filter(item => item.type === "CalendarItem" && !item.deleted)
+  .map(item => decryptContent(item, myPrivateKey));
 
-```javascript
-const calendarItems = await db.items
-  .where('type')
-  .equals('CalendarItem')
-  .and(item => !item.deleted)
-  .toArray();
-```
-
-### Items für einen bestimmten Zeitraum
-
-```javascript
-const upcomingEvents = await db.items
-  .where('type')
-  .equals('CalendarItem')
-  .filter(item => {
-    const content = decryptContent(item);
-    return new Date(content.startDate) > new Date();
-  })
-  .toArray();
-```
-
-### Items in der Nähe
-
-```javascript
-const nearbyItems = await db.items
-  .where('type')
-  .equals('MapItem')
-  .filter(item => {
-    const content = decryptContent(item);
-    return calculateDistance(myLocation, content.coordinates) < 1000;
-  })
-  .toArray();
+// Query items near a location
+const nearbyItems = Object.values(doc.items)
+  .filter(item => item.type === "MapItem")
+  .map(item => decryptContent(item, myPrivateKey))
+  .filter(item => calculateDistance(myLocation, item.content.coordinates) < 1000);
 ```
 
 ---
 
-## Benachrichtigungen
+## Notifications
 
-### Benachrichtigungs-Typen
+### Notification Types
 
 ```json
 {
   "type": "item_created",
   "itemId": "urn:uuid:550e8400...",
   "itemType": "CalendarItem",
-  "ownerDid": "did:key:anna123",
-  "ownerName": "Anna Müller",
-  "title": "Gartentreffen",
+  "ownerDid": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "ownerName": "Anna Mueller",
+  "title": "Garden meetup",
   "createdAt": "2025-01-08T10:00:00Z"
 }
 ```
@@ -544,22 +573,22 @@ const nearbyItems = await db.items
 
 ---
 
-## Sicherheitsüberlegungen
+## Security Considerations
 
-### Validierung
+### Validation
 
-| Prüfung | Beschreibung |
-| ------- | ------------ |
-| Signatur | Item muss vom angegebenen Owner signiert sein |
-| Owner | Owner muss ein bekannter Kontakt sein |
-| Version | Update-Version muss höher sein als lokale |
-| Lösch-Berechtigung | Nur Owner kann löschen |
+| Check | Description |
+| --- | --- |
+| Signature | Item must be signed by the stated owner |
+| Owner | Owner must be a known contact |
+| Version | Update version must be higher than local |
+| Delete permission | Only the owner can delete |
 
-### Angriffsvektoren
+### Attack Vectors
 
-| Angriff | Schutz |
-| ------- | ------ |
-| Gefälschtes Item | Signatur-Prüfung |
-| Replay alter Version | Versions-Check |
-| Unbefugtes Löschen | Nur signierte Lösch-Marker akzeptieren |
-| Metadaten-Leak | Auch Metadaten sind verschlüsselt |
+| Attack | Protection |
+| --- | --- |
+| Forged item | Signature verification |
+| Replay old version | Version check |
+| Unauthorized deletion | Only accept signed deletion markers |
+| Metadata leak | Metadata is also encrypted |

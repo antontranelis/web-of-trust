@@ -1,91 +1,91 @@
 # Personas
 
-Detaillierte Beschreibungen der Zielgruppen für Web of Trust.
+Detailed descriptions of the target groups for the Web of Trust.
 
 ---
 
-## Hanna (62) - Die Gärtnerin
+## Hanna (62) — The Gardener
 
-**Hintergrund:** Aktiv im Gemeinschaftsgarten, nicht technikaffin, hat ein Smartphone aber nutzt hauptsächlich WhatsApp.
+**Background:** Active in the community garden, not tech-savvy, has a smartphone but mainly uses WhatsApp.
 
-**Bedürfnisse:**
-- Wissen wer wann gießt
-- Neue Helfer finden
-- Sich nicht mit Technik beschäftigen müssen
+**Needs:**
+- Know who is watering when
+- Find new helpers
+- Not have to deal with technology
 
-**Wie Web of Trust hilft:**
-- Ihr Nachbar Tom richtet die App ein
-- Tom verifiziert sie persönlich
-- Sie sieht den Gartenkalender
-- Wenn jemand hilft, tippt sie "Danke" → Attestation
+**How Web of Trust helps:**
+- Her neighbor Tom sets up the app for her
+- Tom verifies her in person
+- She sees the garden calendar
+- When someone helps, she taps "Thanks" → attestation
 
-**Kritischer Moment:** Key-Backup. Tom hilft ihr, die Recovery-Phrase sicher aufzubewahren.
-
----
-
-## Alexander (34) - Der Macher
-
-**Hintergrund:** Kann alles reparieren, kennt viele Leute, organisiert Nachbarschaftshilfe.
-
-**Bedürfnisse:**
-- Überblick wer was kann
-- Anfragen koordinieren
-- Nicht von WhatsApp-Gruppen-Chaos abhängig sein
-
-**Wie Web of Trust hilft:**
-- Verifiziert aktiv neue Leute bei Treffen
-- Erstellt Attestationen: "Kann Fahrräder", "Kann Elektrik"
-- Sieht auf der Karte wer in der Nähe was anbietet
-
-**Kritischer Moment:** Will 50 Leute auf einmal einladen. Geht nicht - jeder muss einzeln verifiziert werden. Das ist ein Feature, kein Bug.
+**Critical moment:** Key backup. Tom helps her store the recovery phrase securely.
 
 ---
 
-## Lena (28) - Die Skeptikerin
+## Alexander (34) — The Doer
 
-**Hintergrund:** Softwareentwicklerin, Privacy-bewusst, hat schon viele "dezentrale" Projekte scheitern sehen.
+**Background:** Can fix anything, knows many people, organizes neighborhood help.
 
-**Bedürfnisse:**
-- Verstehen wie es technisch funktioniert
-- Sicher sein dass ihre Daten wirklich verschlüsselt sind
-- Kein Vendor-Lock-in
+**Needs:**
+- Overview of who can do what
+- Coordinate requests
+- Not be dependent on WhatsApp group chaos
 
-**Wie Web of Trust hilft:**
-- Open Source, kann den Code prüfen
-- E2E-Verschlüsselung, Schlüssel lokal
-- Daten exportierbar
+**How Web of Trust helps:**
+- Actively verifies new people at meetups
+- Creates attestations: "Can repair bikes", "Can do electrical work"
+- Sees on the map who nearby offers what
 
-**Kritischer Moment:** Fragt nach Skalierung. Antwort: "Skaliert absichtlich nicht über persönliche Beziehungen hinaus."
-
----
-
-## Familie Kowalski - Die Neuzugezogenen
-
-**Hintergrund:** Neu in der Stadt, kennen niemanden, wollen Anschluss finden.
-
-**Bedürfnisse:**
-- Nachbarn kennenlernen
-- Vertrauenswürdige Angebote finden (Babysitter, Handwerker)
-- Teil einer Gemeinschaft werden
-
-**Wie Web of Trust hilft:**
-- Beim Straßenfest: Erste Verifizierungen
-- Sehen sofort wer schon Attestationen hat
-- Können selbst Attestationen sammeln
-
-**Kritischer Moment:** Anfangs sehen sie wenig Content. Das Netzwerk wächst nur durch echte Begegnungen - das dauert, ist aber der Punkt.
+**Critical moment:** Wants to invite 50 people at once. Not possible — each person must be verified individually. This is a feature, not a bug.
 
 ---
 
-## Persona-Matrix
+## Lena (28) — The Skeptic
 
-| Persona | Technik-Affinität | Netzwerk-Größe | Hauptnutzung |
-|---------|-------------------|----------------|--------------|
-| Hanna | Niedrig | Klein (5-10) | Kalender, Attestationen empfangen |
-| Alexander | Mittel | Groß (50+) | Verifizierung, Attestationen erstellen |
-| Lena | Hoch | Mittel (20-30) | Code prüfen, verschlüsselte Kollaboration |
-| Familie Kowalski | Mittel | Wachsend | Netzwerk aufbauen, Angebote finden |
+**Background:** Software developer, privacy-conscious, has seen many "decentralized" projects fail.
+
+**Needs:**
+- Understand how it works technically
+- Be sure that her data is truly encrypted
+- No vendor lock-in
+
+**How Web of Trust helps:**
+- Open source, she can review the code
+- E2E encryption, keys stored locally
+- Data is exportable
+
+**Critical moment:** Asks about scalability. Answer: "Intentionally does not scale beyond personal relationships."
 
 ---
 
-*Siehe auch: [User Stories](user-stories.md) für konkrete Anwendungsfälle*
+## The Kowalski Family — The Newcomers
+
+**Background:** New in town, know nobody, want to connect.
+
+**Needs:**
+- Get to know neighbors
+- Find trustworthy services (babysitter, tradespeople)
+- Become part of a community
+
+**How Web of Trust helps:**
+- At the street festival: first verifications
+- Immediately see who already has attestations
+- Can collect attestations themselves
+
+**Critical moment:** At first they see little content. The network only grows through real encounters — that takes time, but that is the point.
+
+---
+
+## Persona Matrix
+
+| Persona | Tech Affinity | Network Size | Primary Use |
+|---------|---------------|--------------|-------------|
+| Hanna | Low | Small (5–10) | Calendar, receive attestations |
+| Alexander | Medium | Large (50+) | Verification, create attestations |
+| Lena | High | Medium (20–30) | Review code, encrypted collaboration |
+| Kowalski Family | Medium | Growing | Build network, find services |
+
+---
+
+*See also: [User Stories](user-stories.md) for concrete use cases*

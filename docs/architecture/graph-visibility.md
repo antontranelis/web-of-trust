@@ -1,329 +1,341 @@
-# Graph und Sichtbarkeit
+# Graph and Visibility
 
-> Wie das Netzwerk aus lokalen Perspektiven entsteht
+> How the network emerges from local perspectives
 
-## Grundprinzip
+## Core Principle
 
-Das Web of Trust ist ein dezentraler Graph. Es gibt keinen zentralen Server, der "den Graphen" kennt. Stattdessen:
+The Web of Trust is a decentralized graph. There is no central server that "knows the graph". Instead:
 
-- Jeder Teilnehmer hat seinen **eigenen lokalen Graph**
-- Dieser Graph enthält nur das, was durch Vertrauen zu ihm geflossen ist
-- Der "Gesamtgraph" existiert implizit als Summe aller lokalen Graphen
-- Niemand sieht oder berechnet den Gesamtgraph
+- Every participant has their own **local graph**
+- This graph contains only what has flowed to them through trust connections
+- The "global graph" exists implicitly as the sum of all local graphs
+- Nobody sees or computes the global graph
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  Der Gesamtgraph existiert - aber niemand sieht ihn.        │
+│  The global graph exists — but nobody sees it.             │
 │                                                             │
-│  Was ich sehe: Mein lokaler Ausschnitt.                     │
-│  Je mehr Verbindungen ich habe, desto größer mein Graph.    │
+│  What I see: my local slice.                               │
+│  The more connections I have, the larger my graph.         │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Datenhoheit
+## Data Sovereignty
 
-### Ich teile nur meine eigenen Daten
+### I only share my own data
 
-Ein fundamentales Prinzip: **Keine Weitergabe von Daten anderer Menschen.**
+A fundamental principle: **no redistribution of other people's data.**
 
-Alle meine Daten werden E2E-verschlüsselt mit meiner **Auto-Gruppe** geteilt (alle verifizierten Kontakte, die ich nicht ausgeblendet habe).
+| What I share | What I do NOT share |
+| --- | --- |
+| My profile | Other people's profiles |
+| My events, places, offers/requests | Other people's content |
+| Received verifications (others → me) | Verifications between third parties |
+| Received attestations (others → me) | Attestations between third parties |
 
-| Was ich teile | Was ich NICHT teile |
-|---------------|---------------------|
-| Mein Profil | Profile anderer |
-| Meine Termine, Orte, Angebote/Nachfragen | Content anderer |
-| Empfangene Verifizierungen (andere → ich) | Verifizierungen zwischen Dritten |
-| Empfangene Attestationen (andere → ich) | Attestationen zwischen Dritten |
+### Receiver Principle
 
-### Empfänger-Prinzip
+Verifications and attestations are stored at the **receiver**:
 
-Verifizierungen und Attestationen werden beim **Empfänger** gespeichert:
+- Anna verifies Ben → stored at **Ben**
+- Ben attests Anna → stored at **Anna**
 
-- Anna verifiziert Ben → wird bei **Ben** gespeichert
-- Ben attestiert Anna → wird bei **Anna** gespeichert
+**Consequence:** My profile shows who has verified **me** and what has been said **about me** — not who I have verified.
 
-**Konsequenz:** Mein Profil zeigt, wer **mich** verifiziert hat und was **über mich** gesagt wurde. Nicht, wen ich verifiziert habe.
+```mermaid
+flowchart LR
+    Anna -->|"verifies"| Ben
+    Ben -.->|"stored at Ben"| BenData[("Ben's PersonalDoc")]
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│  Bens öffentliches Profil zeigt:                            │
-│                                                             │
-│  Verifiziert von: Anna, Carla, Tom                          │
-│  Attestationen:   "Hat im Garten geholfen" (von Anna)       │
-│                   "Zuverlässig" (von Carla)                 │
-│                                                             │
-│  Ben kontrolliert, was sichtbar ist (hidden-Flag).          │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+    style Anna stroke:#333,fill:none
+    style Ben stroke:#333,fill:none
+    style BenData stroke:#333,fill:none
 ```
 
-**Wichtig:** Es gibt keine separate "Kontaktliste". Meine Kontakte sind ableitbar aus den empfangenen Verifizierungen. Der Sender speichert nur den **Public Key** für die E2E-Verschlüsselung.
+**Important:** Contacts are stored explicitly in `PersonalDoc.contacts` — they are not derived from verifications. When I verify someone, they are added as a contact entry. The sender also stores the **public key** for E2E encryption.
 
-### Profile sind selbst-veröffentlicht
+### Profiles are self-published
 
-Wenn ich wissen will, wer `did:key:z6Mk...` ist:
+When I want to know who `did:key:z6Mk...` is:
 
-1. Ich habe die DID (aus den Verifizierungen eines Kontakts)
-2. Ich frage das **öffentliche Profil** ab
-3. Die Person selbst hat ihr Profil veröffentlicht
-4. Ich sehe nur, was sie freigegeben hat
+1. I have the DID (from a contact's verifications, or from a QR scan)
+2. I query the **public profile** server
+3. The person has published their own profile
+4. I see only what they have chosen to share
+
+Public profiles are served by `https://profiles.utopia-lab.org` — a live HTTP service. Profiles are JWS-signed by the owner and verified on retrieval.
 
 ```mermaid
 sequenceDiagram
     participant A as Anna
-    participant S as Profilverzeichnis
+    participant S as profiles.utopia-lab.org
     participant B as Ben
 
-    Note over A: Anna ist Toms Kontakt
-    Note over B: Ben ist auch Toms Kontakt
+    Note over A: Anna is Tom's contact
+    Note over B: Ben is also Tom's contact
 
-    A->>A: Sieht in Toms Verifizierungen: Tom → did:ben
-    A->>S: Wer ist did:ben?
-    S->>A: Bens selbst-veröffentlichtes Profil
+    A->>A: Sees in Tom's verifications: Tom → did:ben
+    A->>S: GET /p/did:ben
+    S->>A: Ben's self-published profile (JWS-signed)
 
-    Note over A,B: Anna sieht nie Daten,<br/>die Ben nicht selbst freigegeben hat
+    Note over A,B: Anna never sees data<br/>that Ben did not publish himself
 ```
 
 ---
 
-## Der lokale Graph
+## The Local Graph
 
-### Knoten
+### Nodes
 
-Jeder Knoten ist eine Identität, repräsentiert durch eine DID.
+Every node is an identity represented by a DID.
 
-| Knoten-Typ | Beschreibung |
-|------------|--------------|
-| Eigene Identität | Meine DID, mein Profil |
-| Direkter Kontakt | DID eines Menschen, den ich verifiziert habe |
-| Indirekter Kontakt | DID aus den Verifizierungen eines meiner Kontakte |
+| Node Type | Description |
+| --- | --- |
+| Own identity | My DID, my profile |
+| Direct contact | DID of a person I have mutually verified |
+| Indirect contact | DID from the verifications of one of my contacts |
 
-### Kanten
+### Edges
 
-| Kanten-Typ | Richtung | Bedeutung |
-|------------|----------|-----------|
-| Verifizierung | A → B | "A hat B getroffen und verifiziert" |
-| Attestation | A → B | "A sagt etwas über B" |
+| Edge Type | Direction | Meaning |
+| --- | --- | --- |
+| Verification | A → B | "A met B in person and verified them" |
+| Attestation | A → B | "A makes a claim about B" |
 
-Verifizierungen werden erst "aktiv", wenn beide Richtungen existieren (gegenseitige Verifizierung).
+A verification becomes "active" only when both directions exist (mutual verification).
 
-### Was ich sehe
+### What I see
 
 ```
-Mein lokaler Graph
+My local graph
 │
-├── Meine Identität
-│   └── Meine empfangenen Verifizierungen: [Anna→Ich, Ben→Ich, Tom→Ich]
+├── My identity
+│   └── My received verifications: [Anna→Me, Ben→Me, Tom→Me]
 │
-├── Meine direkten Kontakte (gegenseitig verifiziert)
+├── My direct contacts (mutually verified, stored in PersonalDoc.contacts)
 │   ├── Anna
-│   │   └── Annas empfangene Verifizierungen: [Carla→Anna, David→Anna, ...]
+│   │   └── Anna's received verifications: [Carla→Anna, David→Anna, ...]
 │   ├── Ben
-│   │   └── Bens empfangene Verifizierungen: [Carla→Ben, Eva→Ben, ...]
+│   │   └── Ben's received verifications: [Carla→Ben, Eva→Ben, ...]
 │   └── Tom
-│       └── Toms empfangene Verifizierungen: [Eva→Tom, Frank→Tom, ...]
+│       └── Tom's received verifications: [Eva→Tom, Frank→Tom, ...]
 │
-└── Indirekte Kontakte (DIDs aus Verifizierungen meiner Kontakte)
-    ├── did:carla (hat Anna und Ben verifiziert)
-    ├── did:david (hat Anna verifiziert)
-    ├── did:eva (hat Ben und Tom verifiziert)
-    └── did:frank (hat Tom verifiziert)
+└── Indirect contacts (DIDs from my contacts' verifications)
+    ├── did:carla (has verified Anna and Ben)
+    ├── did:david (has verified Anna)
+    ├── did:eva (has verified Ben and Tom)
+    └── did:frank (has verified Tom)
 ```
 
-**Hinweis:** Ich sehe die empfangenen Verifizierungen meiner Kontakte. Daraus kann ich ableiten:
+**Note:** I can see the received verifications of my contacts. From this I can infer:
 
-- Wer sie verifiziert hat (direkt sichtbar im Profil)
-- Wen sie verifiziert haben (indirekt: diese Info liegt beim jeweiligen Empfänger)
+- Who has verified them (directly visible in their profile)
+- Whom they have verified (indirectly: that information is at the respective receiver)
 
-Beispiel: Ich kenne Anna und Ben. Ich sehe in Carlas Profil: `Anna → Carla` und `Ben → Carla`. Das heißt: "2 meiner Kontakte haben Carla verifiziert."
+Example: I know Anna and Ben. I see in Carla's profile: `Anna → Carla` and `Ben → Carla`. This means: "2 of my contacts have verified Carla."
 
 ---
 
-## Vertrauen vs. Sichtbarkeit
+## Trust vs. Visibility
 
-### Vertrauen ist direkt
+### Trust is direct
 
-Ich vertraue nur Menschen, die ich **selbst** getroffen und verifiziert habe. Es gibt kein transitives Vertrauen ("Freund eines Freundes").
+I trust only people I have **personally** met and verified. There is no transitive trust ("friend of a friend").
 
-### Sichtbarkeit ist geteilt
+### Visibility is shared
 
-Meine Kontakte teilen ihre Verifizierungen mit mir. So sehe ich, wen sie verifiziert haben - ohne diesen Menschen selbst zu vertrauen.
+My contacts share their verifications with me. This lets me see who they have verified — without me trusting those people myself.
+
+```mermaid
+flowchart TD
+    Me -->|"direct trust"| Anna
+    Me -.->|"no direct trust"| Carla
+    Anna -->|"verified"| Carla
+    Me -.->|"can see Carla's profile"| Carla
+
+    style Me stroke:#333,fill:none
+    style Anna stroke:#333,fill:none
+    style Carla stroke:#333,fill:none
+```
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  Vertrauen ≠ Sichtbarkeit                                   │
+│  Trust ≠ Visibility                                        │
 │                                                             │
-│  Vertrauen:    Ich → Anna ✓                                 │
-│                Ich → Carla ✗ (nicht getroffen)              │
+│  Trust:      Me → Anna ✓                                   │
+│              Me → Carla ✗ (never met)                      │
 │                                                             │
-│  Sichtbarkeit: Ich sehe Annas Verifizierung: Anna → Carla   │
-│                Ich kann Carlas öffentliches Profil sehen.   │
-│                Aber ich vertraue Carla nicht.               │
+│  Visibility: I see Anna's verification: Anna → Carla        │
+│              I can view Carla's public profile.            │
+│              But I do not trust Carla.                     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Anwendungsfälle
+## Use Cases
 
-### "Gemeinsame Kontakte"
+### "Mutual contacts"
 
-Wenn ich eine neue Person treffe (z.B. Carla), kann meine App zeigen:
+When I meet a new person (e.g. Carla), the app can show:
 
-> "2 gemeinsame Kontakte: Anna, Ben"
+> "2 mutual contacts: Anna, Ben"
 
-**Berechnung:**
+**Calculation:**
 ```
-Meine Kontakte ∩ Carlas Kontakte = [Anna, Ben]
+My contacts ∩ Carla's contacts = [Anna, Ben]
 ```
 
-Das ist Information, nicht Vertrauen. Vertrauen entsteht erst, wenn ich Carla selbst verifiziere.
+This is information, not trust. Trust only arises when I verify Carla myself.
 
-### "Wer kennt diese Person?"
+### "Who knows this person?"
 
-Wenn ich nach `did:carla` suche:
+When I look up `did:carla`:
 
 ```
-Welche meiner Kontakte haben eine Verifizierung für did:carla?
+Which of my contacts have a verification for did:carla?
 → Anna, Ben
 ```
 
-### "Attestationen von vertrauenswürdigen Quellen"
+### "Attestations from trusted sources"
 
-Wenn ich Carlas Attestationen ansehe:
+When I view Carla's attestations:
 
 ```
-Alle Attestationen für did:carla
-├── Von meinen direkten Kontakten (vertrauenswürdig)
-│   └── Anna: "Carla hat beim Gartenfest geholfen"
-└── Von anderen (weniger vertrauenswürdig)
-    └── David: "Carla ist zuverlässig"
+All attestations for did:carla
+├── From my direct contacts (trusted)
+│   └── Anna: "Carla helped at the community garden"
+└── From others (less trusted)
+    └── David: "Carla is reliable"
 ```
 
 ---
 
-## Abfragen
+## Supported Queries
 
-Der lokale Graph muss folgende Abfragen unterstützen:
+The local graph must support the following queries:
 
-| Abfrage | Beschreibung | Datenquelle |
-|---------|--------------|-------------|
-| Meine Kontakte | Alle DIDs mit aktiver gegenseitiger Verifizierung | Meine empfangenen Verifizierungen |
-| Wer hat X verifiziert? | DIDs aus den empfangenen Verifizierungen von X | X's Profil (Verifizierungen) |
-| Gemeinsame Kontakte | Schnittmenge: Wer hat mich verifiziert ∩ Wer hat Y verifiziert | Mein Profil + Y's Profil |
-| Attestationen für X | Alle Attestationen bei X | X's Profil (Attestationen) |
-| Attestationen von X | Alle Attestationen, die X signiert hat | Profile aller Empfänger durchsuchen |
-| Wer kennt X? | Welche meiner Kontakte haben X verifiziert? | X's Profil filtern nach meinen Kontakten |
+| Query | Description | Data Source |
+| --- | --- | --- |
+| My contacts | All DIDs stored in PersonalDoc.contacts | PersonalDoc.contacts |
+| Who verified X? | DIDs from X's received verifications | X's profile (verifications) |
+| Mutual contacts | Intersection: who is in my contacts ∩ who verified Y | My contacts + Y's profile |
+| Attestations for X | All attestations at X | X's profile (attestations) |
+| Attestations from X | All attestations signed by X | Profiles of all recipients |
+| Who knows X? | Which of my contacts have verified X? | X's profile filtered by my contacts |
 
-> **Hinweis:** "Attestationen von X" ist aufwändiger, da diese bei den jeweiligen Empfängern liegen. Diese Abfrage erfordert, die Profile bekannter Kontakte zu durchsuchen.
+> **Note:** "Attestations from X" is more expensive because they are stored at the respective recipients. This query requires scanning the profiles of known contacts.
 
-### Keine tiefen Traversierungen
+### No deep traversals
 
-Das System unterstützt bewusst **keine** Abfragen wie:
+The system deliberately does **not** support queries such as:
 
-- "Kürzester Pfad zu Person X über mehrere Hops"
-- "Alle Personen in Entfernung N"
-- "Transitive Vertrauenswerte"
+- "Shortest path to person X across multiple hops"
+- "All people within distance N"
+- "Transitive trust scores"
 
-**Begründung:**
-- Tiefe Traversierungen setzen globales Wissen voraus
-- Jeder sieht nur seinen lokalen Graph
-- Transitives Vertrauen ist konzeptionell nicht gewollt
+**Rationale:**
+
+- Deep traversals require global knowledge
+- Each participant sees only their local graph
+- Transitive trust is conceptually not desired
 
 ---
 
-## Konsistenz mit bestehenden Dokumenten
+## The Emergent Global Graph
 
-### Entitäten
+```mermaid
+flowchart LR
+    subgraph "Anna's local graph"
+        A_me[Anna] --> A_ben[Ben]
+        A_me --> A_tom[Tom]
+        A_ben -.-> A_carla[Carla]
+    end
 
-Dieses Dokument erweitert [Entitäten](entitaeten.md):
+    subgraph "Ben's local graph"
+        B_me[Ben] --> B_anna[Anna]
+        B_me --> B_carla[Carla]
+        B_carla -.-> B_eva[Eva]
+    end
 
-- **Verification** wird beim Empfänger gespeichert (`to` = Speicherort)
-- **Attestation** wird beim Empfänger gespeichert, kann ausgeblendet werden (`hidden`)
-- **Contact** ist eine lokale Ableitung: DIDs mit gegenseitiger Verifizierung
-- Der Sender speichert nur **Public Keys** seiner Kontakte (für E2E-Verschlüsselung)
-- Profile sind selbst-veröffentlicht und zeigen empfangene Verifizierungen/Attestationen
+    Note[Global graph emerges from all local graphs.<br/>Nobody computes it centrally.]
 
-### Auto-Gruppe
+    style A_me stroke:#333,fill:none
+    style A_ben stroke:#333,fill:none
+    style A_tom stroke:#333,fill:none
+    style A_carla stroke:#333,fill:none
+    style B_me stroke:#333,fill:none
+    style B_anna stroke:#333,fill:none
+    style B_carla stroke:#333,fill:none
+    style B_eva stroke:#333,fill:none
+    style Note stroke:#999,fill:none
+```
 
-Konsistent mit [Entitäten: Auto-Gruppe](entitaeten.md#auto-gruppe):
+---
 
-- Die Auto-Gruppe enthält alle aktiven Kontakte (gegenseitig verifiziert, nicht in excludedMembers)
-- Alle meine Daten werden E2E-verschlüsselt mit dieser Gruppe geteilt
-- Dazu gehören: Profil, Termine, Orte, Angebote, empfangene Verifizierungen/Attestationen
+## Consistency with the Implementation
+
+### PersonalDoc
+
+This document is consistent with the PersonalDoc data model:
+
+- **`PersonalDoc.contacts`** — explicitly stored contact entries (not derived)
+- **`PersonalDoc.verifications`** — received verifications (others → me)
+- **`PersonalDoc.attestations`** — received attestations (others → me)
+
+The receiver principle is enforced by the data model: verifications and attestations are written into the receiver's PersonalDoc via the Relay.
 
 ### Privacy
 
-Konsistent mit [Privacy](../security/privacy.md):
+Consistent with the privacy architecture:
 
-- "Nur erforderliche Daten werden erhoben"
-- "Kein Adressbuch-Upload" - wir teilen nur selbst erstellte Verifizierungen
-- "Kontaktgraph teilweise ableitbar" - aber nur durch geteilte Daten
+- "Only required data is collected"
+- "No address book upload" — we share only self-created verifications
+- "Contact graph partially derivable" — but only through shared data
 
-### Sync-Protokoll
+### Sync Protocol
 
-Konsistent mit [Sync-Protokoll](../architecture/sync-protocol.md):
+Consistent with the four-way architecture:
 
-- Verifizierungen werden wie andere Daten synchronisiert
-- CRDTs für konfliktfreie Zusammenführung
-- Server sieht nur verschlüsselte Daten
-
----
-
-## Offene Punkte
-
-### Wo liegen öffentliche Profile?
-
-| Option | Beschreibung | Status |
-|--------|--------------|--------|
-| Sync-Server | Server hält signierte Profile, abrufbar per DID | Tendenz |
-| Föderiert | Mehrere Server, DID-basierte Auflösung | Nicht ausgeschlossen |
-| P2P | Kein Server, nur direkte Übertragung | Für später |
-
-→ Entscheidung bei Implementierung, siehe [Offene Fragen](../research/open-questions.md)
-
-### Tiefe der Sichtbarkeit
-
-Aktuell: Ich sehe Kontakte meiner Kontakte (Tiefe 1).
-
-Frage: Soll das erweiterbar sein auf Tiefe 2+?
-
-**Vorschlag:** Nein, nicht initial. Komplexität steigt exponentiell, Nutzen unklar.
+- Verifications are synced like other data (Relay, Vault, wot-profiles)
+- CRDTs for conflict-free merging
+- Server sees only encrypted data
 
 ---
 
-## Zusammenfassung
+## Summary
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
-│  1. Jeder hat seinen eigenen lokalen Graph                  │
+│  1. Everyone has their own local graph                     │
 │                                                             │
-│  2. Ich teile nur meine eigenen Daten mit meiner Auto-Gruppe│
+│  2. I only share my own data                               │
 │                                                             │
-│  3. Profile sind selbst-veröffentlicht                      │
+│  3. Contacts are stored explicitly in PersonalDoc          │
 │                                                             │
-│  4. Vertrauen ist direkt (nicht transitiv)                  │
+│  4. Profiles are self-published (profiles.utopia-lab.org)  │
 │                                                             │
-│  5. Sichtbarkeit entsteht durch geteilte Verifizierungen    │
+│  5. Trust is direct (not transitive)                       │
 │                                                             │
-│  6. Der Gesamtgraph emergiert, aber niemand sieht ihn       │
+│  6. Visibility emerges through shared verifications        │
+│                                                             │
+│  7. The global graph is emergent — nobody sees it          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Weiterführend
+## See Also
 
-- [Entitäten](entitaeten.md) - Datenstrukturen
-- [Verifizierung](../flows/02-verifizierung-nutzer-flow.md) - Wie Kontakte entstehen
-- [Privacy](../security/privacy.md) - Datenschutz-Überlegungen
-- [Sync-Protokoll](../architecture/sync-protocol.md) - Wie Daten synchronisiert werden
+- [Entities](entities.md) — Data structures
+- [Verification Flow](../flows/02-verification-user-flow.md) — How contacts are created
+- [Sync Protocol](../architecture/sync-protocol.md) — How data is synchronized
+- [Current Implementation](../CURRENT_IMPLEMENTATION.md) — Implementation status

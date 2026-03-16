@@ -1,237 +1,246 @@
 # Social Recovery
 
-> Forschungsergebnisse: Wie schützen wir Nutzer vor Key-Verlust und Key-Kompromittierung?
+> Research findings: How do we protect users from key loss and key compromise?
 
-**Stand:** 2026-02-07
-**Kontext:** Evaluierung nach DID-Methoden-Forschung
+**Status:** Deferred — planned when federation is needed
+**Date:** 2026-02-07
+**Context:** Evaluated after DID methods research
+
+> **Note:** Layer 1 (BIP39 seed backup) is already implemented. Layers 2 and 3 are deferred.
+> The Guardian model (Layer 3) requires key rotation, which in turn requires federation or a DID
+> method that supports rotation (e.g. did:peer). Social Recovery will be revisited once federation
+> becomes a concrete requirement.
 
 ---
 
 ## Problem
 
-Zwei grundverschiedene Szenarien:
+Two fundamentally different scenarios:
 
-| Szenario | Beschreibung | Risiko |
-|----------|-------------|--------|
-| **Key-Verlust** | Handy kaputt, Browser-Daten gelöscht, Seed vergessen | Identität nicht mehr zugänglich |
-| **Key-Kompromittierung** | Seed gestohlen, Gerät gehackt | Angreifer kann als ich handeln |
+| Scenario | Description | Risk |
+|----------|-------------|------|
+| **Key loss** | Phone broken, browser data deleted, seed forgotten | Identity no longer accessible |
+| **Key compromise** | Seed stolen, device hacked | Attacker can act as you |
 
-BIP39 Mnemonic löst Key-Verlust (Seed aufschreiben). Aber: Was wenn der Zettel verloren geht? Und gegen Key-Kompromittierung hilft BIP39 gar nicht.
+BIP39 mnemonic solves key loss (write down the seed). But: what if the piece of paper is lost too? And BIP39 does nothing against key compromise.
 
 ---
 
-## Zwei Hauptansätze
+## Two Main Approaches
 
-### 1. Shamir Secret Sharing (Seed-Rekonstruktion)
+### 1. Shamir Secret Sharing (Seed Reconstruction)
 
-**Prinzip:** Der BIP39 Mnemonic wird mathematisch in N Teile ("Shards") aufgeteilt. M-von-N Shards reichen zur Rekonstruktion.
+**Principle:** The BIP39 mnemonic is mathematically split into N shares ("shards"). Any M-of-N shards are sufficient to reconstruct the original.
 
 ```
-Alice's Seed (12 Wörter)
-         ↓
-Shamir Secret Sharing (3-von-5)
-         ↓
+Alice's Seed (12 words)
+         |
+Shamir Secret Sharing (3-of-5)
+         |
 ┌─────────┬─────────┬─────────┬─────────┬─────────┐
 │ Shard 1 │ Shard 2 │ Shard 3 │ Shard 4 │ Shard 5 │
 │  (Bob)  │ (Carol) │ (David) │  (Eva)  │ (Frank) │
 └─────────┴─────────┴─────────┴─────────┴─────────┘
 
-Rekonstruktion: Beliebige 3 von 5 Shards → Original-Seed
+Reconstruction: any 3 of 5 shards → original seed
 ```
 
-**Mathematik:**
-- Shamir's Secret Sharing (1979) basiert auf Polynominterpolation
-- Informationstheoretisch sicher: M-1 Shards verraten NICHTS über das Geheimnis
-- Bewährter Algorithmus, breit implementiert
+**Mathematics:**
+- Shamir's Secret Sharing (1979) is based on polynomial interpolation
+- Information-theoretically secure: M-1 shards reveal NOTHING about the secret
+- Well-established algorithm, widely implemented
 
-**Referenz-Implementierung: Dark Crystal (Scuttlebutt)**
-- P2P Social Key Backup
-- Custodians speichern Shards in ihrem lokalen SSB-Feed
-- Open Source: https://darkcrystal.pw/
-- Kein Server nötig
+**Reference implementation: Dark Crystal (Scuttlebutt)**
+- P2P social key backup
+- Custodians store shards in their local SSB feed
+- Open source: https://darkcrystal.pw/
+- No server required
 
-**Vorteile:**
-- Original-Schlüssel wird wiederhergestellt → DID bleibt identisch
-- Mathematisch bewiesen sicher
-- Funktioniert mit jeder DID-Methode
-- Keine Wartezeit
+**Advantages:**
+- Original key is reconstructed → DID remains identical
+- Mathematically proven secure
+- Works with any DID method
+- No waiting period
 
-**Nachteile:**
-- Shards müssen sicher übertragen und aufbewahrt werden
-- Kollusionsrisiko: M Custodians zusammen könnten den Key stehlen
-- Hilft NICHT bei Key-Kompromittierung (Angreifer hat den Key bereits)
-- Custodians müssen verfügbar sein wenn Recovery gebraucht wird
+**Disadvantages:**
+- Shards must be transmitted and stored securely
+- Collusion risk: M custodians together could steal the key
+- Does NOT help with key compromise (attacker already has the key)
+- Custodians must be reachable when recovery is needed
+
+**Library note:** Use `secrets.js-grempe` for Shamir Secret Sharing in JavaScript — not `@noble/secp256k1`, which is a secp256k1 elliptic curve library and unrelated to secret sharing.
 
 ---
 
-### 2. Guardian/Vouching (Key-Autorisierung)
+### 2. Guardian/Vouching (Key Authorization)
 
-**Prinzip:** Kein Geheimnis wird geteilt. Vertrauenswürdige "Guardians" stimmen gemeinsam ab, einen neuen Schlüssel zu autorisieren.
+**Principle:** No secret is ever shared. Trusted "guardians" vote together to authorize a new key.
 
 ```
-Alice verliert ihren Key
-         ↓
-Alice erstellt neues Key Pair
-         ↓
-Alice kontaktiert ihre Guardians
-         ↓
+Alice loses her key
+         |
+Alice creates a new key pair
+         |
+Alice contacts her guardians
+         |
 ┌─────────┬─────────┬─────────┬─────────┬─────────┐
-│  Bob ✅ │ Carol ✅│ David ❌│  Eva ✅ │ Frank ❌│
-│bestätigt│bestätigt│  (nicht  │bestätigt│  (nicht  │
-│         │         │erreichb.)│         │erreichb.)│
+│ Bob ✅  │Carol ✅ │David ❌ │ Eva ✅  │Frank ❌ │
+│confirms │confirms │  (not   │confirms │  (not   │
+│         │         │reachable│         │reachable│
 └─────────┴─────────┴─────────┴─────────┴─────────┘
-3 von 5 bestätigen → Neuer Key wird autorisiert
+3 of 5 confirm → new key is authorized
 ```
 
-**Referenz: Vitalik Buterin's Social Recovery Wallet**
-- Signing Key (tägliche Nutzung) + Guardian-Set (Recovery)
-- Guardians sind normale Personen mit eigenen Wallets
-- M-von-N Guardians bestätigen neuen Signing Key
-- 1-3 Tage Wartezeit (Schutz gegen Social Engineering)
-- Quelle: https://vitalik.eth.limo/general/2021/01/11/recovery.html
+**Reference: Vitalik Buterin's Social Recovery Wallet**
+- Signing key (daily use) + guardian set (recovery)
+- Guardians are ordinary people with their own wallets
+- M-of-N guardians confirm new signing key
+- 1–3 day delay (protection against social engineering)
+- Source: https://vitalik.eth.limo/general/2021/01/11/recovery.html
 
-**Vorteile:**
-- Kein Geheimnis wird je geteilt → kein Kollusionsrisiko
-- Funktioniert auch bei Key-Kompromittierung
-- Guardians können alten Key deaktivieren
-- Natürlich dezentral
-- Guardians brauchen kein spezielles Setup
+**Advantages:**
+- No secret is ever shared → no collusion risk
+- Also works for key compromise
+- Guardians can deactivate the old key
+- Naturally decentralized
+- Guardians need no special setup
 
-**Nachteile:**
-- DID ändert sich (bei did:key) → alle Verknüpfungen müssen migriert werden
-- Braucht DID-Methode mit Key Rotation ODER ein Mapping-Layer
-- Social Engineering Risiko
-- Wartezeit nötig (Schutz, aber auch Hindernis)
+**Disadvantages:**
+- DID changes (with did:key) → all links must be migrated
+- Requires a DID method with key rotation OR a mapping layer
+- Social engineering risk
+- Waiting period required (protection, but also a barrier)
 
 ---
 
-## Vergleich: Wann welcher Ansatz?
+## Comparison: Which Approach for Which Scenario?
 
-| Szenario | Shamir | Guardians |
+| Scenario | Shamir | Guardians |
 |----------|--------|-----------|
-| Handy verloren | Seed rekonstruieren → gleiche DID | Neues DID, alte Verbindungen migrieren |
-| Seed vergessen | Seed rekonstruieren | Neues DID |
-| Key kompromittiert | **Hilft NICHT** | Alten Key deaktivieren, neuen autorisieren |
-| Langfristige Sicherheit | Key bleibt gleich | Key Rotation möglich |
-| Komplexität | Niedriger | Höher |
-| Zeitbedarf Recovery | Sofort (wenn Shards da) | 1-3 Tage Wartezeit |
+| Phone lost | Reconstruct seed → same DID | New DID, migrate old connections |
+| Seed forgotten | Reconstruct seed | New DID |
+| Key compromised | **Does NOT help** | Deactivate old key, authorize new one |
+| Long-term security | Key stays the same | Key rotation possible |
+| Complexity | Lower | Higher |
+| Recovery time | Immediate (if shards available) | 1–3 day waiting period |
 
-**Shamir löst Key-Verlust. Guardians lösen Key-Kompromittierung.** Zusammen decken sie alle Fälle ab.
-
----
-
-## Unser Vorteil: WoT = Guardian-Netzwerk
-
-In Vitaliks Modell muss man künstlich Guardians designieren. Bei uns **existieren sie bereits**: die Leute, die sich in-person verifiziert haben. Unsere Kontakte mit "Verifiziert"-Status sind natürliche Guardians.
-
-```
-In-Person Verification (Week 2)
-         ↓
-Verifizierte Kontakte
-         ↓
-Potentielle Guardians für Social Recovery
-         ↓
-Web of Trust = Recovery-Netzwerk
-```
+**Shamir solves key loss. Guardians solve key compromise.** Together they cover all cases.
 
 ---
 
-## Vorgeschlagene Architektur
+## Our Advantage: WoT = Guardian Network
 
-### Drei Schutzschichten
+In Vitalik's model, you have to artificially designate guardians. In our system **they already exist**: the people who have been verified in person. Our contacts with "verified" status are natural guardians.
 
+```mermaid
+flowchart TD
+    A[In-Person Verification]:::outline --> B[Verified Contacts]:::outline
+    B --> C[Potential Guardians for Social Recovery]:::outline
+    C --> D[Web of Trust = Recovery Network]:::outline
+
+    classDef outline stroke:#555,fill:none
 ```
-Schicht 1: Selbstschutz (BIP39)
-  → 12 Wörter aufschreiben
-  → Optional: Encrypted Backup (USB-Stick, Tresor)
-  → Abdeckung: Key-Verlust (einfachster Fall)
-
-Schicht 2: Social Recovery - Shamir
-  → Seed in Shards aufteilen
-  → Shards an verifizierte Kontakte verteilen
-  → 3-von-5 zur Rekonstruktion
-  → Abdeckung: Key-Verlust wenn Zettel auch weg
-
-Schicht 3: Guardian Recovery - Vouching
-  → Verifizierte Kontakte als Guardians
-  → Guardians bestätigen neues Key Pair
-  → Alte Verifications auf neues DID migrieren
-  → Abdeckung: Key-Kompromittierung
-  → Braucht: Key Rotation (did:peer oder Mapping)
-```
-
-### Priorisierung
-
-| Schicht | Wann implementieren | Aufwand |
-|---------|-------------------|---------|
-| **Schicht 1** | ✅ Bereits da (BIP39) | - |
-| **Schicht 2** (Shamir) | Nächster Schritt | Mittel |
-| **Schicht 3** (Guardians) | Später | Hoch (braucht Key Rotation) |
 
 ---
 
-## Shamir-Implementation (nächster Schritt)
+## Proposed Architecture
+
+### Three Protection Layers
+
+```
+Layer 1: Self-protection (BIP39)             ← IMPLEMENTED
+  → Write down 12 words
+  → Optional: encrypted backup (USB stick, safe)
+  → Coverage: key loss (simplest case)
+
+Layer 2: Social Recovery — Shamir            ← DEFERRED
+  → Split seed into shards
+  → Distribute shards to verified contacts
+  → 3-of-5 required for reconstruction
+  → Coverage: key loss when paper is also gone
+  → Library: secrets.js-grempe
+
+Layer 3: Guardian Recovery — Vouching        ← DEFERRED (needs federation)
+  → Verified contacts as guardians
+  → Guardians confirm new key pair
+  → Migrate old verifications to new DID
+  → Coverage: key compromise
+  → Requires: key rotation (did:peer or mapping layer)
+```
+
+### Priority
+
+| Layer | When to implement | Effort |
+|-------|-------------------|--------|
+| **Layer 1** | Already done (BIP39) | — |
+| **Layer 2** (Shamir) | When federation is needed | Medium |
+| **Layer 3** (Guardians) | Later | High (requires key rotation) |
+
+---
+
+## Shamir Implementation Plan
 
 ### User Flow
 
 ```
-Setup (einmalig):
-1. Alice öffnet "Recovery einrichten"
-2. Wählt 5 verifizierte Kontakte als Custodians
-3. Wählt Schwellwert: 3-von-5
-4. App generiert 5 Shards aus ihrem Seed
-5. Pro Custodian: QR-Code anzeigen → Custodian scannt
-6. Custodian bestätigt Empfang
-7. Shard wird beim Custodian verschlüsselt gespeichert
+Setup (one-time):
+1. Alice opens "Set up Recovery"
+2. Selects 5 verified contacts as custodians
+3. Selects threshold: 3-of-5
+4. App generates 5 shards from her seed
+5. Per custodian: display QR code → custodian scans
+6. Custodian confirms receipt
+7. Shard is stored encrypted at the custodian
 
 Recovery:
-1. Alice hat neues Gerät, Seed verloren
-2. Erstellt neue temporäre Identity
-3. Kontaktiert 3+ Custodians (persönlich, Telefon, etc.)
-4. Custodians öffnen "Recovery-Shard senden"
-5. Shard per QR-Code oder verschlüsseltem Kanal übermitteln
-6. App rekonstruiert Seed aus 3 Shards
-7. Alice hat ihre Identity zurück
+1. Alice has a new device, seed is lost
+2. Creates a new temporary identity
+3. Contacts 3+ custodians (in person, phone, etc.)
+4. Custodians open "Send Recovery Shard"
+5. Shard transmitted via QR code or encrypted channel
+6. App reconstructs seed from 3 shards
+7. Alice has her identity back
 ```
 
-### Technische Bausteine
+### Technical Building Blocks
 
-- **Shamir Library:** `@noble/secp256k1` oder `secrets.js-grempe` (JavaScript)
-- **Shard-Format:** Verschlüsselt mit Public Key des Custodians
-- **Transport:** QR-Code (in-person), oder verschlüsselte Nachricht
-- **Storage:** In ContactStorage des Custodians (neues Feld `shards`)
+- **Shamir Library:** `secrets.js-grempe` (JavaScript — note: NOT `@noble/secp256k1`)
+- **Shard format:** Encrypted with the custodian's public key
+- **Transport:** QR code (in person), or encrypted message
+- **Storage:** In the custodian's contact storage (new `shards` field)
 
-### Offene Fragen
+### Open Questions
 
-- Wie aktualisiert man Shards wenn sich das Custodian-Set ändert?
-- Was wenn ein Custodian seinen eigenen Key verliert?
-- Soll der Schwellwert konfigurierbar sein oder fix?
-- Sollen Shards ein Ablaufdatum haben?
-
----
-
-## Inspirationsquellen
-
-| Projekt | Ansatz | Was wir lernen können |
-|---------|--------|----------------------|
-| **Dark Crystal** (SSB) | Shamir + P2P | UX für Shard-Verteilung, Custodian-Management |
-| **Vitalik's Social Recovery** | Guardians | Guardian-Set-Management, Wartezeiten |
-| **Argent Wallet** | Smart Contract Guardians | Mobile UX für Recovery |
-| **KERI** | Pre-Rotation Keys | Key Rotation ohne zentralen Server |
-| **Murmurations** | Email Reset | Was wir NICHT wollen (zentralisiert) |
+- How do you update shards when the custodian set changes?
+- What if a custodian loses their own key?
+- Should the threshold be configurable or fixed?
+- Should shards have an expiry date?
 
 ---
 
-## Zusammenhang mit DID-Methoden
+## Sources of Inspiration
 
-Siehe [did-methoden-vergleich.md](./did-methoden-vergleich.md) für Details.
-
-**Kurzfassung:**
-- **Shamir** funktioniert mit jeder DID-Methode (Seed wird rekonstruiert → gleiche DID)
-- **Guardians** brauchen Key Rotation → did:key allein reicht nicht
-- **Hybrid** (did:key + did:peer): did:key als öffentliche Identität, did:peer für Beziehungen mit Rotation
-- **Langfristig:** WoT-Layer methoden-agnostisch → verschiedene Nutzer können verschiedene Methoden nutzen
+| Project | Approach | What we can learn |
+|---------|----------|-------------------|
+| **Dark Crystal** (SSB) | Shamir + P2P | UX for shard distribution, custodian management |
+| **Vitalik's Social Recovery** | Guardians | Guardian set management, waiting periods |
+| **Argent Wallet** | Smart contract guardians | Mobile UX for recovery |
+| **KERI** | Pre-rotation keys | Key rotation without a central server |
+| **Murmurations** | Email reset | What we do NOT want (centralized) |
 
 ---
 
-*Erstellt: 2026-02-07 | Kontext: Forschungs-Session mit Anton*
+## Relationship to DID Methods
+
+See [did-methods-comparison.md](./did-methods-comparison.md) for details.
+
+**Summary:**
+- **Shamir** works with any DID method (seed is reconstructed → same DID)
+- **Guardians** require key rotation → did:key alone is not sufficient
+- **Hybrid** (did:key + did:peer): did:key as public identity, did:peer for relationships with rotation
+- **Long-term:** WoT layer is method-agnostic → different users can use different methods
+
+---
+
+*Created: 2026-02-07 | Context: Research session with Anton*
+*Last reviewed: 2026-03-16 | Status: Deferred pending federation decision*

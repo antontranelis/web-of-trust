@@ -1,277 +1,278 @@
-# Export-Flow (Nutzer-Perspektive)
+# Export Flow (User Perspective)
 
-> Wie Daten exportiert werden
+> **Status: NOT YET IMPLEMENTED**
+> This document describes the planned export feature. It has not been built yet.
 
-## Warum Export?
+---
 
-Das Web of Trust ist **kein Vendor-Lock-in**. Deine Daten gehören dir.
+## Why export?
 
-```
+Web of Trust is **not a vendor lock-in**. Your data belongs to you.
+
+```text
 ┌─────────────────────────────────┐
 │                                 │
-│  💡 Deine Daten, dein Recht     │
+│  Your data, your right          │
 │                                 │
-│  Du kannst jederzeit alle       │
-│  deine Daten exportieren:       │
+│  You can export all your data   │
+│  at any time:                   │
 │                                 │
-│  • Für Backups                  │
-│  • Zur Archivierung             │
-│  • Für andere Tools             │
-│  • Aus reiner Neugier           │
+│  • For backups                  │
+│  • For archiving                │
+│  • For other tools              │
+│  • Out of curiosity             │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Hauptflow: Daten exportieren
+## Main flow: Export data
 
 ```mermaid
 sequenceDiagram
-    participant U as Nutzer
+    participant U as User
     participant App as App
-    participant FS as Dateisystem
+    participant FS as File system
 
-    U->>App: Einstellungen öffnen
-    U->>App: Export wählen
+    U->>App: Open settings
+    U->>App: Select Export
 
-    App->>U: Was möchtest du exportieren?
+    App->>U: What would you like to export?
 
-    U->>App: Auswahl treffen
+    U->>App: Make selection
 
-    App->>U: Format wählen
+    App->>U: Choose format
 
-    U->>App: Format auswählen
+    U->>App: Select format
 
-    App->>App: Daten sammeln
-    App->>App: In gewähltes Format konvertieren
+    App->>App: Collect data from PersonalDoc CRDT
+    App->>App: Convert to chosen format
 
-    App->>FS: Datei speichern
+    App->>FS: Save file
 
-    App->>U: Export abgeschlossen!
+    App->>U: Export complete!
 ```
 
 ---
 
-## Was der Nutzer sieht
+## What the user sees
 
-### Export starten
+### Start export
 
-```
+```text
 ┌─────────────────────────────────┐
-│  ⚙️ Einstellungen               │
+│  Settings                       │
 ├─────────────────────────────────┤
 │                                 │
-│  Daten & Speicher               │
+│  Data & Storage                 │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📤 Daten exportieren    │    │
-│  │    Alle deine Daten als │    │
-│  │    Datei herunterladen  │    │
+│  │ Export data             │    │
+│  │   Download all your     │    │
+│  │   data as a file        │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 🗑️ Daten löschen        │    │
-│  │    Alle lokalen Daten   │    │
-│  │    entfernen            │    │
+│  │ Delete data             │    │
+│  │   Remove all local data │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Export-Auswahl
+### Export selection
 
-```
+```text
 ┌─────────────────────────────────┐
 │                                 │
-│  📤 Daten exportieren           │
+│  Export data                    │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Was möchtest du exportieren?   │
+│  What would you like to export? │
 │                                 │
-│  [✓] Profil                     │
-│      Name, Foto, Bio            │
+│  [✓] Profile                    │
+│      Name, photo, bio           │
 │                                 │
-│  [✓] Kontakte                   │
-│      23 Kontakte                │
+│  [✓] Contacts                   │
+│      23 contacts                │
 │                                 │
-│  [✓] Verifizierungen            │
-│      23 Verifizierungen         │
+│  [✓] Verifications              │
+│      23 verifications           │
 │                                 │
-│  [✓] Attestationen              │
-│      47 erhalten, 12 gegeben    │
+│  [✓] Attestations               │
+│      47 received, 12 given      │
 │                                 │
 │  [✓] Content                    │
-│      34 Einträge                │
+│      34 entries                 │
 │                                 │
-│  [ ] Gruppen                    │
-│      3 Gruppen                  │
+│  [ ] Groups                     │
+│      3 groups                   │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  [ Alles auswählen ]            │
+│  [ Select all ]                 │
 │                                 │
-│  [ Weiter ]                     │
+│  [ Next ]                       │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Format wählen
+### Choose format
 
-```
+```text
 ┌─────────────────────────────────┐
 │                                 │
-│  📤 Export-Format               │
+│  Export format                  │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Wähle ein Format:              │
+│  Choose a format:               │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📋 JSON                 │    │
-│  │    Maschinenlesbar,     │    │
-│  │    für Entwickler       │    │
+│  │ JSON                    │    │
+│  │   Machine-readable,     │    │
+│  │   for developers        │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📊 CSV                  │    │
-│  │    Für Excel/Tabellen   │    │
+│  │ CSV                     │    │
+│  │   For Excel/spreadsheets│    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📄 PDF                  │    │
-│  │    Lesbares Dokument    │    │
+│  │ PDF                     │    │
+│  │   Readable document     │    │
 │  └─────────────────────────┘    │
 │                                 │
 │  ┌─────────────────────────┐    │
-│  │ 📦 ZIP (alle Formate)   │    │
-│  │    Komplettes Archiv    │    │
+│  │ ZIP (all formats)       │    │
+│  │   Complete archive      │    │
 │  └─────────────────────────┘    │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Export läuft
+### Export in progress
 
-```
+```text
 ┌─────────────────────────────────┐
 │                                 │
-│  📤 Exportiere...               │
+│  Exporting...                   │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
 │  ████████████░░░░░░░ 60%        │
 │                                 │
-│  ✅ Profil                      │
-│  ✅ Kontakte                    │
-│  ✅ Verifizierungen             │
-│  🔄 Attestationen...            │
+│  ✅ Profile                     │
+│  ✅ Contacts                    │
+│  ✅ Verifications               │
+│  ⏳ Attestations...             │
 │  ⬜ Content                     │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Export abgeschlossen
+### Export complete
 
-```
+```text
 ┌─────────────────────────────────┐
 │                                 │
-│  ✅ Export abgeschlossen!       │
+│  ✅ Export complete!            │
 │                                 │
 ├─────────────────────────────────┤
 │                                 │
-│  Datei: wot-export-2025-01-08.zip│
-│  Größe: 2.3 MB                  │
+│  File: wot-export-2026-01-08.zip│
+│  Size: 2.3 MB                   │
 │                                 │
-│  Enthält:                       │
-│  • 1 Profil                     │
-│  • 23 Kontakte                  │
-│  • 23 Verifizierungen           │
-│  • 59 Attestationen             │
-│  • 34 Content-Einträge          │
+│  Contains:                      │
+│  • 1 profile                    │
+│  • 23 contacts                  │
+│  • 23 verifications             │
+│  • 59 attestations              │
+│  • 34 content entries           │
 │                                 │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
 │                                 │
-│  [ Teilen ]                     │
+│  [ Share ]                      │
 │                                 │
-│  [ In Dateien öffnen ]          │
+│  [ Open in Files ]              │
 │                                 │
-│  [ Fertig ]                     │
+│  [ Done ]                       │
 │                                 │
 └─────────────────────────────────┘
 ```
 
 ---
 
-## Was ist im Export enthalten?
+## What is in the export?
 
-### Profil
+### Profile
 
-```
+```text
 ┌─────────────────────────────────┐
-│  👤 Mein Profil                 │
+│  My profile                     │
 ├─────────────────────────────────┤
 │                                 │
 │  Name: Anna Müller              │
-│  DID: did:wot:anna123...        │
-│  Bio: Aktiv im Gemeinschafts-   │
-│       garten Sonnenberg         │
+│  DID: did:key:z6Mk...           │
+│  Bio: Active in the community   │
+│       garden Sonnenberg         │
 │                                 │
-│  Erstellt: 01.01.2025           │
-│  Foto: [enthalten]              │
+│  Created: 01.01.2026            │
+│  Photo: [included]              │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Kontakte
+### Contacts
 
-```
+```text
 ┌─────────────────────────────────┐
-│  👥 Kontakte (23)               │
+│  Contacts (23)                  │
 ├─────────────────────────────────┤
 │                                 │
 │  1. Ben Schmidt                 │
-│     DID: did:wot:ben456...      │
-│     Status: aktiv               │
-│     Verifiziert: 05.01.2025     │
+│     DID: did:key:z6MkBen...     │
+│     Status: active              │
+│     Verified: 05.01.2026        │
 │                                 │
 │  2. Carla Braun                 │
-│     DID: did:wot:carla789...    │
-│     Status: aktiv               │
-│     Verifiziert: 03.01.2025     │
+│     DID: did:key:z6MkCarla...   │
+│     Status: active              │
+│     Verified: 03.01.2026        │
 │                                 │
 │  ...                            │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### Attestationen
+### Attestations
 
-```
+```text
 ┌─────────────────────────────────┐
-│  📜 Attestationen               │
+│  Attestations                   │
 ├─────────────────────────────────┤
 │                                 │
-│  ERHALTEN (47):                 │
+│  RECEIVED (47):                 │
 │                                 │
-│  "Hat 3 Stunden im Garten       │
-│   geholfen"                     │
-│  Von: Tom Wagner                │
-│  Datum: 08.01.2025              │
-│  Tags: Garten, Helfen           │
+│  "Helped for 3 hours in         │
+│   the garden"                   │
+│  From: Tom Wagner               │
+│  Date: 08.01.2026               │
+│  Tags: Garden, Helping          │
 │                                 │
 │  ...                            │
 │                                 │
-│  GEGEBEN (12):                  │
+│  GIVEN (12):                    │
 │                                 │
-│  "Kennt sich super mit          │
-│   Fahrrädern aus"               │
-│  An: Ben Schmidt                │
-│  Datum: 06.01.2025              │
-│  Tags: Handwerk, Fahrrad        │
+│  "Knows a lot about bicycles"   │
+│  To: Ben Schmidt                │
+│  Date: 06.01.2026               │
+│  Tags: Craft, Bicycle           │
 │                                 │
 │  ...                            │
 │                                 │
@@ -280,18 +281,18 @@ sequenceDiagram
 
 ---
 
-## Export-Formate
+## Export formats
 
 ### JSON
 
-Maschinenlesbares Format mit vollständiger Struktur:
+Machine-readable format with full structure:
 
 ```json
 {
   "exportVersion": "1.0",
-  "exportedAt": "2025-01-08T15:00:00Z",
+  "exportedAt": "2026-01-08T15:00:00Z",
   "profile": {
-    "did": "did:wot:anna123",
+    "did": "did:key:z6MkAnna...",
     "name": "Anna Müller",
     "bio": "..."
   },
@@ -304,48 +305,48 @@ Maschinenlesbares Format mit vollständiger Struktur:
 
 ### CSV
 
-Tabellenformat, eine Datei pro Typ:
+Table format, one file per type:
 
-```
+```text
 contacts.csv:
-Name,DID,Status,Verifiziert am
-Ben Schmidt,did:wot:ben456,aktiv,2025-01-05
-Carla Braun,did:wot:carla789,aktiv,2025-01-03
+Name,DID,Status,Verified on
+Ben Schmidt,did:key:z6MkBen...,active,2026-01-05
+Carla Braun,did:key:z6MkCarla...,active,2026-01-03
 
 attestations.csv:
-Von,An,Text,Tags,Datum
-Tom Wagner,Anna Müller,"Hat geholfen","Garten,Helfen",2025-01-08
+From,To,Text,Tags,Date
+Tom Wagner,Anna Müller,"Helped in garden","Garden,Helping",2026-01-08
 ```
 
 ### PDF
 
-Lesbares Dokument mit formatierter Übersicht:
+Readable document with formatted overview:
 
-```
+```text
 ┌─────────────────────────────────┐
 │                                 │
 │  WEB OF TRUST EXPORT            │
 │  Anna Müller                    │
-│  08.01.2025                     │
+│  08.01.2026                     │
 │                                 │
 │  ─────────────────────────────  │
 │                                 │
-│  PROFIL                         │
+│  PROFILE                        │
 │  ...                            │
 │                                 │
-│  KONTAKTE                       │
+│  CONTACTS                       │
 │  ...                            │
 │                                 │
-│  ATTESTATIONEN                  │
+│  ATTESTATIONS                   │
 │  ...                            │
 │                                 │
 └─────────────────────────────────┘
 ```
 
-### ZIP (Komplett-Archiv)
+### ZIP (complete archive)
 
-```
-wot-export-2025-01-08.zip
+```text
+wot-export-2026-01-08.zip
 ├── profile.json
 ├── contacts.json
 ├── contacts.csv
@@ -364,97 +365,97 @@ wot-export-2025-01-08.zip
 
 ## Personas
 
-### Lena (Skeptikerin) prüft ihre Daten
+### Lena (skeptic) checks her data
 
 ```mermaid
 sequenceDiagram
     participant L as Lena
     participant App as App
 
-    Note over L: Will wissen was gespeichert wird
+    Note over L: Wants to know what is stored
 
-    L->>App: Einstellungen → Export
-    L->>App: Alles auswählen
+    L->>App: Settings → Export
+    L->>App: Select all
     L->>App: Format: JSON
 
-    App->>L: Export-Datei
+    App->>L: Export file
 
-    L->>L: Öffnet in Code-Editor
-    L->>L: Prüft Struktur
-    L->>L: Sucht nach versteckten Daten
+    L->>L: Opens in code editor
+    L->>L: Checks structure
+    L->>L: Looks for hidden data
 
-    Note over L: Findet nur das erwartete - gut!
+    Note over L: Only finds what was expected — good!
 ```
 
-### Greta macht Backup
+### Greta makes a backup
 
 ```mermaid
 sequenceDiagram
     participant G as Greta
-    participant T as Tom (Nachbar)
+    participant T as Tom (neighbor)
     participant App as App
 
-    Note over G,T: Tom hilft Greta beim Backup
+    Note over G,T: Tom helps Greta with backup
 
-    T->>G: Lass uns deine Daten sichern
-    G->>App: Einstellungen → Export
+    T->>G: Let's secure your data
+    G->>App: Settings → Export
 
-    T->>G: Wähle "Alles" und "ZIP"
+    T->>G: Select "All" and "ZIP"
 
-    App->>G: Export-Datei
+    App->>G: Export file
 
-    T->>G: Speicher das auf deinem Computer
-    T->>G: Zusätzlich zur Recovery-Phrase
+    T->>G: Save that on your computer
+    T->>G: In addition to your recovery phrase
 ```
 
-### Kemal archiviert Reparatur-Café
+### Kemal archives repair café data
 
 ```mermaid
 sequenceDiagram
     participant K as Kemal
     participant App as App
 
-    Note over K: Will Jahresrückblick erstellen
+    Note over K: Wants to create a year-end review
 
-    K->>App: Export → Attestationen
+    K->>App: Export → Attestations
     K->>App: Format: CSV
 
     App->>K: attestations.csv
 
-    K->>K: Öffnet in Excel
-    K->>K: Filtert nach "Reparatur"
-    K->>K: Erstellt Statistik
+    K->>K: Opens in spreadsheet
+    K->>K: Filters by "repair"
+    K->>K: Creates statistics
 
-    Note over K: 127 Reparaturen in 2024!
+    Note over K: 127 repairs in 2025!
 ```
 
 ---
 
-## Was ist NICHT im Export?
+## What is NOT in the export?
 
-| Nicht enthalten | Warum |
-| --------------- | ----- |
-| Private Key | Sicherheitsrisiko |
-| Recovery-Phrase | Sicherheitsrisiko |
-| Verschlüsselte Blobs | Nicht nützlich ohne Key |
-| Content anderer | Nur deine eigenen Daten |
-| Gruppen-Keys | Sicherheitsrisiko |
+| Not included | Reason |
+| ------------ | ------ |
+| Private key | Security risk |
+| Recovery phrase | Security risk |
+| Encrypted blobs | Not useful without key |
+| Other people's content | Only your own data |
+| Group keys | Security risk |
 
 ---
 
 ## FAQ
 
-**Kann ich den Export woanders importieren?**
-Das hängt vom Zielsystem ab. Das JSON-Format ist standardisiert und kann von anderen Tools verarbeitet werden.
+**Can I import the export somewhere else?**
+That depends on the target system. The JSON format is standardised and can be processed by other tools.
 
-**Enthält der Export sensible Daten?**
-Ja - er enthält deine Kontakte, Attestationen und Inhalte. Behandle die Export-Datei vertraulich.
+**Does the export contain sensitive data?**
+Yes — it contains your contacts, attestations and content. Treat the export file confidentially.
 
-**Wie oft sollte ich exportieren?**
-Für Backups: Regelmäßig, z.B. monatlich. Die Recovery-Phrase ist wichtiger als der Export.
+**How often should I export?**
+For backups: regularly, e.g. monthly. The recovery phrase is more important than the export.
 
-**Kann ich gelöschte Daten exportieren?**
-Nein. Der Export enthält nur aktuelle Daten.
+**Can I export deleted data?**
+No. The export only contains current data.
 
-**Ist der Export verschlüsselt?**
-Nein. Der Export ist im Klartext. Wenn du ihn sicher aufbewahren willst, verschlüssele die Datei selbst.
+**Is the export encrypted?**
+No. The export is plaintext. If you want to store it securely, encrypt the file yourself.
