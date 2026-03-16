@@ -1,0 +1,1893 @@
+{
+  "01-intro": [
+    {
+      "word": "Stell",
+      "start": 0,
+      "end": 0.302
+    },
+    {
+      "word": "dir",
+      "start": 0.325,
+      "end": 0.418
+    },
+    {
+      "word": "vor,",
+      "start": 0.453,
+      "end": 0.894
+    },
+    {
+      "word": "du",
+      "start": 1.01,
+      "end": 1.161
+    },
+    {
+      "word": "ziehst",
+      "start": 1.231,
+      "end": 1.463
+    },
+    {
+      "word": "in",
+      "start": 1.509,
+      "end": 1.567
+    },
+    {
+      "word": "eine",
+      "start": 1.625,
+      "end": 1.765
+    },
+    {
+      "word": "neue",
+      "start": 1.823,
+      "end": 2.032
+    },
+    {
+      "word": "Nachbarschaft.",
+      "start": 2.078,
+      "end": 2.902
+    },
+    {
+      "word": "Du",
+      "start": 3.344,
+      "end": 3.471
+    },
+    {
+      "word": "kennst",
+      "start": 3.529,
+      "end": 3.831
+    },
+    {
+      "word": "noch",
+      "start": 3.878,
+      "end": 4.017
+    },
+    {
+      "word": "niemanden.",
+      "start": 4.063,
+      "end": 4.737
+    },
+    {
+      "word": "Wie",
+      "start": 5.178,
+      "end": 5.341
+    },
+    {
+      "word": "findest",
+      "start": 5.399,
+      "end": 5.7
+    },
+    {
+      "word": "du",
+      "start": 5.724,
+      "end": 5.782
+    },
+    {
+      "word": "heraus,",
+      "start": 5.84,
+      "end": 6.339
+    },
+    {
+      "word": "wer",
+      "start": 6.397,
+      "end": 6.536
+    },
+    {
+      "word": "dir",
+      "start": 6.571,
+      "end": 6.664
+    },
+    {
+      "word": "helfen",
+      "start": 6.711,
+      "end": 7.024
+    },
+    {
+      "word": "kann",
+      "start": 7.07,
+      "end": 7.303
+    },
+    {
+      "word": "—",
+      "start": 7.512,
+      "end": 7.558
+    },
+    {
+      "word": "und",
+      "start": 7.837,
+      "end": 7.964
+    },
+    {
+      "word": "wem",
+      "start": 7.999,
+      "end": 8.162
+    },
+    {
+      "word": "du",
+      "start": 8.208,
+      "end": 8.278
+    },
+    {
+      "word": "vertrauen",
+      "start": 8.336,
+      "end": 8.754
+    },
+    {
+      "word": "kannst?",
+      "start": 8.812,
+      "end": 9.358
+    },
+    {
+      "word": "Mit",
+      "start": 10.054,
+      "end": 10.205
+    },
+    {
+      "word": "dem",
+      "start": 10.24,
+      "end": 10.391
+    },
+    {
+      "word": "Web",
+      "start": 10.449,
+      "end": 10.635
+    },
+    {
+      "word": "of",
+      "start": 10.704,
+      "end": 10.797
+    },
+    {
+      "word": "Trust.",
+      "start": 10.867,
+      "end": 11.564
+    }
+  ],
+  "02-identity": [
+    {
+      "word": "Lisa",
+      "start": 0,
+      "end": 0.383
+    },
+    {
+      "word": "öffnet",
+      "start": 0.453,
+      "end": 0.766
+    },
+    {
+      "word": "die",
+      "start": 0.789,
+      "end": 0.871
+    },
+    {
+      "word": "App",
+      "start": 0.929,
+      "end": 1.149
+    },
+    {
+      "word": "und",
+      "start": 1.324,
+      "end": 1.474
+    },
+    {
+      "word": "erstellt",
+      "start": 1.521,
+      "end": 1.904
+    },
+    {
+      "word": "ihre",
+      "start": 1.95,
+      "end": 2.113
+    },
+    {
+      "word": "digitale",
+      "start": 2.159,
+      "end": 2.67
+    },
+    {
+      "word": "Identität.",
+      "start": 2.717,
+      "end": 3.599
+    },
+    {
+      "word": "Zwölf",
+      "start": 4.04,
+      "end": 4.435
+    },
+    {
+      "word": "magische",
+      "start": 4.528,
+      "end": 4.946
+    },
+    {
+      "word": "Wörter",
+      "start": 4.992,
+      "end": 5.329
+    },
+    {
+      "word": "werden",
+      "start": 5.375,
+      "end": 5.596
+    },
+    {
+      "word": "generiert",
+      "start": 5.631,
+      "end": 6.142
+    },
+    {
+      "word": "—",
+      "start": 6.293,
+      "end": 6.362
+    },
+    {
+      "word": "ihr",
+      "start": 6.687,
+      "end": 6.78
+    },
+    {
+      "word": "persönlicher",
+      "start": 6.815,
+      "end": 7.361
+    },
+    {
+      "word": "Schlüssel,",
+      "start": 7.407,
+      "end": 7.941
+    },
+    {
+      "word": "den",
+      "start": 8.115,
+      "end": 8.255
+    },
+    {
+      "word": "nur",
+      "start": 8.278,
+      "end": 8.394
+    },
+    {
+      "word": "sie",
+      "start": 8.429,
+      "end": 8.557
+    },
+    {
+      "word": "kennt.",
+      "start": 8.615,
+      "end": 9.114
+    },
+    {
+      "word": "Sie",
+      "start": 9.625,
+      "end": 9.764
+    },
+    {
+      "word": "schreibt",
+      "start": 9.799,
+      "end": 10.077
+    },
+    {
+      "word": "die",
+      "start": 10.101,
+      "end": 10.17
+    },
+    {
+      "word": "Wörter",
+      "start": 10.217,
+      "end": 10.507
+    },
+    {
+      "word": "auf,",
+      "start": 10.565,
+      "end": 11.006
+    },
+    {
+      "word": "wählt",
+      "start": 11.25,
+      "end": 11.505
+    },
+    {
+      "word": "ein",
+      "start": 11.552,
+      "end": 11.622
+    },
+    {
+      "word": "Passwort,",
+      "start": 11.68,
+      "end": 12.33
+    },
+    {
+      "word": "und",
+      "start": 12.574,
+      "end": 12.701
+    },
+    {
+      "word": "gibt",
+      "start": 12.748,
+      "end": 12.922
+    },
+    {
+      "word": "ihren",
+      "start": 12.957,
+      "end": 13.131
+    },
+    {
+      "word": "Namen",
+      "start": 13.154,
+      "end": 13.468
+    },
+    {
+      "word": "und",
+      "start": 13.584,
+      "end": 13.723
+    },
+    {
+      "word": "eine",
+      "start": 13.769,
+      "end": 13.909
+    },
+    {
+      "word": "kurze",
+      "start": 13.955,
+      "end": 14.269
+    },
+    {
+      "word": "Beschreibung",
+      "start": 14.304,
+      "end": 14.768
+    },
+    {
+      "word": "ein.",
+      "start": 14.838,
+      "end": 15.244
+    },
+    {
+      "word": "Fertig",
+      "start": 15.755,
+      "end": 16.289
+    },
+    {
+      "word": "—",
+      "start": 16.44,
+      "end": 16.916
+    },
+    {
+      "word": "Lisa",
+      "start": 17.032,
+      "end": 17.299
+    },
+    {
+      "word": "hat",
+      "start": 17.357,
+      "end": 17.461
+    },
+    {
+      "word": "jetzt",
+      "start": 17.52,
+      "end": 17.717
+    },
+    {
+      "word": "eine",
+      "start": 17.787,
+      "end": 17.949
+    },
+    {
+      "word": "eigene,",
+      "start": 18.007,
+      "end": 18.495
+    },
+    {
+      "word": "selbstbestimmte",
+      "start": 18.541,
+      "end": 19.366
+    },
+    {
+      "word": "Identität.",
+      "start": 19.424,
+      "end": 20.19
+    },
+    {
+      "word": "Keine",
+      "start": 20.701,
+      "end": 21.037
+    },
+    {
+      "word": "E-Mail,",
+      "start": 21.095,
+      "end": 21.548
+    },
+    {
+      "word": "kein",
+      "start": 21.629,
+      "end": 21.838
+    },
+    {
+      "word": "Passwort-Reset,",
+      "start": 21.896,
+      "end": 22.849
+    },
+    {
+      "word": "keine",
+      "start": 23.127,
+      "end": 23.441
+    },
+    {
+      "word": "Firma,",
+      "start": 23.499,
+      "end": 23.789
+    },
+    {
+      "word": "die",
+      "start": 23.812,
+      "end": 23.893
+    },
+    {
+      "word": "ihre",
+      "start": 23.917,
+      "end": 24.079
+    },
+    {
+      "word": "Daten",
+      "start": 24.126,
+      "end": 24.427
+    },
+    {
+      "word": "speichert.",
+      "start": 24.462,
+      "end": 25.263
+    }
+  ],
+  "03-first-contact": [
+    {
+      "word": "Am",
+      "start": 0,
+      "end": 0.174
+    },
+    {
+      "word": "nächsten",
+      "start": 0.209,
+      "end": 0.534
+    },
+    {
+      "word": "Tag",
+      "start": 0.58,
+      "end": 0.836
+    },
+    {
+      "word": "trifft",
+      "start": 0.894,
+      "end": 1.161
+    },
+    {
+      "word": "Lisa",
+      "start": 1.196,
+      "end": 1.451
+    },
+    {
+      "word": "ihren",
+      "start": 1.509,
+      "end": 1.695
+    },
+    {
+      "word": "Nachbarn",
+      "start": 1.718,
+      "end": 2.055
+    },
+    {
+      "word": "Marco.",
+      "start": 2.101,
+      "end": 2.728
+    },
+    {
+      "word": "Sie",
+      "start": 3.332,
+      "end": 3.471
+    },
+    {
+      "word": "zeigt",
+      "start": 3.541,
+      "end": 3.808
+    },
+    {
+      "word": "ihm",
+      "start": 3.866,
+      "end": 3.947
+    },
+    {
+      "word": "die",
+      "start": 3.994,
+      "end": 4.075
+    },
+    {
+      "word": "App",
+      "start": 4.122,
+      "end": 4.319
+    },
+    {
+      "word": "und",
+      "start": 4.435,
+      "end": 4.563
+    },
+    {
+      "word": "ihren",
+      "start": 4.621,
+      "end": 4.807
+    },
+    {
+      "word": "QR-Code.",
+      "start": 4.853,
+      "end": 5.689
+    },
+    {
+      "word": "Marco",
+      "start": 6.293,
+      "end": 6.618
+    },
+    {
+      "word": "ist",
+      "start": 6.664,
+      "end": 6.78
+    },
+    {
+      "word": "neugierig,",
+      "start": 6.85,
+      "end": 7.57
+    },
+    {
+      "word": "installiert",
+      "start": 7.848,
+      "end": 8.382
+    },
+    {
+      "word": "die",
+      "start": 8.417,
+      "end": 8.499
+    },
+    {
+      "word": "App",
+      "start": 8.557,
+      "end": 8.766
+    },
+    {
+      "word": "und",
+      "start": 8.975,
+      "end": 9.125
+    },
+    {
+      "word": "erstellt",
+      "start": 9.172,
+      "end": 9.555
+    },
+    {
+      "word": "auch",
+      "start": 9.613,
+      "end": 9.729
+    },
+    {
+      "word": "eine",
+      "start": 9.787,
+      "end": 9.961
+    },
+    {
+      "word": "Identität.",
+      "start": 10.008,
+      "end": 10.879
+    },
+    {
+      "word": "Dann",
+      "start": 11.575,
+      "end": 11.842
+    },
+    {
+      "word": "scannt",
+      "start": 11.9,
+      "end": 12.214
+    },
+    {
+      "word": "er",
+      "start": 12.26,
+      "end": 12.318
+    },
+    {
+      "word": "Lisas",
+      "start": 12.365,
+      "end": 12.632
+    },
+    {
+      "word": "QR-Code.",
+      "start": 12.701,
+      "end": 13.514
+    },
+    {
+      "word": "Auf",
+      "start": 14.211,
+      "end": 14.373
+    },
+    {
+      "word": "beiden",
+      "start": 14.454,
+      "end": 14.756
+    },
+    {
+      "word": "Handys",
+      "start": 14.814,
+      "end": 15.128
+    },
+    {
+      "word": "erscheint",
+      "start": 15.186,
+      "end": 15.523
+    },
+    {
+      "word": "die",
+      "start": 15.546,
+      "end": 15.615
+    },
+    {
+      "word": "Frage:",
+      "start": 15.662,
+      "end": 16.242
+    },
+    {
+      "word": "Stehst",
+      "start": 16.521,
+      "end": 16.857
+    },
+    {
+      "word": "du",
+      "start": 16.881,
+      "end": 16.95
+    },
+    {
+      "word": "vor",
+      "start": 17.008,
+      "end": 17.125
+    },
+    {
+      "word": "dieser",
+      "start": 17.171,
+      "end": 17.38
+    },
+    {
+      "word": "Person?",
+      "start": 17.426,
+      "end": 18.007
+    },
+    {
+      "word": "Beide",
+      "start": 18.611,
+      "end": 18.866
+    },
+    {
+      "word": "bestätigen",
+      "start": 18.912,
+      "end": 19.47
+    },
+    {
+      "word": "—",
+      "start": 19.621,
+      "end": 19.772
+    },
+    {
+      "word": "und",
+      "start": 19.923,
+      "end": 20.027
+    },
+    {
+      "word": "die",
+      "start": 20.05,
+      "end": 20.12
+    },
+    {
+      "word": "Verbindung",
+      "start": 20.166,
+      "end": 20.573
+    },
+    {
+      "word": "steht.",
+      "start": 20.619,
+      "end": 21.316
+    }
+  ],
+  "04-profile": [
+    {
+      "word": "Lisa",
+      "start": 0,
+      "end": 0.325
+    },
+    {
+      "word": "trägt",
+      "start": 0.383,
+      "end": 0.662
+    },
+    {
+      "word": "auf",
+      "start": 0.697,
+      "end": 0.766
+    },
+    {
+      "word": "ihrem",
+      "start": 0.824,
+      "end": 0.998
+    },
+    {
+      "word": "Profil",
+      "start": 1.033,
+      "end": 1.405
+    },
+    {
+      "word": "ein,",
+      "start": 1.486,
+      "end": 1.811
+    },
+    {
+      "word": "was",
+      "start": 1.927,
+      "end": 2.067
+    },
+    {
+      "word": "sie",
+      "start": 2.09,
+      "end": 2.171
+    },
+    {
+      "word": "anbieten",
+      "start": 2.229,
+      "end": 2.659
+    },
+    {
+      "word": "kann",
+      "start": 2.705,
+      "end": 2.984
+    },
+    {
+      "word": "und",
+      "start": 3.262,
+      "end": 3.39
+    },
+    {
+      "word": "was",
+      "start": 3.437,
+      "end": 3.553
+    },
+    {
+      "word": "sie",
+      "start": 3.576,
+      "end": 3.669
+    },
+    {
+      "word": "sucht.",
+      "start": 3.715,
+      "end": 4.214
+    },
+    {
+      "word": "Sie",
+      "start": 4.818,
+      "end": 4.969
+    },
+    {
+      "word": "bietet",
+      "start": 5.016,
+      "end": 5.283
+    },
+    {
+      "word": "Gartenarbeit",
+      "start": 5.341,
+      "end": 6.014
+    },
+    {
+      "word": "und",
+      "start": 6.095,
+      "end": 6.188
+    },
+    {
+      "word": "Kuchen",
+      "start": 6.246,
+      "end": 6.56
+    },
+    {
+      "word": "backen",
+      "start": 6.594,
+      "end": 6.838
+    },
+    {
+      "word": "an.",
+      "start": 6.896,
+      "end": 7.303
+    },
+    {
+      "word": "Marco",
+      "start": 7.999,
+      "end": 8.371
+    },
+    {
+      "word": "schaut",
+      "start": 8.429,
+      "end": 8.661
+    },
+    {
+      "word": "sich",
+      "start": 8.696,
+      "end": 8.824
+    },
+    {
+      "word": "Lisas",
+      "start": 8.87,
+      "end": 9.137
+    },
+    {
+      "word": "Profil",
+      "start": 9.195,
+      "end": 9.578
+    },
+    {
+      "word": "an",
+      "start": 9.648,
+      "end": 9.834
+    },
+    {
+      "word": "und",
+      "start": 10.159,
+      "end": 10.31
+    },
+    {
+      "word": "sieht",
+      "start": 10.356,
+      "end": 10.519
+    },
+    {
+      "word": "ihre",
+      "start": 10.577,
+      "end": 10.728
+    },
+    {
+      "word": "Angebote.",
+      "start": 10.786,
+      "end": 11.61
+    },
+    {
+      "word": "Gartenarbeit",
+      "start": 12.214,
+      "end": 12.968
+    },
+    {
+      "word": "—",
+      "start": 13.142,
+      "end": 13.247
+    },
+    {
+      "word": "genau",
+      "start": 13.421,
+      "end": 13.781
+    },
+    {
+      "word": "was",
+      "start": 13.827,
+      "end": 13.967
+    },
+    {
+      "word": "er",
+      "start": 14.036,
+      "end": 14.106
+    },
+    {
+      "word": "braucht!",
+      "start": 14.141,
+      "end": 14.907
+    }
+  ],
+  "05-hochbeet": [
+    {
+      "word": "Lisa",
+      "start": 0,
+      "end": 0.337
+    },
+    {
+      "word": "und",
+      "start": 0.395,
+      "end": 0.488
+    },
+    {
+      "word": "Marco",
+      "start": 0.557,
+      "end": 0.964
+    },
+    {
+      "word": "legen",
+      "start": 1.057,
+      "end": 1.324
+    },
+    {
+      "word": "zusammen",
+      "start": 1.358,
+      "end": 1.753
+    },
+    {
+      "word": "ein",
+      "start": 1.811,
+      "end": 1.927
+    },
+    {
+      "word": "Hochbeet",
+      "start": 1.985,
+      "end": 2.45
+    },
+    {
+      "word": "in",
+      "start": 2.496,
+      "end": 2.543
+    },
+    {
+      "word": "Marcos",
+      "start": 2.601,
+      "end": 2.891
+    },
+    {
+      "word": "Garten",
+      "start": 2.949,
+      "end": 3.262
+    },
+    {
+      "word": "an.",
+      "start": 3.332,
+      "end": 3.68
+    },
+    {
+      "word": "Danach",
+      "start": 4.063,
+      "end": 4.505
+    },
+    {
+      "word": "erstellt",
+      "start": 4.586,
+      "end": 4.911
+    },
+    {
+      "word": "Marco",
+      "start": 4.969,
+      "end": 5.259
+    },
+    {
+      "word": "eine",
+      "start": 5.317,
+      "end": 5.445
+    },
+    {
+      "word": "Bestätigung",
+      "start": 5.48,
+      "end": 6.084
+    },
+    {
+      "word": "für",
+      "start": 6.13,
+      "end": 6.235
+    },
+    {
+      "word": "Lisa.",
+      "start": 6.258,
+      "end": 6.792
+    },
+    {
+      "word": "Er",
+      "start": 7.233,
+      "end": 7.349
+    },
+    {
+      "word": "wählt",
+      "start": 7.384,
+      "end": 7.546
+    },
+    {
+      "word": "Lisa",
+      "start": 7.605,
+      "end": 7.825
+    },
+    {
+      "word": "aus,",
+      "start": 7.895,
+      "end": 8.266
+    },
+    {
+      "word": "schreibt:",
+      "start": 8.336,
+      "end": 8.94
+    },
+    {
+      "word": "Hat",
+      "start": 9.381,
+      "end": 9.578
+    },
+    {
+      "word": "mir",
+      "start": 9.636,
+      "end": 9.741
+    },
+    {
+      "word": "beim",
+      "start": 9.776,
+      "end": 9.915
+    },
+    {
+      "word": "Hochbeet",
+      "start": 9.961,
+      "end": 10.368
+    },
+    {
+      "word": "geholfen,",
+      "start": 10.426,
+      "end": 11.053
+    },
+    {
+      "word": "super",
+      "start": 11.227,
+      "end": 11.575
+    },
+    {
+      "word": "Gartenarbeit.",
+      "start": 11.633,
+      "end": 12.492
+    },
+    {
+      "word": "Lisa",
+      "start": 13.003,
+      "end": 13.305
+    },
+    {
+      "word": "bekommt",
+      "start": 13.363,
+      "end": 13.688
+    },
+    {
+      "word": "die",
+      "start": 13.711,
+      "end": 13.781
+    },
+    {
+      "word": "Bestätigung",
+      "start": 13.816,
+      "end": 14.431
+    },
+    {
+      "word": "sofort",
+      "start": 14.489,
+      "end": 14.895
+    },
+    {
+      "word": "auf",
+      "start": 14.953,
+      "end": 15.035
+    },
+    {
+      "word": "ihr",
+      "start": 15.104,
+      "end": 15.174
+    },
+    {
+      "word": "Handy",
+      "start": 15.209,
+      "end": 15.545
+    },
+    {
+      "word": "und",
+      "start": 15.661,
+      "end": 15.801
+    },
+    {
+      "word": "veröffentlicht",
+      "start": 15.847,
+      "end": 16.439
+    },
+    {
+      "word": "sie",
+      "start": 16.463,
+      "end": 16.555
+    },
+    {
+      "word": "auf",
+      "start": 16.579,
+      "end": 16.66
+    },
+    {
+      "word": "ihrem",
+      "start": 16.718,
+      "end": 16.892
+    },
+    {
+      "word": "Profil.",
+      "start": 16.927,
+      "end": 17.531
+    },
+    {
+      "word": "Und",
+      "start": 18.134,
+      "end": 18.285
+    },
+    {
+      "word": "Lisa",
+      "start": 18.343,
+      "end": 18.61
+    },
+    {
+      "word": "schreibt",
+      "start": 18.668,
+      "end": 18.994
+    },
+    {
+      "word": "über",
+      "start": 19.028,
+      "end": 19.179
+    },
+    {
+      "word": "Marco:",
+      "start": 19.226,
+      "end": 19.748
+    },
+    {
+      "word": "Toller",
+      "start": 20.352,
+      "end": 20.689
+    },
+    {
+      "word": "Nachbar,",
+      "start": 20.747,
+      "end": 21.327
+    },
+    {
+      "word": "teilt",
+      "start": 21.536,
+      "end": 21.838
+    },
+    {
+      "word": "gerne",
+      "start": 21.896,
+      "end": 22.14
+    },
+    {
+      "word": "seinen",
+      "start": 22.186,
+      "end": 22.395
+    },
+    {
+      "word": "Garten.",
+      "start": 22.453,
+      "end": 22.953
+    },
+    {
+      "word": "So",
+      "start": 23.394,
+      "end": 23.661
+    },
+    {
+      "word": "entsteht",
+      "start": 23.73,
+      "end": 24.055
+    },
+    {
+      "word": "Vertrauen",
+      "start": 24.102,
+      "end": 24.566
+    },
+    {
+      "word": "—",
+      "start": 24.717,
+      "end": 24.81
+    },
+    {
+      "word": "durch",
+      "start": 24.961,
+      "end": 25.147
+    },
+    {
+      "word": "gemeinsame",
+      "start": 25.193,
+      "end": 25.716
+    },
+    {
+      "word": "Erfahrungen.",
+      "start": 25.751,
+      "end": 26.703
+    }
+  ],
+  "06-verification-party": [
+    {
+      "word": "Marco",
+      "start": 0,
+      "end": 0.395
+    },
+    {
+      "word": "ist",
+      "start": 0.441,
+      "end": 0.557
+    },
+    {
+      "word": "begeistert.",
+      "start": 0.604,
+      "end": 1.347
+    },
+    {
+      "word": "Er",
+      "start": 1.672,
+      "end": 1.776
+    },
+    {
+      "word": "lädt",
+      "start": 1.811,
+      "end": 1.985
+    },
+    {
+      "word": "die",
+      "start": 2.009,
+      "end": 2.078
+    },
+    {
+      "word": "ganze",
+      "start": 2.113,
+      "end": 2.392
+    },
+    {
+      "word": "Nachbarschaft",
+      "start": 2.438,
+      "end": 2.984
+    },
+    {
+      "word": "ein",
+      "start": 3.042,
+      "end": 3.239
+    },
+    {
+      "word": "—",
+      "start": 3.448,
+      "end": 3.518
+    },
+    {
+      "word": "zur",
+      "start": 3.796,
+      "end": 3.971
+    },
+    {
+      "word": "Verification",
+      "start": 4.017,
+      "end": 4.795
+    },
+    {
+      "word": "Party!",
+      "start": 4.853,
+      "end": 5.422
+    },
+    {
+      "word": "Alle",
+      "start": 6.118,
+      "end": 6.362
+    },
+    {
+      "word": "kommen",
+      "start": 6.42,
+      "end": 6.653
+    },
+    {
+      "word": "zusammen,",
+      "start": 6.699,
+      "end": 7.279
+    },
+    {
+      "word": "installieren",
+      "start": 7.488,
+      "end": 8.069
+    },
+    {
+      "word": "die",
+      "start": 8.104,
+      "end": 8.185
+    },
+    {
+      "word": "App",
+      "start": 8.231,
+      "end": 8.44
+    },
+    {
+      "word": "und",
+      "start": 8.615,
+      "end": 8.766
+    },
+    {
+      "word": "verifizieren",
+      "start": 8.812,
+      "end": 9.485
+    },
+    {
+      "word": "sich",
+      "start": 9.52,
+      "end": 9.636
+    },
+    {
+      "word": "gegenseitig.",
+      "start": 9.683,
+      "end": 10.495
+    },
+    {
+      "word": "Jeder",
+      "start": 11.099,
+      "end": 11.424
+    },
+    {
+      "word": "zeigt",
+      "start": 11.494,
+      "end": 11.761
+    },
+    {
+      "word": "seinen",
+      "start": 11.784,
+      "end": 11.993
+    },
+    {
+      "word": "QR-Code,",
+      "start": 12.051,
+      "end": 12.817
+    },
+    {
+      "word": "der",
+      "start": 12.968,
+      "end": 13.084
+    },
+    {
+      "word": "Nächste",
+      "start": 13.142,
+      "end": 13.468
+    },
+    {
+      "word": "scannt.",
+      "start": 13.502,
+      "end": 14.071
+    },
+    {
+      "word": "Nach",
+      "start": 14.768,
+      "end": 14.965
+    },
+    {
+      "word": "20",
+      "start": 15.012,
+      "end": 15.395
+    },
+    {
+      "word": "Minuten",
+      "start": 15.476,
+      "end": 15.882
+    },
+    {
+      "word": "hat",
+      "start": 15.963,
+      "end": 16.103
+    },
+    {
+      "word": "jeder",
+      "start": 16.195,
+      "end": 16.486
+    },
+    {
+      "word": "eine",
+      "start": 16.544,
+      "end": 16.718
+    },
+    {
+      "word": "volle",
+      "start": 16.788,
+      "end": 17.043
+    },
+    {
+      "word": "Kontaktliste.",
+      "start": 17.101,
+      "end": 18.076
+    },
+    {
+      "word": "Und",
+      "start": 18.459,
+      "end": 18.599
+    },
+    {
+      "word": "plötzlich",
+      "start": 18.634,
+      "end": 19.052
+    },
+    {
+      "word": "sieht",
+      "start": 19.086,
+      "end": 19.249
+    },
+    {
+      "word": "jeder",
+      "start": 19.33,
+      "end": 19.574
+    },
+    {
+      "word": "was",
+      "start": 19.609,
+      "end": 19.748
+    },
+    {
+      "word": "die",
+      "start": 19.795,
+      "end": 19.864
+    },
+    {
+      "word": "anderen",
+      "start": 19.922,
+      "end": 20.247
+    },
+    {
+      "word": "anzubieten",
+      "start": 20.305,
+      "end": 20.839
+    },
+    {
+      "word": "und",
+      "start": 20.921,
+      "end": 21.014
+    },
+    {
+      "word": "zu",
+      "start": 21.048,
+      "end": 21.13
+    },
+    {
+      "word": "teilen",
+      "start": 21.188,
+      "end": 21.49
+    },
+    {
+      "word": "haben.",
+      "start": 21.536,
+      "end": 22.151
+    }
+  ],
+  "07-community": [
+    {
+      "word": "Und",
+      "start": 0,
+      "end": 0.174
+    },
+    {
+      "word": "dann",
+      "start": 0.209,
+      "end": 0.395
+    },
+    {
+      "word": "passiert",
+      "start": 0.453,
+      "end": 0.789
+    },
+    {
+      "word": "etwas",
+      "start": 0.836,
+      "end": 1.068
+    },
+    {
+      "word": "Wunderbares.",
+      "start": 1.138,
+      "end": 2.078
+    },
+    {
+      "word": "Die",
+      "start": 2.357,
+      "end": 2.485
+    },
+    {
+      "word": "Nachbarn",
+      "start": 2.531,
+      "end": 2.926
+    },
+    {
+      "word": "fangen",
+      "start": 2.984,
+      "end": 3.228
+    },
+    {
+      "word": "an,",
+      "start": 3.297,
+      "end": 3.564
+    },
+    {
+      "word": "Dinge",
+      "start": 3.611,
+      "end": 3.866
+    },
+    {
+      "word": "füreinander",
+      "start": 3.913,
+      "end": 4.412
+    },
+    {
+      "word": "zu",
+      "start": 4.47,
+      "end": 4.574
+    },
+    {
+      "word": "tun.",
+      "start": 4.632,
+      "end": 5.166
+    },
+    {
+      "word": "Sabine",
+      "start": 5.863,
+      "end": 6.316
+    },
+    {
+      "word": "gibt",
+      "start": 6.362,
+      "end": 6.548
+    },
+    {
+      "word": "Yukis",
+      "start": 6.594,
+      "end": 6.885
+    },
+    {
+      "word": "Tochter",
+      "start": 6.954,
+      "end": 7.256
+    },
+    {
+      "word": "Klavierunterricht.",
+      "start": 7.303,
+      "end": 8.382
+    },
+    {
+      "word": "Thomas",
+      "start": 8.661,
+      "end": 8.998
+    },
+    {
+      "word": "repariert",
+      "start": 9.056,
+      "end": 9.497
+    },
+    {
+      "word": "Lisas",
+      "start": 9.543,
+      "end": 9.81
+    },
+    {
+      "word": "Fahrrad.",
+      "start": 9.88,
+      "end": 10.519
+    },
+    {
+      "word": "Und",
+      "start": 10.902,
+      "end": 11.053
+    },
+    {
+      "word": "nach",
+      "start": 11.099,
+      "end": 11.238
+    },
+    {
+      "word": "jedem",
+      "start": 11.297,
+      "end": 11.529
+    },
+    {
+      "word": "Gefallen",
+      "start": 11.587,
+      "end": 12.063
+    },
+    {
+      "word": "hagelt",
+      "start": 12.237,
+      "end": 12.608
+    },
+    {
+      "word": "es",
+      "start": 12.655,
+      "end": 12.725
+    },
+    {
+      "word": "Attestations.",
+      "start": 12.806,
+      "end": 13.886
+    },
+    {
+      "word": "Thomas",
+      "start": 14.489,
+      "end": 14.838
+    },
+    {
+      "word": "schreibt",
+      "start": 14.861,
+      "end": 15.174
+    },
+    {
+      "word": "über",
+      "start": 15.209,
+      "end": 15.349
+    },
+    {
+      "word": "Sabine:",
+      "start": 15.383,
+      "end": 16.057
+    },
+    {
+      "word": "Beste",
+      "start": 16.301,
+      "end": 16.684
+    },
+    {
+      "word": "Klavierlehrerin.",
+      "start": 16.73,
+      "end": 17.775
+    },
+    {
+      "word": "Yuki",
+      "start": 18.216,
+      "end": 18.495
+    },
+    {
+      "word": "bestätigt",
+      "start": 18.541,
+      "end": 19.064
+    },
+    {
+      "word": "Lisa:",
+      "start": 19.122,
+      "end": 19.679
+    },
+    {
+      "word": "Organisiert",
+      "start": 20.283,
+      "end": 21.026
+    },
+    {
+      "word": "fantastische",
+      "start": 21.084,
+      "end": 21.734
+    },
+    {
+      "word": "Nachbarschaftstreffen.",
+      "start": 21.792,
+      "end": 22.965
+    },
+    {
+      "word": "Jedes",
+      "start": 23.348,
+      "end": 23.685
+    },
+    {
+      "word": "Profil",
+      "start": 23.743,
+      "end": 24.126
+    },
+    {
+      "word": "füllt",
+      "start": 24.195,
+      "end": 24.416
+    },
+    {
+      "word": "sich",
+      "start": 24.451,
+      "end": 24.59
+    },
+    {
+      "word": "mit",
+      "start": 24.637,
+      "end": 24.753
+    },
+    {
+      "word": "echten",
+      "start": 24.834,
+      "end": 25.147
+    },
+    {
+      "word": "Bestätigungen",
+      "start": 25.182,
+      "end": 25.856
+    },
+    {
+      "word": "von",
+      "start": 25.902,
+      "end": 26.03
+    },
+    {
+      "word": "echten",
+      "start": 26.099,
+      "end": 26.39
+    },
+    {
+      "word": "Menschen.",
+      "start": 26.436,
+      "end": 27.028
+    },
+    {
+      "word": "Und",
+      "start": 27.353,
+      "end": 27.493
+    },
+    {
+      "word": "immer",
+      "start": 27.551,
+      "end": 27.725
+    },
+    {
+      "word": "mehr",
+      "start": 27.771,
+      "end": 27.899
+    },
+    {
+      "word": "Nachbarn",
+      "start": 27.945,
+      "end": 28.34
+    },
+    {
+      "word": "wollen",
+      "start": 28.387,
+      "end": 28.596
+    },
+    {
+      "word": "mitmachen.",
+      "start": 28.619,
+      "end": 29.443
+    }
+  ],
+  "08-outro": [
+    {
+      "word": "Das",
+      "start": 0,
+      "end": 0.313
+    },
+    {
+      "word": "ist",
+      "start": 0.372,
+      "end": 0.488
+    },
+    {
+      "word": "das",
+      "start": 0.511,
+      "end": 0.639
+    },
+    {
+      "word": "Web",
+      "start": 0.72,
+      "end": 0.894
+    },
+    {
+      "word": "of",
+      "start": 0.952,
+      "end": 1.022
+    },
+    {
+      "word": "Trust.",
+      "start": 1.091,
+      "end": 1.649
+    },
+    {
+      "word": "Echte",
+      "start": 1.974,
+      "end": 2.287
+    },
+    {
+      "word": "Verbindungen,",
+      "start": 2.345,
+      "end": 3.053
+    },
+    {
+      "word": "echtes",
+      "start": 3.17,
+      "end": 3.529
+    },
+    {
+      "word": "Vertrauen,",
+      "start": 3.576,
+      "end": 4.238
+    },
+    {
+      "word": "echte",
+      "start": 4.412,
+      "end": 4.714
+    },
+    {
+      "word": "Gemeinschaft",
+      "start": 4.748,
+      "end": 5.364
+    },
+    {
+      "word": "—",
+      "start": 5.515,
+      "end": 5.782
+    },
+    {
+      "word": "ganz",
+      "start": 5.875,
+      "end": 6.246
+    },
+    {
+      "word": "ohne",
+      "start": 6.362,
+      "end": 6.606
+    },
+    {
+      "word": "zentrale",
+      "start": 6.676,
+      "end": 7.14
+    },
+    {
+      "word": "Plattform.",
+      "start": 7.187,
+      "end": 7.86
+    },
+    {
+      "word": "Probier",
+      "start": 8.557,
+      "end": 8.916
+    },
+    {
+      "word": "die",
+      "start": 8.951,
+      "end": 9.033
+    },
+    {
+      "word": "Demo",
+      "start": 9.079,
+      "end": 9.369
+    },
+    {
+      "word": "aus",
+      "start": 9.439,
+      "end": 9.659
+    },
+    {
+      "word": "auf",
+      "start": 9.752,
+      "end": 9.892
+    },
+    {
+      "word": "web-of-trust.de",
+      "start": 9.985,
+      "end": 11.54
+    },
+    {
+      "word": "und",
+      "start": 11.923,
+      "end": 12.086
+    },
+    {
+      "word": "organisiere",
+      "start": 12.156,
+      "end": 12.748
+    },
+    {
+      "word": "deine",
+      "start": 12.794,
+      "end": 13.003
+    },
+    {
+      "word": "eigene",
+      "start": 13.061,
+      "end": 13.398
+    },
+    {
+      "word": "Verification",
+      "start": 13.456,
+      "end": 14.153
+    },
+    {
+      "word": "Party.",
+      "start": 14.211,
+      "end": 14.954
+    }
+  ]
+}

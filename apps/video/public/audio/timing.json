@@ -1,0 +1,2016 @@
+{
+  "01-intro": [
+    {
+      "word": "Web",
+      "start": 0,
+      "end": 0.255
+    },
+    {
+      "word": "of",
+      "start": 0.313,
+      "end": 0.395
+    },
+    {
+      "word": "Trust.",
+      "start": 0.453,
+      "end": 0.952
+    },
+    {
+      "word": "Eine",
+      "start": 1.289,
+      "end": 1.474
+    },
+    {
+      "word": "digitale",
+      "start": 1.509,
+      "end": 1.95
+    },
+    {
+      "word": "Infrastruktur",
+      "start": 1.997,
+      "end": 2.67
+    },
+    {
+      "word": "für",
+      "start": 2.728,
+      "end": 2.856
+    },
+    {
+      "word": "echte",
+      "start": 2.891,
+      "end": 3.1
+    },
+    {
+      "word": "Gemeinschaften.",
+      "start": 3.135,
+      "end": 3.901
+    },
+    {
+      "word": "Dezentral,",
+      "start": 4.238,
+      "end": 4.992
+    },
+    {
+      "word": "verschlüsselt,",
+      "start": 5.097,
+      "end": 5.759
+    },
+    {
+      "word": "selbstbestimmt.",
+      "start": 5.909,
+      "end": 6.827
+    }
+  ],
+  "02-problem": [
+    {
+      "word": "Stell",
+      "start": 0,
+      "end": 0.279
+    },
+    {
+      "word": "dir",
+      "start": 0.313,
+      "end": 0.406
+    },
+    {
+      "word": "eine",
+      "start": 0.441,
+      "end": 0.58
+    },
+    {
+      "word": "Alternative",
+      "start": 0.615,
+      "end": 1.173
+    },
+    {
+      "word": "zu",
+      "start": 1.231,
+      "end": 1.3
+    },
+    {
+      "word": "Social",
+      "start": 1.347,
+      "end": 1.614
+    },
+    {
+      "word": "Media",
+      "start": 1.66,
+      "end": 1.869
+    },
+    {
+      "word": "vor.",
+      "start": 1.916,
+      "end": 2.31
+    },
+    {
+      "word": "Heute",
+      "start": 2.752,
+      "end": 3.065
+    },
+    {
+      "word": "bindet",
+      "start": 3.123,
+      "end": 3.379
+    },
+    {
+      "word": "Social",
+      "start": 3.413,
+      "end": 3.692
+    },
+    {
+      "word": "Media",
+      "start": 3.738,
+      "end": 4.04
+    },
+    {
+      "word": "unsere",
+      "start": 4.145,
+      "end": 4.4
+    },
+    {
+      "word": "Aufmerksamkeit",
+      "start": 4.435,
+      "end": 5.166
+    },
+    {
+      "word": "—",
+      "start": 5.317,
+      "end": 5.503
+    },
+    {
+      "word": "besser:",
+      "start": 5.608,
+      "end": 6.084
+    },
+    {
+      "word": "sich",
+      "start": 6.269,
+      "end": 6.432
+    },
+    {
+      "word": "im",
+      "start": 6.467,
+      "end": 6.536
+    },
+    {
+      "word": "echten",
+      "start": 6.641,
+      "end": 6.931
+    },
+    {
+      "word": "Leben",
+      "start": 6.966,
+      "end": 7.175
+    },
+    {
+      "word": "verbinden.",
+      "start": 7.21,
+      "end": 7.825
+    },
+    {
+      "word": "Heute",
+      "start": 8.429,
+      "end": 8.812
+    },
+    {
+      "word": "liegen",
+      "start": 8.87,
+      "end": 9.079
+    },
+    {
+      "word": "deine",
+      "start": 9.114,
+      "end": 9.276
+    },
+    {
+      "word": "Daten",
+      "start": 9.311,
+      "end": 9.578
+    },
+    {
+      "word": "bei",
+      "start": 9.613,
+      "end": 9.718
+    },
+    {
+      "word": "Konzernen",
+      "start": 9.752,
+      "end": 10.24
+    },
+    {
+      "word": "—",
+      "start": 10.426,
+      "end": 10.693
+    },
+    {
+      "word": "besser:",
+      "start": 10.751,
+      "end": 11.238
+    },
+    {
+      "word": "deine",
+      "start": 11.389,
+      "end": 11.575
+    },
+    {
+      "word": "Daten",
+      "start": 11.61,
+      "end": 11.889
+    },
+    {
+      "word": "liegen",
+      "start": 11.935,
+      "end": 12.121
+    },
+    {
+      "word": "bei",
+      "start": 12.156,
+      "end": 12.249
+    },
+    {
+      "word": "dir.",
+      "start": 12.295,
+      "end": 12.713
+    },
+    {
+      "word": "Heute",
+      "start": 13.317,
+      "end": 13.642
+    },
+    {
+      "word": "entsteht",
+      "start": 13.677,
+      "end": 13.955
+    },
+    {
+      "word": "Vertrauen",
+      "start": 14.002,
+      "end": 14.42
+    },
+    {
+      "word": "durch",
+      "start": 14.455,
+      "end": 14.629
+    },
+    {
+      "word": "Likes",
+      "start": 14.698,
+      "end": 14.954
+    },
+    {
+      "word": "und",
+      "start": 15.012,
+      "end": 15.093
+    },
+    {
+      "word": "Sterne",
+      "start": 15.128,
+      "end": 15.476
+    },
+    {
+      "word": "—",
+      "start": 15.627,
+      "end": 15.778
+    },
+    {
+      "word": "besser:",
+      "start": 15.848,
+      "end": 16.37
+    },
+    {
+      "word": "durch",
+      "start": 16.498,
+      "end": 16.684
+    },
+    {
+      "word": "echte",
+      "start": 16.753,
+      "end": 16.974
+    },
+    {
+      "word": "Begegnungen.",
+      "start": 17.009,
+      "end": 17.729
+    },
+    {
+      "word": "Heute",
+      "start": 18.332,
+      "end": 18.576
+    },
+    {
+      "word": "erstellst",
+      "start": 18.611,
+      "end": 18.924
+    },
+    {
+      "word": "du",
+      "start": 18.948,
+      "end": 19.017
+    },
+    {
+      "word": "deinen",
+      "start": 19.064,
+      "end": 19.261
+    },
+    {
+      "word": "Account",
+      "start": 19.296,
+      "end": 19.563
+    },
+    {
+      "word": "alleine",
+      "start": 19.598,
+      "end": 19.865
+    },
+    {
+      "word": "am",
+      "start": 19.9,
+      "end": 19.958
+    },
+    {
+      "word": "Bildschirm",
+      "start": 19.992,
+      "end": 20.364
+    },
+    {
+      "word": "—",
+      "start": 20.55,
+      "end": 20.759
+    },
+    {
+      "word": "besser:",
+      "start": 20.875,
+      "end": 21.316
+    },
+    {
+      "word": "deine",
+      "start": 21.421,
+      "end": 21.595
+    },
+    {
+      "word": "Freunde",
+      "start": 21.641,
+      "end": 21.931
+    },
+    {
+      "word": "bringen",
+      "start": 21.966,
+      "end": 22.187
+    },
+    {
+      "word": "dich",
+      "start": 22.21,
+      "end": 22.314
+    },
+    {
+      "word": "rein.",
+      "start": 22.349,
+      "end": 22.79
+    },
+    {
+      "word": "Und",
+      "start": 23.174,
+      "end": 23.313
+    },
+    {
+      "word": "heute",
+      "start": 23.359,
+      "end": 23.568
+    },
+    {
+      "word": "bist",
+      "start": 23.603,
+      "end": 23.743
+    },
+    {
+      "word": "du",
+      "start": 23.766,
+      "end": 23.824
+    },
+    {
+      "word": "abhängig",
+      "start": 23.882,
+      "end": 24.195
+    },
+    {
+      "word": "von",
+      "start": 24.23,
+      "end": 24.358
+    },
+    {
+      "word": "Servern",
+      "start": 24.393,
+      "end": 24.695
+    },
+    {
+      "word": "und",
+      "start": 24.741,
+      "end": 24.822
+    },
+    {
+      "word": "Empfang",
+      "start": 24.869,
+      "end": 25.182
+    },
+    {
+      "word": "—",
+      "start": 25.368,
+      "end": 25.472
+    },
+    {
+      "word": "besser:",
+      "start": 25.588,
+      "end": 26.076
+    },
+    {
+      "word": "es",
+      "start": 26.285,
+      "end": 26.424
+    },
+    {
+      "word": "funktioniert",
+      "start": 26.471,
+      "end": 26.912
+    },
+    {
+      "word": "auch",
+      "start": 26.947,
+      "end": 27.063
+    },
+    {
+      "word": "ohne",
+      "start": 27.121,
+      "end": 27.272
+    },
+    {
+      "word": "Internet.",
+      "start": 27.318,
+      "end": 28.003
+    }
+  ],
+  "03-pillars": [
+    {
+      "word": "Drei",
+      "start": 0,
+      "end": 0.29
+    },
+    {
+      "word": "Säulen",
+      "start": 0.36,
+      "end": 0.685
+    },
+    {
+      "word": "tragen",
+      "start": 0.72,
+      "end": 0.987
+    },
+    {
+      "word": "das",
+      "start": 1.01,
+      "end": 1.103
+    },
+    {
+      "word": "Netzwerk.",
+      "start": 1.161,
+      "end": 1.73
+    },
+    {
+      "word": "Verbinden:",
+      "start": 2.113,
+      "end": 2.752
+    },
+    {
+      "word": "Jede",
+      "start": 3.355,
+      "end": 3.587
+    },
+    {
+      "word": "Beziehung",
+      "start": 3.634,
+      "end": 4.075
+    },
+    {
+      "word": "beginnt",
+      "start": 4.133,
+      "end": 4.423
+    },
+    {
+      "word": "mit",
+      "start": 4.458,
+      "end": 4.563
+    },
+    {
+      "word": "einer",
+      "start": 4.609,
+      "end": 4.772
+    },
+    {
+      "word": "echten",
+      "start": 4.818,
+      "end": 5.074
+    },
+    {
+      "word": "Begegnung.",
+      "start": 5.108,
+      "end": 5.735
+    },
+    {
+      "word": "Per",
+      "start": 6.118,
+      "end": 6.281
+    },
+    {
+      "word": "QR-Code",
+      "start": 6.339,
+      "end": 6.92
+    },
+    {
+      "word": "bestätigst",
+      "start": 6.943,
+      "end": 7.419
+    },
+    {
+      "word": "du",
+      "start": 7.442,
+      "end": 7.581
+    },
+    {
+      "word": "—",
+      "start": 7.732,
+      "end": 7.906
+    },
+    {
+      "word": "das",
+      "start": 8.092,
+      "end": 8.29
+    },
+    {
+      "word": "ist",
+      "start": 8.336,
+      "end": 8.44
+    },
+    {
+      "word": "wirklich",
+      "start": 8.487,
+      "end": 8.754
+    },
+    {
+      "word": "diese",
+      "start": 8.789,
+      "end": 8.951
+    },
+    {
+      "word": "Person.",
+      "start": 8.986,
+      "end": 9.497
+    },
+    {
+      "word": "Kooperieren:",
+      "start": 9.938,
+      "end": 10.751
+    },
+    {
+      "word": "Gemeinsam",
+      "start": 11.029,
+      "end": 11.505
+    },
+    {
+      "word": "planen",
+      "start": 11.552,
+      "end": 11.889
+    },
+    {
+      "word": "und",
+      "start": 11.935,
+      "end": 12.016
+    },
+    {
+      "word": "handeln,",
+      "start": 12.063,
+      "end": 12.527
+    },
+    {
+      "word": "mit",
+      "start": 12.585,
+      "end": 12.713
+    },
+    {
+      "word": "Kalender,",
+      "start": 12.748,
+      "end": 13.224
+    },
+    {
+      "word": "Karte",
+      "start": 13.293,
+      "end": 13.688
+    },
+    {
+      "word": "und",
+      "start": 13.769,
+      "end": 13.862
+    },
+    {
+      "word": "Marktplatz",
+      "start": 13.909,
+      "end": 14.396
+    },
+    {
+      "word": "—",
+      "start": 14.605,
+      "end": 14.721
+    },
+    {
+      "word": "alles",
+      "start": 15,
+      "end": 15.325
+    },
+    {
+      "word": "Ende-zu-Ende",
+      "start": 15.453,
+      "end": 16.068
+    },
+    {
+      "word": "verschlüsselt.",
+      "start": 16.103,
+      "end": 16.73
+    },
+    {
+      "word": "Bestätigen:",
+      "start": 17.067,
+      "end": 17.717
+    },
+    {
+      "word": "Echte",
+      "start": 18.053,
+      "end": 18.332
+    },
+    {
+      "word": "Taten",
+      "start": 18.379,
+      "end": 18.715
+    },
+    {
+      "word": "und",
+      "start": 18.796,
+      "end": 18.901
+    },
+    {
+      "word": "Hilfe",
+      "start": 18.936,
+      "end": 19.145
+    },
+    {
+      "word": "anerkennen.",
+      "start": 19.191,
+      "end": 19.737
+    },
+    {
+      "word": "Diese",
+      "start": 20.259,
+      "end": 20.468
+    },
+    {
+      "word": "Bestätigungen",
+      "start": 20.503,
+      "end": 21.084
+    },
+    {
+      "word": "bauen",
+      "start": 21.13,
+      "end": 21.351
+    },
+    {
+      "word": "über",
+      "start": 21.409,
+      "end": 21.548
+    },
+    {
+      "word": "Zeit",
+      "start": 21.606,
+      "end": 21.838
+    },
+    {
+      "word": "sichtbares",
+      "start": 21.873,
+      "end": 22.291
+    },
+    {
+      "word": "Vertrauen",
+      "start": 22.326,
+      "end": 22.686
+    },
+    {
+      "word": "auf.",
+      "start": 22.744,
+      "end": 23.266
+    }
+  ],
+  "04-howitworks": [
+    {
+      "word": "So",
+      "start": 0,
+      "end": 0.197
+    },
+    {
+      "word": "funktioniert",
+      "start": 0.244,
+      "end": 0.708
+    },
+    {
+      "word": "es",
+      "start": 0.778,
+      "end": 0.894
+    },
+    {
+      "word": "—",
+      "start": 1.08,
+      "end": 1.219
+    },
+    {
+      "word": "vom",
+      "start": 1.289,
+      "end": 1.44
+    },
+    {
+      "word": "ersten",
+      "start": 1.521,
+      "end": 1.846
+    },
+    {
+      "word": "Treffen",
+      "start": 1.881,
+      "end": 2.229
+    },
+    {
+      "word": "bis",
+      "start": 2.38,
+      "end": 2.543
+    },
+    {
+      "word": "zur",
+      "start": 2.601,
+      "end": 2.705
+    },
+    {
+      "word": "ersten",
+      "start": 2.752,
+      "end": 3.053
+    },
+    {
+      "word": "Bestätigung.",
+      "start": 3.088,
+      "end": 3.82
+    },
+    {
+      "word": "Schritt",
+      "start": 4.342,
+      "end": 4.586
+    },
+    {
+      "word": "eins:",
+      "start": 4.644,
+      "end": 5.132
+    },
+    {
+      "word": "Anna",
+      "start": 5.468,
+      "end": 5.7
+    },
+    {
+      "word": "und",
+      "start": 5.747,
+      "end": 5.84
+    },
+    {
+      "word": "Ben",
+      "start": 5.875,
+      "end": 6.037
+    },
+    {
+      "word": "treffen",
+      "start": 6.084,
+      "end": 6.374
+    },
+    {
+      "word": "sich.",
+      "start": 6.409,
+      "end": 6.711
+    },
+    {
+      "word": "Ben",
+      "start": 7.233,
+      "end": 7.465
+    },
+    {
+      "word": "scannt",
+      "start": 7.546,
+      "end": 7.814
+    },
+    {
+      "word": "Annas",
+      "start": 7.86,
+      "end": 8.057
+    },
+    {
+      "word": "QR-Code.",
+      "start": 8.104,
+      "end": 8.742
+    },
+    {
+      "word": "Der",
+      "start": 9.021,
+      "end": 9.137
+    },
+    {
+      "word": "Code",
+      "start": 9.183,
+      "end": 9.416
+    },
+    {
+      "word": "enthält",
+      "start": 9.439,
+      "end": 9.706
+    },
+    {
+      "word": "ihre",
+      "start": 9.741,
+      "end": 9.892
+    },
+    {
+      "word": "digitale",
+      "start": 9.927,
+      "end": 10.368
+    },
+    {
+      "word": "Identität.",
+      "start": 10.403,
+      "end": 11.088
+    },
+    {
+      "word": "Schritt",
+      "start": 11.471,
+      "end": 11.714
+    },
+    {
+      "word": "zwei:",
+      "start": 11.761,
+      "end": 12.249
+    },
+    {
+      "word": "Ben",
+      "start": 12.771,
+      "end": 12.968
+    },
+    {
+      "word": "bestätigt",
+      "start": 13.015,
+      "end": 13.514
+    },
+    {
+      "word": "—",
+      "start": 13.642,
+      "end": 13.7
+    },
+    {
+      "word": "ich",
+      "start": 14.036,
+      "end": 14.187
+    },
+    {
+      "word": "habe",
+      "start": 14.222,
+      "end": 14.373
+    },
+    {
+      "word": "Anna",
+      "start": 14.408,
+      "end": 14.559
+    },
+    {
+      "word": "persönlich",
+      "start": 14.605,
+      "end": 15.035
+    },
+    {
+      "word": "getroffen.",
+      "start": 15.07,
+      "end": 15.604
+    },
+    {
+      "word": "Diese",
+      "start": 15.987,
+      "end": 16.219
+    },
+    {
+      "word": "Bestätigung",
+      "start": 16.254,
+      "end": 16.73
+    },
+    {
+      "word": "wird",
+      "start": 16.788,
+      "end": 16.904
+    },
+    {
+      "word": "digital",
+      "start": 16.927,
+      "end": 17.287
+    },
+    {
+      "word": "signiert",
+      "start": 17.322,
+      "end": 17.74
+    },
+    {
+      "word": "und",
+      "start": 17.949,
+      "end": 18.088
+    },
+    {
+      "word": "sicher",
+      "start": 18.123,
+      "end": 18.332
+    },
+    {
+      "word": "gespeichert.",
+      "start": 18.367,
+      "end": 18.982
+    },
+    {
+      "word": "Schritt",
+      "start": 19.261,
+      "end": 19.493
+    },
+    {
+      "word": "drei:",
+      "start": 19.516,
+      "end": 20.004
+    },
+    {
+      "word": "Jetzt",
+      "start": 20.445,
+      "end": 20.712
+    },
+    {
+      "word": "können",
+      "start": 20.759,
+      "end": 20.956
+    },
+    {
+      "word": "sie",
+      "start": 20.991,
+      "end": 21.072
+    },
+    {
+      "word": "zusammenarbeiten.",
+      "start": 21.118,
+      "end": 21.978
+    },
+    {
+      "word": "Kalender,",
+      "start": 22.314,
+      "end": 22.86
+    },
+    {
+      "word": "Karten-Markierungen,",
+      "start": 22.988,
+      "end": 23.916
+    },
+    {
+      "word": "Projekte",
+      "start": 23.998,
+      "end": 24.451
+    },
+    {
+      "word": "—",
+      "start": 24.636,
+      "end": 24.95
+    },
+    {
+      "word": "verschlüsselt",
+      "start": 25.077,
+      "end": 25.553
+    },
+    {
+      "word": "nur",
+      "start": 25.612,
+      "end": 25.809
+    },
+    {
+      "word": "für",
+      "start": 25.855,
+      "end": 25.971
+    },
+    {
+      "word": "sie",
+      "start": 25.995,
+      "end": 26.215
+    },
+    {
+      "word": "und",
+      "start": 26.343,
+      "end": 26.494
+    },
+    {
+      "word": "die",
+      "start": 26.517,
+      "end": 26.598
+    },
+    {
+      "word": "Menschen",
+      "start": 26.633,
+      "end": 26.958
+    },
+    {
+      "word": "denen",
+      "start": 27.086,
+      "end": 27.33
+    },
+    {
+      "word": "sie",
+      "start": 27.365,
+      "end": 27.446
+    },
+    {
+      "word": "vertrauen.",
+      "start": 27.481,
+      "end": 28.05
+    },
+    {
+      "word": "Schritt",
+      "start": 28.874,
+      "end": 29.118
+    },
+    {
+      "word": "vier:",
+      "start": 29.176,
+      "end": 29.594
+    },
+    {
+      "word": "Nach",
+      "start": 29.977,
+      "end": 30.151
+    },
+    {
+      "word": "gemeinsamer",
+      "start": 30.186,
+      "end": 30.604
+    },
+    {
+      "word": "Arbeit",
+      "start": 30.651,
+      "end": 30.918
+    },
+    {
+      "word": "bestätigt",
+      "start": 30.953,
+      "end": 31.382
+    },
+    {
+      "word": "Anna",
+      "start": 31.429,
+      "end": 31.568
+    },
+    {
+      "word": "Bens",
+      "start": 31.614,
+      "end": 31.777
+    },
+    {
+      "word": "Beitrag.",
+      "start": 31.823,
+      "end": 32.369
+    },
+    {
+      "word": "Ben",
+      "start": 32.891,
+      "end": 33.077
+    },
+    {
+      "word": "hat",
+      "start": 33.124,
+      "end": 33.24
+    },
+    {
+      "word": "drei",
+      "start": 33.263,
+      "end": 33.46
+    },
+    {
+      "word": "Stunden",
+      "start": 33.495,
+      "end": 33.762
+    },
+    {
+      "word": "im",
+      "start": 33.785,
+      "end": 33.843
+    },
+    {
+      "word": "Garten",
+      "start": 33.89,
+      "end": 34.11
+    },
+    {
+      "word": "geholfen",
+      "start": 34.145,
+      "end": 34.517
+    },
+    {
+      "word": "—",
+      "start": 34.668,
+      "end": 34.749
+    },
+    {
+      "word": "das",
+      "start": 34.958,
+      "end": 35.144
+    },
+    {
+      "word": "wird",
+      "start": 35.202,
+      "end": 35.341
+    },
+    {
+      "word": "Teil",
+      "start": 35.364,
+      "end": 35.538
+    },
+    {
+      "word": "seines",
+      "start": 35.573,
+      "end": 35.771
+    },
+    {
+      "word": "Profils.",
+      "start": 35.806,
+      "end": 36.549
+    }
+  ],
+  "05-apps": [
+    {
+      "word": "Auf",
+      "start": 0,
+      "end": 0.139
+    },
+    {
+      "word": "dieser",
+      "start": 0.186,
+      "end": 0.383
+    },
+    {
+      "word": "Vertrauensebene",
+      "start": 0.418,
+      "end": 1.242
+    },
+    {
+      "word": "bauen",
+      "start": 1.37,
+      "end": 1.614
+    },
+    {
+      "word": "verschiedene",
+      "start": 1.649,
+      "end": 2.067
+    },
+    {
+      "word": "Apps",
+      "start": 2.101,
+      "end": 2.287
+    },
+    {
+      "word": "auf.",
+      "start": 2.334,
+      "end": 2.74
+    },
+    {
+      "word": "Die",
+      "start": 3.077,
+      "end": 3.181
+    },
+    {
+      "word": "Karte:",
+      "start": 3.216,
+      "end": 3.762
+    },
+    {
+      "word": "Finde",
+      "start": 3.913,
+      "end": 4.156
+    },
+    {
+      "word": "Menschen,",
+      "start": 4.203,
+      "end": 4.667
+    },
+    {
+      "word": "Orte",
+      "start": 4.818,
+      "end": 5.12
+    },
+    {
+      "word": "und",
+      "start": 5.178,
+      "end": 5.271
+    },
+    {
+      "word": "Angebote",
+      "start": 5.329,
+      "end": 5.759
+    },
+    {
+      "word": "in",
+      "start": 5.793,
+      "end": 5.851
+    },
+    {
+      "word": "deiner",
+      "start": 5.886,
+      "end": 6.084
+    },
+    {
+      "word": "Nähe.",
+      "start": 6.118,
+      "end": 6.536
+    },
+    {
+      "word": "Der",
+      "start": 7.14,
+      "end": 7.256
+    },
+    {
+      "word": "Kalender:",
+      "start": 7.291,
+      "end": 7.825
+    },
+    {
+      "word": "Plane",
+      "start": 8.069,
+      "end": 8.371
+    },
+    {
+      "word": "gemeinsame",
+      "start": 8.406,
+      "end": 8.858
+    },
+    {
+      "word": "Aktionen",
+      "start": 8.893,
+      "end": 9.369
+    },
+    {
+      "word": "und",
+      "start": 9.613,
+      "end": 9.741
+    },
+    {
+      "word": "lade",
+      "start": 9.787,
+      "end": 10.019
+    },
+    {
+      "word": "zu",
+      "start": 10.077,
+      "end": 10.159
+    },
+    {
+      "word": "Events",
+      "start": 10.205,
+      "end": 10.449
+    },
+    {
+      "word": "ein.",
+      "start": 10.484,
+      "end": 10.879
+    },
+    {
+      "word": "Der",
+      "start": 11.32,
+      "end": 11.436
+    },
+    {
+      "word": "Marktplatz:",
+      "start": 11.471,
+      "end": 12.179
+    },
+    {
+      "word": "Teile",
+      "start": 12.458,
+      "end": 12.736
+    },
+    {
+      "word": "Angebote",
+      "start": 12.783,
+      "end": 13.201
+    },
+    {
+      "word": "und",
+      "start": 13.247,
+      "end": 13.328
+    },
+    {
+      "word": "Gesuche",
+      "start": 13.363,
+      "end": 13.816
+    },
+    {
+      "word": "mit",
+      "start": 13.92,
+      "end": 14.071
+    },
+    {
+      "word": "Menschen",
+      "start": 14.117,
+      "end": 14.408
+    },
+    {
+      "word": "denen",
+      "start": 14.466,
+      "end": 14.675
+    },
+    {
+      "word": "du",
+      "start": 14.698,
+      "end": 14.768
+    },
+    {
+      "word": "vertraust.",
+      "start": 14.802,
+      "end": 15.464
+    },
+    {
+      "word": "Und",
+      "start": 15.847,
+      "end": 15.975
+    },
+    {
+      "word": "Wertschätzung:",
+      "start": 16.01,
+      "end": 16.683
+    },
+    {
+      "word": "Verschenke",
+      "start": 17.02,
+      "end": 17.391
+    },
+    {
+      "word": "Zeit,",
+      "start": 17.45,
+      "end": 17.867
+    },
+    {
+      "word": "Hilfe",
+      "start": 18.018,
+      "end": 18.413
+    },
+    {
+      "word": "oder",
+      "start": 18.622,
+      "end": 18.808
+    },
+    {
+      "word": "ein",
+      "start": 18.843,
+      "end": 18.912
+    },
+    {
+      "word": "Dankeschön.",
+      "start": 18.959,
+      "end": 19.551
+    },
+    {
+      "word": "Alles",
+      "start": 20.073,
+      "end": 20.329
+    },
+    {
+      "word": "gebaut",
+      "start": 20.375,
+      "end": 20.677
+    },
+    {
+      "word": "auf",
+      "start": 20.735,
+      "end": 20.816
+    },
+    {
+      "word": "dem",
+      "start": 20.851,
+      "end": 20.956
+    },
+    {
+      "word": "Real",
+      "start": 21.014,
+      "end": 21.176
+    },
+    {
+      "word": "Life",
+      "start": 21.211,
+      "end": 21.397
+    },
+    {
+      "word": "Stack",
+      "start": 21.42,
+      "end": 21.629
+    },
+    {
+      "word": "—",
+      "start": 21.78,
+      "end": 21.873
+    },
+    {
+      "word": "Open",
+      "start": 22.059,
+      "end": 22.279
+    },
+    {
+      "word": "Source.",
+      "start": 22.314,
+      "end": 22.941
+    }
+  ],
+  "06-principles": [
+    {
+      "word": "Die",
+      "start": 0,
+      "end": 0.163
+    },
+    {
+      "word": "Prinzipien",
+      "start": 0.197,
+      "end": 0.731
+    },
+    {
+      "word": "hinter",
+      "start": 0.789,
+      "end": 0.987
+    },
+    {
+      "word": "Web",
+      "start": 1.022,
+      "end": 1.184
+    },
+    {
+      "word": "of",
+      "start": 1.242,
+      "end": 1.324
+    },
+    {
+      "word": "Trust.",
+      "start": 1.382,
+      "end": 1.869
+    },
+    {
+      "word": "Daten",
+      "start": 2.392,
+      "end": 2.705
+    },
+    {
+      "word": "bei",
+      "start": 2.74,
+      "end": 2.833
+    },
+    {
+      "word": "dir:",
+      "start": 2.868,
+      "end": 3.216
+    },
+    {
+      "word": "Alles",
+      "start": 3.495,
+      "end": 3.773
+    },
+    {
+      "word": "liegt",
+      "start": 3.831,
+      "end": 4.005
+    },
+    {
+      "word": "verschlüsselt",
+      "start": 4.04,
+      "end": 4.505
+    },
+    {
+      "word": "auf",
+      "start": 4.54,
+      "end": 4.621
+    },
+    {
+      "word": "deinem",
+      "start": 4.667,
+      "end": 4.853
+    },
+    {
+      "word": "Gerät.",
+      "start": 4.888,
+      "end": 5.399
+    },
+    {
+      "word": "Echte",
+      "start": 5.921,
+      "end": 6.2
+    },
+    {
+      "word": "Begegnungen:",
+      "start": 6.246,
+      "end": 6.908
+    },
+    {
+      "word": "Jede",
+      "start": 7.349,
+      "end": 7.605
+    },
+    {
+      "word": "Verbindung",
+      "start": 7.651,
+      "end": 8.092
+    },
+    {
+      "word": "basiert",
+      "start": 8.127,
+      "end": 8.417
+    },
+    {
+      "word": "auf",
+      "start": 8.452,
+      "end": 8.522
+    },
+    {
+      "word": "einem",
+      "start": 8.58,
+      "end": 8.731
+    },
+    {
+      "word": "persönlichen",
+      "start": 8.766,
+      "end": 9.265
+    },
+    {
+      "word": "Treffen.",
+      "start": 9.3,
+      "end": 9.81
+    },
+    {
+      "word": "Das",
+      "start": 10.089,
+      "end": 10.263
+    },
+    {
+      "word": "verhindert",
+      "start": 10.31,
+      "end": 10.646
+    },
+    {
+      "word": "Fake-Accounts",
+      "start": 10.704,
+      "end": 11.262
+    },
+    {
+      "word": "und",
+      "start": 11.308,
+      "end": 11.389
+    },
+    {
+      "word": "Spam.",
+      "start": 11.424,
+      "end": 11.923
+    },
+    {
+      "word": "Funktioniert",
+      "start": 12.307,
+      "end": 12.783
+    },
+    {
+      "word": "offline:",
+      "start": 12.829,
+      "end": 13.317
+    },
+    {
+      "word": "Alles",
+      "start": 13.596,
+      "end": 13.863
+    },
+    {
+      "word": "geht",
+      "start": 13.909,
+      "end": 14.037
+    },
+    {
+      "word": "auch",
+      "start": 14.083,
+      "end": 14.199
+    },
+    {
+      "word": "ohne",
+      "start": 14.257,
+      "end": 14.42
+    },
+    {
+      "word": "Internet",
+      "start": 14.455,
+      "end": 14.791
+    },
+    {
+      "word": "—",
+      "start": 14.919,
+      "end": 14.989
+    },
+    {
+      "word": "Sync",
+      "start": 15.14,
+      "end": 15.383
+    },
+    {
+      "word": "erfolgt",
+      "start": 15.442,
+      "end": 15.72
+    },
+    {
+      "word": "später.",
+      "start": 15.743,
+      "end": 16.219
+    },
+    {
+      "word": "Open",
+      "start": 16.661,
+      "end": 16.881
+    },
+    {
+      "word": "Source:",
+      "start": 16.916,
+      "end": 17.299
+    },
+    {
+      "word": "Der",
+      "start": 17.45,
+      "end": 17.555
+    },
+    {
+      "word": "gesamte",
+      "start": 17.589,
+      "end": 17.914
+    },
+    {
+      "word": "Code",
+      "start": 17.949,
+      "end": 18.158
+    },
+    {
+      "word": "ist",
+      "start": 18.193,
+      "end": 18.309
+    },
+    {
+      "word": "öffentlich.",
+      "start": 18.356,
+      "end": 18.89
+    },
+    {
+      "word": "Du",
+      "start": 19.168,
+      "end": 19.261
+    },
+    {
+      "word": "kannst",
+      "start": 19.296,
+      "end": 19.493
+    },
+    {
+      "word": "prüfen",
+      "start": 19.528,
+      "end": 19.795
+    },
+    {
+      "word": "wie",
+      "start": 19.83,
+      "end": 19.923
+    },
+    {
+      "word": "es",
+      "start": 19.946,
+      "end": 20.004
+    },
+    {
+      "word": "funktioniert.",
+      "start": 20.039,
+      "end": 20.678
+    },
+    {
+      "word": "Du",
+      "start": 20.956,
+      "end": 21.049
+    },
+    {
+      "word": "hast",
+      "start": 21.084,
+      "end": 21.223
+    },
+    {
+      "word": "den",
+      "start": 21.247,
+      "end": 21.339
+    },
+    {
+      "word": "Schlüssel:",
+      "start": 21.374,
+      "end": 21.862
+    },
+    {
+      "word": "Deine",
+      "start": 22.14,
+      "end": 22.338
+    },
+    {
+      "word": "Identität",
+      "start": 22.373,
+      "end": 22.837
+    },
+    {
+      "word": "gehört",
+      "start": 22.884,
+      "end": 23.127
+    },
+    {
+      "word": "dir,",
+      "start": 23.162,
+      "end": 23.545
+    },
+    {
+      "word": "wiederherstellbar",
+      "start": 23.65,
+      "end": 24.37
+    },
+    {
+      "word": "per",
+      "start": 24.416,
+      "end": 24.532
+    },
+    {
+      "word": "Recovery-Phrase.",
+      "start": 24.579,
+      "end": 25.391
+    },
+    {
+      "word": "Daten",
+      "start": 25.833,
+      "end": 26.158
+    },
+    {
+      "word": "exportierbar:",
+      "start": 26.192,
+      "end": 26.877
+    },
+    {
+      "word": "Kein",
+      "start": 26.982,
+      "end": 27.214
+    },
+    {
+      "word": "Vendor-Lock-in",
+      "start": 27.261,
+      "end": 27.795
+    },
+    {
+      "word": "—",
+      "start": 27.946,
+      "end": 28.004
+    },
+    {
+      "word": "du",
+      "start": 28.189,
+      "end": 28.271
+    },
+    {
+      "word": "kannst",
+      "start": 28.305,
+      "end": 28.491
+    },
+    {
+      "word": "alles",
+      "start": 28.549,
+      "end": 28.735
+    },
+    {
+      "word": "jederzeit",
+      "start": 28.77,
+      "end": 29.107
+    },
+    {
+      "word": "mitnehmen.",
+      "start": 29.141,
+      "end": 29.606
+    },
+    {
+      "word": "Und",
+      "start": 30.047,
+      "end": 30.163
+    },
+    {
+      "word": "was",
+      "start": 30.198,
+      "end": 30.314
+    },
+    {
+      "word": "Web",
+      "start": 30.372,
+      "end": 30.511
+    },
+    {
+      "word": "of",
+      "start": 30.558,
+      "end": 30.616
+    },
+    {
+      "word": "Trust",
+      "start": 30.662,
+      "end": 30.871
+    },
+    {
+      "word": "nicht",
+      "start": 30.906,
+      "end": 31.045
+    },
+    {
+      "word": "ist:",
+      "start": 31.092,
+      "end": 31.394
+    },
+    {
+      "word": "Kein",
+      "start": 31.498,
+      "end": 31.696
+    },
+    {
+      "word": "Social",
+      "start": 31.742,
+      "end": 31.986
+    },
+    {
+      "word": "Media",
+      "start": 32.032,
+      "end": 32.23
+    },
+    {
+      "word": "zum",
+      "start": 32.276,
+      "end": 32.369
+    },
+    {
+      "word": "Scrollen,",
+      "start": 32.404,
+      "end": 32.857
+    },
+    {
+      "word": "keine",
+      "start": 32.984,
+      "end": 33.182
+    },
+    {
+      "word": "Werbung",
+      "start": 33.216,
+      "end": 33.484
+    },
+    {
+      "word": "oder",
+      "start": 33.518,
+      "end": 33.634
+    },
+    {
+      "word": "Tracking,",
+      "start": 33.669,
+      "end": 34.099
+    },
+    {
+      "word": "keine",
+      "start": 34.203,
+      "end": 34.412
+    },
+    {
+      "word": "Algorithmen",
+      "start": 34.447,
+      "end": 34.842
+    },
+    {
+      "word": "die",
+      "start": 34.865,
+      "end": 34.935
+    },
+    {
+      "word": "entscheiden",
+      "start": 34.97,
+      "end": 35.329
+    },
+    {
+      "word": "was",
+      "start": 35.353,
+      "end": 35.457
+    },
+    {
+      "word": "du",
+      "start": 35.492,
+      "end": 35.55
+    },
+    {
+      "word": "siehst,",
+      "start": 35.597,
+      "end": 35.956
+    },
+    {
+      "word": "und",
+      "start": 36.142,
+      "end": 36.247
+    },
+    {
+      "word": "keine",
+      "start": 36.282,
+      "end": 36.467
+    },
+    {
+      "word": "Blockchain",
+      "start": 36.502,
+      "end": 36.874
+    },
+    {
+      "word": "oder",
+      "start": 36.92,
+      "end": 37.048
+    },
+    {
+      "word": "Crypto-Token.",
+      "start": 37.083,
+      "end": 37.988
+    }
+  ],
+  "07-outro": [
+    {
+      "word": "Bereit",
+      "start": 0,
+      "end": 0.372
+    },
+    {
+      "word": "für",
+      "start": 0.418,
+      "end": 0.522
+    },
+    {
+      "word": "echte",
+      "start": 0.557,
+      "end": 0.755
+    },
+    {
+      "word": "Verbindungen?",
+      "start": 0.789,
+      "end": 1.405
+    },
+    {
+      "word": "Probiere",
+      "start": 1.927,
+      "end": 2.252
+    },
+    {
+      "word": "die",
+      "start": 2.287,
+      "end": 2.38
+    },
+    {
+      "word": "Demo",
+      "start": 2.415,
+      "end": 2.717
+    },
+    {
+      "word": "auf",
+      "start": 2.775,
+      "end": 2.879
+    },
+    {
+      "word": "web-of-trust.de",
+      "start": 2.949,
+      "end": 3.692
+    },
+    {
+      "word": "—",
+      "start": 3.936,
+      "end": 4.017
+    },
+    {
+      "word": "kostenlos",
+      "start": 4.226,
+      "end": 4.795
+    },
+    {
+      "word": "und",
+      "start": 4.899,
+      "end": 5.004
+    },
+    {
+      "word": "open",
+      "start": 5.062,
+      "end": 5.248
+    },
+    {
+      "word": "source.",
+      "start": 5.283,
+      "end": 5.851
+    }
+  ]
+}
