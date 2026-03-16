@@ -70,20 +70,11 @@ The system is built on swappable adapters — same interfaces, different impleme
 | **Vault** (HTTP) | Encrypted backup | Yes — stores encrypted bytes |
 | **wot-profiles** (HTTP) | Discovery | Yes — profile server |
 
-### CRDT: Yjs (default) + Automerge (option)
+### CRDT Support
 
-**Yjs is the default CRDT since March 2026.** Automerge remains available via `VITE_CRDT=automerge`.
+The project supports **Yjs** (default) and **Automerge** as swappable CRDT backends. Switch via `VITE_CRDT=automerge`.
 
-Automerge (Rust→WASM) blocks the main thread on mobile devices — 5-6 seconds for a 163KB document on Android. Yjs (pure JavaScript) solves this:
-
-| Metric | Yjs | Automerge | Speedup |
-|---|---|---|---|
-| Init (500 contacts, 1000 attestations) | 85ms | 6.4s | **76x** |
-| Batch mutation (100 ops) | 3ms | 1.9s | **632x** |
-| Serialize | 112ms | 819ms | **7x** |
-| Bundle size | 69KB | 1.7MB | **25x** |
-
-Run the benchmark yourself: [web-of-trust.de/benchmark](https://web-of-trust.de/benchmark)
+Both adapters pass the same 7 end-to-end tests. Try the [in-browser benchmark](https://web-of-trust.de/demo/benchmark) to compare performance on your device.
 
 ### Identity
 
