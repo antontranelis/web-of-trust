@@ -8,3 +8,4 @@ dist
 .env.*
 backups/
 test-results/
+apps/video/
