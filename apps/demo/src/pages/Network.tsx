@@ -251,14 +251,21 @@ export function Network() {
       }
 
       if (!ds.moved) {
-        setSelectedId(prev => prev === ds.id ? null : ds.id)
+        const wasAlreadyOpen = selectedId === ds.id
+        if (wasAlreadyOpen) {
+          // Already open → navigate to profile
+          navigate(`/p/${encodeURIComponent(ds.id)}`)
+        } else {
+          // Closed → open it
+          setSelectedId(ds.id)
+        }
       }
       dragState.current = null
     }
 
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-  }, [])
+  }, [selectedId, navigate])
 
   // Empty state
   if (nodes.length <= 1 && dimensions.width > 0) {
@@ -467,7 +474,7 @@ export function Network() {
         {/* Nodes */}
         {graph.nodes.map(node => {
           const isSelected = node.id === selectedId
-          const dimmed = !!selectedId && !isSelected
+          const dimmed = false
           const r = node.size
 
           return (
@@ -529,7 +536,7 @@ export function Network() {
                 {/* Expanded: ContactCard-style layout */}
                 {isSelected && (
                   <div className="p-4 flex items-center gap-3 h-full w-full">
-                    <div className="flex-shrink-0" onClick={e => { e.stopPropagation(); navigate(`/p/${encodeURIComponent(node.id)}`) }}>
+                    <div className="flex-shrink-0 pointer-events-none">
                       <Avatar name={node.label} avatar={node.avatar} size="sm" />
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
@@ -555,7 +562,18 @@ export function Network() {
                           </span>
                         )}
                         {node.type === 'me' && (
-                          <span>{nodes.length - 1} {t.common.contactMany}</span>
+                          <>
+                            <span className="flex items-center gap-1">
+                              <Users size={11} />
+                              {nodes.length - 1}
+                            </span>
+                            {node.attestationCount > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Award size={11} />
+                                {node.attestationCount}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
