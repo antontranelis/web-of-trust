@@ -347,7 +347,7 @@ export function SpaceDetail() {
           <h2 className="text-lg font-semibold text-foreground">
             {fmt(t.spaces.membersHeading, { count: String(space.members.length) })}
           </h2>
-          {isCreator && invitableContacts.length > 0 && (
+          {invitableContacts.length > 0 && (
             <button
               onClick={() => { setShowInviteDialog(true); setSelectedDids(new Set()); setError(null) }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"

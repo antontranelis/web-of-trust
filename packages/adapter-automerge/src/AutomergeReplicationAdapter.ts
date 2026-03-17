@@ -1076,10 +1076,17 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     const space = this.spaces.get(payload.spaceId)
     if (!space) return
 
-    // Sender must be the space creator (first member) to modify membership
-    if (envelope.fromDid !== space.info.members[0]) {
-      console.warn('[ReplicationAdapter] Rejected member-update from non-creator:', envelope.fromDid)
-      return
+    // Authorization: any member can invite (added), only creator can remove
+    if (payload.action === 'removed') {
+      if (envelope.fromDid !== space.info.members[0]) {
+        console.warn('[ReplicationAdapter] Rejected member removal from non-creator:', envelope.fromDid)
+        return
+      }
+    } else {
+      if (!space.info.members.includes(envelope.fromDid)) {
+        console.warn('[ReplicationAdapter] Rejected member-update from non-member:', envelope.fromDid)
+        return
+      }
     }
 
     const myDid = this.identity.getDid()
