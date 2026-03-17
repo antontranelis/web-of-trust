@@ -903,17 +903,19 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       if (!state) return
 
       // Authorization check: sender must have permission to modify membership
+      // Use capability check first, fall back to members[0] creator check.
+      // Fallback is needed because the receiver doesn't have the sender's capabilities
+      // stored locally (capabilities are per-identity, not shared).
       if (this.authorizationAdapter) {
         const permission = payload.action === 'added' ? 'delegate' : 'delete'
         const canAct = await this.authorizationAdapter.canAccess(
           envelope.fromDid, `wot:space:${payload.spaceId}`, permission
         )
-        if (!canAct) {
+        if (!canAct && envelope.fromDid !== state.info.members[0]) {
           console.warn('[YjsReplication] Rejected member-update — sender lacks capability:', envelope.fromDid)
           return
         }
       } else {
-        // Fallback: only creator (members[0]) can modify membership
         if (envelope.fromDid !== state.info.members[0]) {
           console.warn('[YjsReplication] Rejected member-update from non-creator:', envelope.fromDid)
           return

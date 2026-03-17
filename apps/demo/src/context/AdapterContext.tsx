@@ -224,6 +224,11 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         await spaceCompactStore.open()
         if (USE_YJS) {
           const { YjsReplicationAdapter } = await import('@real-life/adapter-yjs')
+          const { InMemoryAuthorizationAdapter } = await import('@real-life/wot-core')
+          const authAdapter = new InMemoryAuthorizationAdapter(
+            identity.getDid(),
+            identity.signJws.bind(identity)
+          )
           replicationAdapter = new YjsReplicationAdapter({
             identity,
             messaging: outboxAdapter,
@@ -231,6 +236,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             metadataStorage: spaceMetadataStorage,
             compactStore: spaceCompactStore,
             vaultUrl: VAULT_URL,
+            authorizationAdapter: authAdapter,
           })
         } else {
           const { AutomergeReplicationAdapter, SyncOnlyStorageAdapter } = await import('@real-life/adapter-automerge')
