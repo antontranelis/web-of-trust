@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Fingerprint, Users, UserPlus, QrCode, Award, Home, Boxes } from 'lucide-react'
+import { Fingerprint, Users, UserPlus, QrCode, Award, Home, Boxes, Share2 } from 'lucide-react'
 import { useLanguage } from '../../i18n'
 
 export function Navigation() {
@@ -21,6 +21,7 @@ export function Navigation() {
     { to: '/verify', icon: UserPlus, label: t.nav.verify },
     { to: '/attestations', icon: Award, label: t.nav.attestations },
     { to: '/spaces', icon: Boxes, label: t.nav.spaces },
+    { to: '/network', icon: Share2, label: t.nav.network },
   ]
 
   return (

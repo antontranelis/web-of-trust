@@ -46,6 +46,7 @@ export function Avatar({ name, avatar, size = 'md' }: AvatarProps) {
       <img
         src={avatar}
         alt={name || 'Avatar'}
+        draggable={false}
         className={`${sizeClass} rounded-full object-cover flex-shrink-0`}
       />
     )
