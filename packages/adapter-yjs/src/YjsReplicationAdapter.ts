@@ -26,6 +26,7 @@ import {
   VaultClient,
   VaultPushScheduler,
   signEnvelope,
+  verifyEnvelope,
 } from '@real-life/wot-core'
 import type { SpaceMetadataStorage, AuthorizationAdapter } from '@real-life/wot-core'
 
@@ -281,6 +282,15 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       if (this.sentMessageIds.has(envelope.id)) {
         this.sentMessageIds.delete(envelope.id)
         return
+      }
+
+      // Verify envelope signature — reject unsigned or forged messages
+      if (envelope.signature) {
+        const valid = await verifyEnvelope(envelope)
+        if (!valid) {
+          console.warn('[YjsReplication] Rejected message with invalid signature from', envelope.fromDid)
+          return
+        }
       }
 
       switch (envelope.type as string) {
