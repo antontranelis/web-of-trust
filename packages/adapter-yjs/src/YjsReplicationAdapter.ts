@@ -310,6 +310,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         case 'group-key-rotation':
           await this.handleGroupKeyRotation(envelope)
           break
+        case 'space-sync-request':
+          await this.handleSpaceSyncRequest(envelope)
+          break
       }
     })
 
@@ -425,6 +428,37 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     }
 
     this.notifySpaceListeners()
+
+    // Multi-device: send full doc state to own DID as content message.
+    // Other devices that discover this space via PersonalDoc sync will receive
+    // the full state and merge it into their (initially empty) Y.Doc.
+    // We use 'content' type (not 'space-invite') to avoid triggering UI notifications.
+    const groupKey = this.groupKeyService.getCurrentKey(spaceId)
+    if (groupKey) {
+      const myDid = this.identity.getDid()
+      const docBinary = Y.encodeStateAsUpdate(doc)
+      const generation = this.groupKeyService.getCurrentGeneration(spaceId)
+      const encrypted = await EncryptedSyncService.encryptChange(
+        docBinary, groupKey, spaceId, generation, myDid,
+      )
+      const payload = {
+        spaceId,
+        generation,
+        ciphertext: Array.from(encrypted.ciphertext),
+        nonce: Array.from(encrypted.nonce),
+      }
+      const envelope: MessageEnvelope = {
+        v: 1, id: crypto.randomUUID(), type: 'content',
+        fromDid: myDid, toDid: myDid,
+        createdAt: new Date().toISOString(), encoding: 'json',
+        payload: JSON.stringify(payload), signature: '',
+      }
+      const signed = await signEnvelope(envelope, (data) => this.identity.sign(data))
+      this.sentMessageIds.add(signed.id)
+      setTimeout(() => this.sentMessageIds.delete(signed.id), 30_000)
+      try { await this.messaging.send(signed) } catch { /* offline */ }
+    }
+
     return info
   }
 
@@ -842,6 +876,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       }
       this.spaces.set(meta.info.id, state)
       this.setupSpaceSync(state)
+
+      // Request full state from other devices (they may have content we don't have yet)
+      await this.sendSpaceSyncRequest(meta.info.id).catch(() => {})
+
+      // Vault-Pull as safety net (in case no other device is online)
+      await this._pullFromVault(state).catch(() => {})
     }
 
     this.notifySpaceListeners()
@@ -965,7 +1005,6 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     try {
       const payload = JSON.parse(envelope.payload)
       const spaceId = payload.spaceId
-      if (this.spaces.has(spaceId)) return
 
       // Decrypt group key
       const groupKey = await this.identity.decryptForMe({
@@ -975,7 +1014,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       })
       this.groupKeyService.importKey(spaceId, groupKey, payload.generation)
 
-      // Decrypt doc
+      // Decrypt doc snapshot
       const decrypted = await EncryptedSyncService.decryptChange({
         ciphertext: new Uint8Array(payload.encryptedDoc.ciphertext),
         nonce: new Uint8Array(payload.encryptedDoc.nonce),
@@ -983,6 +1022,15 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         generation: payload.generation,
         fromDid: envelope.fromDid,
       }, groupKey)
+
+      // If space already exists (discovered via PersonalDoc sync), merge the snapshot
+      // instead of ignoring it — the existing doc may be empty
+      const existing = this.spaces.get(spaceId)
+      if (existing) {
+        Y.applyUpdate(existing.doc, decrypted, 'remote')
+        this._scheduleCompactDebounced(existing)
+        return
+      }
 
       // Create Y.Doc from decrypted binary
       const doc = new Y.Doc()
@@ -1134,6 +1182,65 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     } catch (err) {
       console.debug('[YjsReplication] Failed to handle group key rotation:', err)
     }
+  }
+
+  /**
+   * Handle sync request from another device: respond with full state for the requested space.
+   */
+  private async handleSpaceSyncRequest(envelope: MessageEnvelope): Promise<void> {
+    try {
+      const payload = JSON.parse(envelope.payload)
+      const spaceId = payload.spaceId
+      const state = this.spaces.get(spaceId)
+      if (!state) return
+
+      const groupKey = this.groupKeyService.getCurrentKey(spaceId)
+      if (!groupKey) return
+
+      const fullState = Y.encodeStateAsUpdate(state.doc)
+      const generation = this.groupKeyService.getCurrentGeneration(spaceId)
+      const myDid = this.identity.getDid()
+      const encrypted = await EncryptedSyncService.encryptChange(
+        fullState, groupKey, spaceId, generation, myDid,
+      )
+
+      const responsePayload = {
+        spaceId,
+        generation,
+        ciphertext: Array.from(encrypted.ciphertext),
+        nonce: Array.from(encrypted.nonce),
+      }
+      const responseEnvelope: MessageEnvelope = {
+        v: 1, id: crypto.randomUUID(), type: 'content',
+        fromDid: myDid, toDid: myDid,
+        createdAt: new Date().toISOString(), encoding: 'json',
+        payload: JSON.stringify(responsePayload), signature: '',
+      }
+      const signed = await signEnvelope(responseEnvelope, (data) => this.identity.sign(data))
+      this.sentMessageIds.add(signed.id)
+      setTimeout(() => this.sentMessageIds.delete(signed.id), 30_000)
+      try { await this.messaging.send(signed) } catch { /* offline */ }
+    } catch (err) {
+      console.debug('[YjsReplication] Failed to handle space-sync-request:', err)
+    }
+  }
+
+  /**
+   * Send a sync request for a specific space to own DID (multi-device).
+   * Other devices that have this space will respond with their full state.
+   */
+  private async sendSpaceSyncRequest(spaceId: string): Promise<void> {
+    const myDid = this.identity.getDid()
+    const envelope: MessageEnvelope = {
+      v: 1, id: crypto.randomUUID(), type: 'space-sync-request',
+      fromDid: myDid, toDid: myDid,
+      createdAt: new Date().toISOString(), encoding: 'json',
+      payload: JSON.stringify({ spaceId }), signature: '',
+    }
+    const signed = await signEnvelope(envelope, (data) => this.identity.sign(data))
+    this.sentMessageIds.add(signed.id)
+    setTimeout(() => this.sentMessageIds.delete(signed.id), 30_000)
+    try { await this.messaging.send(signed) } catch { /* offline */ }
   }
 
   // --- Persistence ---

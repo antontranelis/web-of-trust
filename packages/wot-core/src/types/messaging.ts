@@ -13,6 +13,7 @@ export type MessageType =
   | 'content'
   | 'member-update'
   | 'personal-sync'
+  | 'space-sync-request'
 
 /**
  * Standardized envelope format for all cross-user messages.
