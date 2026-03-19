@@ -365,4 +365,96 @@ describe('Multi-Device Sync', () => {
     aliceHandle.close()
     bobHandle.close()
   })
+
+  // === Test 9: Vault-Pull Seq-Vergleich (Fix J) ===
+  it('should skip vault pull when seq has not changed', async () => {
+    // Create a mock vault that tracks calls
+    const getDocInfoCalls: string[] = []
+    const getChangesCalls: string[] = []
+    const mockVault = {
+      getDocInfo: async (docId: string) => {
+        getDocInfoCalls.push(docId)
+        return { latestSeq: 1, snapshotSeq: 1, changeCount: 0 }
+      },
+      getChanges: async (docId: string) => {
+        getChangesCalls.push(docId)
+        return { docId, snapshot: null, changes: [] }
+      },
+      putSnapshot: async () => {},
+      pushChange: async () => 0,
+      deleteDoc: async () => {},
+    }
+
+    // Create adapter with mock vault
+    const adapterWithVault = new YjsReplicationAdapter({
+      identity: alice,
+      messaging: aliceMessaging1,
+      groupKeyService: new GroupKeyService(),
+      metadataStorage: aliceMeta1,
+      compactStore: aliceCompact1,
+      vault: mockVault as any,
+    })
+    await adapterWithVault.start()
+
+    const space = await adapterWithVault.createSpace<TestDoc>(
+      'shared', { items: {} }, { name: 'Vault Test', members: [alice.getDid()] },
+    )
+    await wait()
+
+    // First requestSync: should call getChanges (no cached seq yet)
+    getChangesCalls.length = 0
+    getDocInfoCalls.length = 0
+    await adapterWithVault.requestSync(space.id)
+
+    expect(getChangesCalls.length).toBeGreaterThan(0)
+
+    // Second requestSync: should skip because seq hasn't changed
+    getChangesCalls.length = 0
+    getDocInfoCalls.length = 0
+    await adapterWithVault.requestSync(space.id)
+
+    // With Fix J: getDocInfo is called, but getChanges is NOT (seq unchanged)
+    expect(getDocInfoCalls.length).toBeGreaterThan(0)
+    expect(getChangesCalls.length).toBe(0)
+
+    await adapterWithVault.stop()
+  })
+
+  // === Test 10: GroupKeyService live-Update bei PersonalDoc-Sync (Fix K) ===
+  it('should update GroupKeyService when new keys appear in metadata', async () => {
+    const spaceId = await createSharedSpace()
+    await wait()
+
+    // Device 2 has gen 0 key from createSharedSpace
+    const handle2 = await aliceAdapter2.openSpace<TestDoc>(spaceId)
+
+    // Simulate: Device 1 rotates key, but key-rotation message is lost.
+    // Instead, the new key arrives via PersonalDoc sync (metadata).
+    await aliceAdapter1.removeMember(spaceId, bob.getDid())
+    await wait()
+
+    // Copy the rotated key to Device 2's metadata (simulates PersonalDoc sync)
+    const keys = await aliceMeta1.loadGroupKeys(spaceId)
+    for (const key of keys) {
+      await aliceMeta2.saveGroupKey(key)
+    }
+
+    // Trigger metadata reload on Device 2 (Fix K should pick up new key)
+    await aliceAdapter2.requestSync('__all__')
+    await wait()
+
+    // Device 1 writes with new generation
+    const handle1 = await aliceAdapter1.openSpace<TestDoc>(spaceId)
+    handle1.transact(doc => {
+      doc.items['post-rotation'] = { title: 'After key rotation' }
+    })
+    await wait()
+
+    // Device 2 should be able to decrypt (GroupKeyService updated from metadata)
+    const doc2 = handle2.getDoc()
+    expect(doc2.items['post-rotation']?.title).toBe('After key rotation')
+
+    handle1.close()
+    handle2.close()
+  })
 })

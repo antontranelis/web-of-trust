@@ -52,6 +52,7 @@ interface YjsReplicationConfig {
   metadataStorage?: SpaceMetadataStorage
   compactStore?: YjsCompactStore
   vaultUrl?: string
+  vault?: VaultClient  // direct injection for testing
   spaceFilter?: (info: SpaceInfo) => boolean
 }
 
@@ -266,7 +267,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     this.metadataStorage = config.metadataStorage
     this.compactStore = config.compactStore
     this.spaceFilter = config.spaceFilter
-    if (config.vaultUrl) {
+    if (config.vault) {
+      this.vault = config.vault
+    } else if (config.vaultUrl) {
       this.vault = new VaultClient(config.vaultUrl, config.identity)
     }
   }
@@ -669,16 +672,18 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
    * This ensures multi-device sync even when devices were not online simultaneously.
    */
   private async _pullFromVault(state: YjsSpaceState): Promise<void> {
-    if (!this.vault) {
-
-      return
-    }
+    if (!this.vault) return
     const groupKey = this.groupKeyService.getCurrentKey(state.info.id)
-    if (!groupKey) {
+    if (!groupKey) return
 
-      return
+    // Seq-Vergleich: skip download if vault snapshot hasn't changed
+    const info = await this.vault.getDocInfo(state.info.id)
+    if (info && info.snapshotSeq !== null) {
+      const localSeq = this.vaultSeqs.get(state.info.id) ?? -1
+      if (info.snapshotSeq === localSeq) return // no change
+      // Remember remote seq so next call can compare
+      this.vaultSeqs.set(state.info.id, info.snapshotSeq)
     }
-
 
     const response = await this.vault.getChanges(state.info.id)
 
