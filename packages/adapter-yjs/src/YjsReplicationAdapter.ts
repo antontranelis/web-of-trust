@@ -25,6 +25,7 @@ import {
   EncryptedSyncService,
   VaultClient,
   VaultPushScheduler,
+  base64ToUint8,
   signEnvelope,
   verifyEnvelope,
 } from '@real-life/wot-core'
@@ -254,6 +255,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   private compactSchedulers = new Map<string, VaultPushScheduler>()
   private vaultSeqs = new Map<string, number>()
   private unsubMessage: (() => void) | null = null
+  private unsubStateChange: (() => void) | null = null
   private started = false
   private sentMessageIds = new Set<string>()
 
@@ -278,8 +280,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       // Skip own echoes
       if (this.sentMessageIds.has(envelope.id)) {
         this.sentMessageIds.delete(envelope.id)
+
         return
       }
+
 
       // Verify envelope signature — reject unsigned or forged messages
       if (envelope.signature) {
@@ -306,13 +310,34 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       }
     })
 
-    // Restore spaces from metadata
+    // Restore spaces from metadata (CompactStore → local Y.Doc)
     await this.restoreSpacesFromMetadata()
+
+    // Initial sync: send full state of all spaces to own DID (multi-device)
+    // and pull latest from Vault as safety net
+    await this._sendFullStateAllSpaces()
+    await this.requestSync('__all__').catch(e =>
+      console.warn('[YjsReplication] Initial vault sync failed:', e)
+    )
+
+    // On reconnect: re-send full state + vault pull
+    if ('onStateChange' in this.messaging && typeof (this.messaging as any).onStateChange === 'function') {
+      this.unsubStateChange = (this.messaging as any).onStateChange((state: string) => {
+        if (state === 'connected' && this.started) {
+          void this._sendFullStateAllSpaces().catch(() => {})
+          void this.requestSync('__all__').catch(e =>
+            console.warn('[YjsReplication] Reconnect sync failed:', e)
+          )
+        }
+      })
+    }
   }
 
   async stop(): Promise<void> {
     this.unsubMessage?.()
     this.unsubMessage = null
+    this.unsubStateChange?.()
+    this.unsubStateChange = null
 
     for (const [, scheduler] of this.vaultSchedulers) scheduler.destroy()
     for (const [, scheduler] of this.compactSchedulers) scheduler.destroy()
@@ -364,12 +389,13 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     // Create group key
     await this.groupKeyService.createKey(spaceId)
 
-    // Store state
+    // Store state (include own encryption key for multi-device key rotation)
+    const ownEncKey = await this.identity.getEncryptionPublicKeyBytes()
     const state: YjsSpaceState = {
       info,
       doc,
       handles: new Set(),
-      memberEncryptionKeys: new Map(),
+      memberEncryptionKeys: new Map([[this.identity.getDid(), ownEncKey]]),
       unsubUpdate: null,
     }
     this.spaces.set(spaceId, state)
@@ -518,9 +544,16 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     const newKey = this.groupKeyService.getCurrentKey(spaceId)!
     const newGen = this.groupKeyService.getCurrentGeneration(spaceId)
 
-    // Send new key to remaining members
+    // Save rotated key to own PersonalDoc (for multi-device: other devices
+    // will find it via loadGroupKeys on startup)
+    if (this.metadataStorage) {
+      await this.metadataStorage.saveGroupKey({
+        spaceId, generation: newGen, key: newKey,
+      })
+    }
+
+    // Send new key to all members (including own DID for multi-device)
     for (const [did, encPub] of state.memberEncryptionKeys) {
-      if (did === this.identity.getDid()) continue
       const encryptedKey = await this.identity.encryptForRecipient(newKey, encPub)
       const payload = {
         spaceId,
@@ -564,6 +597,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
     await this.saveSpaceMetadata(state)
 
+    // Re-encrypt and push snapshot with new generation key
+    // so Vault always has a snapshot decryptable with the current key
+    this._scheduleVaultImmediate(state)
+
     for (const cb of this.memberChangeListeners) {
       cb({ spaceId, did: memberDid, action: 'removed' })
     }
@@ -602,8 +639,106 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     this.notifySpaceListeners()
   }
 
-  async requestSync(_spaceId: string): Promise<void> {
-    // No-op for now — sync happens automatically via update events
+  async requestSync(spaceId: string): Promise<void> {
+
+    if (spaceId === '__all__') {
+      // Discover new spaces from PersonalDoc that we don't know yet
+      await this.restoreSpacesFromMetadata()
+
+      // Pull latest Vault snapshots for all existing spaces
+      for (const [id, state] of this.spaces) {
+        await this._pullFromVault(state).catch(e =>
+          console.warn(`[YjsReplication] Vault pull failed for ${id}:`, e)
+        )
+      }
+
+      // Send full state of all spaces to own DID (multi-device state exchange)
+      await this._sendFullStateAllSpaces()
+    } else {
+      const state = this.spaces.get(spaceId)
+      if (state) {
+        await this._pullFromVault(state).catch(e =>
+          console.warn(`[YjsReplication] Vault pull failed for ${spaceId}:`, e)
+        )
+      }
+    }
+  }
+
+  /**
+   * Pull the latest snapshot from the Vault and merge into the local Y.Doc.
+   * This ensures multi-device sync even when devices were not online simultaneously.
+   */
+  private async _pullFromVault(state: YjsSpaceState): Promise<void> {
+    if (!this.vault) {
+
+      return
+    }
+    const groupKey = this.groupKeyService.getCurrentKey(state.info.id)
+    if (!groupKey) {
+
+      return
+    }
+
+
+    const response = await this.vault.getChanges(state.info.id)
+
+    // Apply snapshot if available
+    if (response.snapshot) {
+
+      const packed = base64ToUint8(response.snapshot.data)
+      const nonceLen = packed[0]
+      const nonce = packed.slice(1, 1 + nonceLen)
+      const ciphertext = packed.slice(1 + nonceLen)
+
+      const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
+      const decrypted = await EncryptedSyncService.decryptChange({
+        ciphertext, nonce, spaceId: state.info.id, generation,
+        fromDid: this.identity.getDid(),
+      }, groupKey)
+
+      Y.applyUpdate(state.doc, decrypted, 'remote')
+      this.vaultSeqs.set(state.info.id, response.snapshot.upToSeq)
+
+    } else {
+
+    }
+  }
+
+  /**
+   * Send full Y.Doc state of all spaces to own DID (multi-device sync).
+   * Other devices of the same identity merge the state via Y.applyUpdate.
+   * Analogous to YjsPersonalSyncAdapter.sendFullState().
+   */
+  private async _sendFullStateAllSpaces(): Promise<void> {
+    const myDid = this.identity.getDid()
+
+    for (const [spaceId, state] of this.spaces) {
+      const groupKey = this.groupKeyService.getCurrentKey(spaceId)
+      if (!groupKey) continue
+
+      const fullState = Y.encodeStateAsUpdate(state.doc)
+      const generation = this.groupKeyService.getCurrentGeneration(spaceId)
+      const encrypted = await EncryptedSyncService.encryptChange(
+        fullState, groupKey, spaceId, generation, myDid,
+      )
+
+      const payload = {
+        spaceId,
+        generation,
+        ciphertext: Array.from(encrypted.ciphertext),
+        nonce: Array.from(encrypted.nonce),
+      }
+
+      const envelope: MessageEnvelope = {
+        v: 1, id: crypto.randomUUID(), type: 'content',
+        fromDid: myDid, toDid: myDid,
+        createdAt: new Date().toISOString(), encoding: 'json',
+        payload: JSON.stringify(payload), signature: '',
+      }
+      this.sentMessageIds.add(envelope.id)
+      setTimeout(() => this.sentMessageIds.delete(envelope.id), 30_000)
+      try { await this.messaging.send(envelope) } catch { /* offline */ }
+    }
   }
 
   getKeyGeneration(spaceId: string): number {
@@ -743,12 +878,13 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       nonce: Array.from(encrypted.nonce),
     }
 
-    // Send to all members
+    // Send to all members (including own DID for multi-device sync)
+    // sentMessageIds prevents the sending device from processing its own echo
     const state = this.spaces.get(spaceId)
     if (!state) return
 
+
     for (const memberDid of state.info.members) {
-      if (memberDid === myDid) continue
       const envelope: MessageEnvelope = {
         v: 1, id: crypto.randomUUID(), type: 'content',
         fromDid: myDid, toDid: memberDid,
@@ -766,6 +902,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       const payload = JSON.parse(envelope.payload)
       const spaceId = payload.spaceId
       const state = this.spaces.get(spaceId)
+
       if (!state) return
 
       const groupKey = this.groupKeyService.getKeyByGeneration(spaceId, payload.generation)
@@ -783,6 +920,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       }, groupKey)
 
       Y.applyUpdate(state.doc, decrypted, 'remote')
+
 
       // Persist
       this._scheduleCompactDebounced(state)
