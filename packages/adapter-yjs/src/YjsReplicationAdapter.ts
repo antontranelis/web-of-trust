@@ -54,6 +54,10 @@ interface YjsReplicationConfig {
   vaultUrl?: string
   vault?: VaultClient  // direct injection for testing
   spaceFilter?: (info: SpaceInfo) => boolean
+  /** Flush PersonalDoc to Vault immediately (for key rotation safety) */
+  flushPersonalDoc?: () => Promise<void>
+  /** Pull PersonalDoc from Vault (for lazy key refresh) */
+  refreshPersonalDocFromVault?: () => Promise<boolean>
 }
 
 // --- YjsSpaceHandle ---
@@ -264,6 +268,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   private pendingMessages = new Map<string, { envelope: MessageEnvelope; receivedAt: number }[]>()
   private static PENDING_TTL = 60_000 // 60s
 
+  private flushPersonalDoc?: () => Promise<void>
+  private refreshPersonalDocFromVault?: () => Promise<boolean>
+
   constructor(config: YjsReplicationConfig) {
     this.identity = config.identity
     this.messaging = config.messaging
@@ -271,6 +278,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     this.metadataStorage = config.metadataStorage
     this.compactStore = config.compactStore
     this.spaceFilter = config.spaceFilter
+    this.flushPersonalDoc = config.flushPersonalDoc
+    this.refreshPersonalDocFromVault = config.refreshPersonalDocFromVault
     if (config.vault) {
       this.vault = config.vault
     } else if (config.vaultUrl) {
@@ -593,6 +602,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         spaceId, generation: newGen, key: newKey,
       })
     }
+    // Ensure the new key reaches the Vault before we continue —
+    // other devices need it to decrypt the re-encrypted space snapshot
+    if (this.flushPersonalDoc) {
+      await this.flushPersonalDoc()
+    }
 
     // Send new key to all members (including own DID for multi-device)
     for (const [did, encPub] of state.memberEncryptionKeys) {
@@ -747,32 +761,43 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   /**
    * Pull the latest snapshot from the Vault and merge into the local Y.Doc.
    * This ensures multi-device sync even when devices were not online simultaneously.
+   * If decryption fails (missing key after rotation), tries to refresh the PersonalDoc
+   * from the Vault to get the new key, then retries.
    */
-  private async _pullFromVault(state: YjsSpaceState): Promise<void> {
+  private async _pullFromVault(state: YjsSpaceState, isRetry = false): Promise<void> {
     if (!this.vault) return
+
     const groupKey = this.groupKeyService.getCurrentKey(state.info.id)
-    if (!groupKey) return
+    if (!groupKey) {
+      // No key at all — try refreshing PersonalDoc from Vault
+      if (!isRetry && this.refreshPersonalDocFromVault) {
+        const refreshed = await this.refreshPersonalDocFromVault()
+        if (refreshed) {
+          await this._reloadGroupKeys(state.info.id)
+          return this._pullFromVault(state, true)
+        }
+      }
+      return
+    }
 
     // Seq-Vergleich: skip download if vault snapshot hasn't changed
     const info = await this.vault.getDocInfo(state.info.id)
     if (info && info.snapshotSeq !== null) {
       const localSeq = this.vaultSeqs.get(state.info.id) ?? -1
       if (info.snapshotSeq === localSeq) return // no change
-      // Remember remote seq so next call can compare
       this.vaultSeqs.set(state.info.id, info.snapshotSeq)
     }
 
     const response = await this.vault.getChanges(state.info.id)
+    if (!response.snapshot) return
 
-    // Apply snapshot if available
-    if (response.snapshot) {
+    const packed = base64ToUint8(response.snapshot.data)
+    const nonceLen = packed[0]
+    const nonce = packed.slice(1, 1 + nonceLen)
+    const ciphertext = packed.slice(1 + nonceLen)
 
-      const packed = base64ToUint8(response.snapshot.data)
-      const nonceLen = packed[0]
-      const nonce = packed.slice(1, 1 + nonceLen)
-      const ciphertext = packed.slice(1 + nonceLen)
-
-      const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
+    const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
+    try {
       const decrypted = await EncryptedSyncService.decryptChange({
         ciphertext, nonce, spaceId: state.info.id, generation,
         fromDid: this.identity.getDid(),
@@ -780,9 +805,29 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
       Y.applyUpdate(state.doc, decrypted, 'remote')
       this.vaultSeqs.set(state.info.id, response.snapshot.upToSeq)
+    } catch (err) {
+      // Decryption failed — key may be outdated (rotation happened while offline)
+      // Try refreshing PersonalDoc from Vault to get the new key
+      // Reset cached seq so the next pull re-downloads the snapshot
+      this.vaultSeqs.delete(state.info.id)
 
-    } else {
+      // Try refreshing PersonalDoc from Vault to get the new key, then retry
+      if (!isRetry && this.refreshPersonalDocFromVault) {
+        const refreshed = await this.refreshPersonalDocFromVault()
+        if (refreshed) {
+          await this._reloadGroupKeys(state.info.id)
+          return this._pullFromVault(state, true)
+        }
+      }
+    }
+  }
 
+  /** Reload group keys from metadata storage into the GroupKeyService */
+  private async _reloadGroupKeys(spaceId: string): Promise<void> {
+    if (!this.metadataStorage) return
+    const keys = await this.metadataStorage.loadGroupKeys(spaceId)
+    for (const k of keys) {
+      this.groupKeyService.importKey(k.spaceId, k.key, k.generation)
     }
   }
 

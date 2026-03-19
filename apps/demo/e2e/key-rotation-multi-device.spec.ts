@@ -108,11 +108,12 @@ test.describe('Key Rotation Multi-Device', () => {
     }
   })
 
-  // TODO: Requires stable Vault-Pull after offline/online cycle — investigate timing
-  test.skip('Device 2 offline during key rotation — receives new key on reconnect', async ({ browser }) => {
+  test('Device 2 offline during key rotation — receives new key on reconnect', async ({ browser }) => {
     const { context: alice1Ctx, page: alice1Page } = await createFreshContext(browser)
     const { context: alice2Ctx, page: alice2Page } = await createFreshContext(browser)
     const { context: bobCtx, page: bobPage } = await createFreshContext(browser)
+
+
 
     try {
       // Setup: Alice (2 devices) + Bob, verified, in a shared space
@@ -175,7 +176,11 @@ test.describe('Key Rotation Multi-Device', () => {
 
       // Device 1 writes with the NEW key (gen 1)
       await alice1Notes.fill('Geschrieben mit neuem Key')
-      await alice1Page.waitForTimeout(2_000)
+
+      // Wait for Vault pushes to complete:
+      // - PersonalDoc with Gen 1 key (flushPersonalDoc in removeMember)
+      // - Space snapshot re-encrypted with Gen 1 (_scheduleVaultImmediate)
+      await alice1Page.waitForTimeout(8_000)
 
       // --- Device 2 comes back ONLINE ---
       await goOnline(alice2Ctx)

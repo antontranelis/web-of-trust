@@ -4,6 +4,7 @@ export {
   changeYjsPersonalDoc,
   onYjsPersonalDocChange,
   flushYjsPersonalDoc,
+  refreshYjsPersonalDocFromVault,
   resetYjsPersonalDoc,
   deleteYjsPersonalDocDB,
 } from './YjsPersonalDocManager'

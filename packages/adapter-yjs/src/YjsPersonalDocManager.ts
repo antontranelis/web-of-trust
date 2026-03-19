@@ -552,6 +552,15 @@ export async function flushYjsPersonalDoc(): Promise<void> {
 }
 
 /**
+ * Pull the latest PersonalDoc from the Vault and merge into the local Y.Doc.
+ * Used as a fallback when a Space Vault-Pull fails due to a missing key —
+ * the Vault may have a newer PersonalDoc with the required key.
+ */
+export async function refreshYjsPersonalDocFromVault(): Promise<boolean> {
+  return restoreFromVault()
+}
+
+/**
  * Reset — shut down and clear all state.
  */
 export async function resetYjsPersonalDoc(): Promise<void> {

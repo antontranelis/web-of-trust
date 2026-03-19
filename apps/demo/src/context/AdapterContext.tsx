@@ -224,7 +224,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         spaceCompactStore = new CompactStorageManager('wot-space-compact-store')
         await spaceCompactStore.open()
         if (USE_YJS) {
-          const { YjsReplicationAdapter } = await import('@real-life/adapter-yjs')
+          const { YjsReplicationAdapter, flushYjsPersonalDoc, refreshYjsPersonalDocFromVault } = await import('@real-life/adapter-yjs')
           replicationAdapter = new YjsReplicationAdapter({
             identity,
             messaging: outboxAdapter,
@@ -232,6 +232,8 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
             metadataStorage: spaceMetadataStorage,
             compactStore: spaceCompactStore,
             vaultUrl: VAULT_URL,
+            flushPersonalDoc: flushYjsPersonalDoc,
+            refreshPersonalDocFromVault: refreshYjsPersonalDocFromVault,
           })
         } else {
           const { AutomergeReplicationAdapter, SyncOnlyStorageAdapter } = await import('@real-life/adapter-automerge')
@@ -437,9 +439,9 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           // so spaces are loaded from IndexedDB before UI renders
           await replicationAdapter!.start()
 
-          // Watch for remote personal doc sync (multi-device) — restore new spaces
+          // Watch for remote personal doc sync (multi-device) — restore new spaces + sync
           unsubRemoteSync = docFns.onPersonalDocChange(() => {
-            replicationAdapter?.restoreSpacesFromMetadata()
+            replicationAdapter?.requestSync('__all__').catch(() => {})
           })
 
           setAdapters({

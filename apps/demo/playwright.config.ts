@@ -50,6 +50,7 @@ export default defineConfig({
     command: [
       `VITE_RELAY_URL=ws://localhost:${RELAY_PORT}`,
       `VITE_PROFILE_SERVICE_URL=http://localhost:${PROFILES_PORT}`,
+      `VITE_VAULT_URL=http://localhost:${VAULT_PORT}`,
       `npx vite --port 5173`,
     ].join(' '),
     port: 5173,
