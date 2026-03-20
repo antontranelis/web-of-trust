@@ -870,6 +870,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       if (!groupKey) continue
 
       const fullState = Y.encodeStateAsUpdate(state.doc)
+      // Don't broadcast empty docs
+      if (fullState.length <= 2) continue
       const generation = this.groupKeyService.getCurrentGeneration(spaceId)
       const encrypted = await EncryptedSyncService.encryptChange(
         fullState, groupKey, spaceId, generation, myDid,
@@ -1392,6 +1394,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   async _saveToCompactStore(state: YjsSpaceState): Promise<void> {
     if (!this.compactStore) return
     const binary = Y.encodeStateAsUpdate(state.doc)
+    // Don't persist empty Y.Docs — they create ghost spaces that pollute
+    // CompactStore and trigger repeated vault 404s on every restart
+    if (binary.length <= 2) return
     await this.compactStore.save(state.info.id, binary)
   }
 
@@ -1401,6 +1406,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     if (!groupKey) return
 
     const docBinary = Y.encodeStateAsUpdate(state.doc)
+    // Don't push empty docs to Vault
+    if (docBinary.length <= 2) return
     const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
     const encrypted = await EncryptedSyncService.encryptChange(
       docBinary, groupKey, state.info.id, generation, this.identity.getDid(),
