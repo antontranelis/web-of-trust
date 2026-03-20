@@ -505,10 +505,11 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
           applyPlainToYmap(dst, data)
         } else {
           // contacts, spaces, etc. are maps of maps
+          // Must set child into parent BEFORE populating (Yjs requires integration)
           for (const [k, v] of Object.entries(data)) {
             const child = new Y.Map()
-            applyPlainToYmap(child, v as Record<string, any>)
             dst.set(k, child)
+            applyPlainToYmap(child, v as Record<string, any>)
           }
         }
       }
@@ -517,6 +518,8 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
     ydoc = freshDoc
     const newSize = Y.encodeStateAsUpdate(ydoc).byteLength
     console.debug(`[yjs-personal-doc] Migration: rebuilt doc without outbox (${(oldSize/1024).toFixed(0)}KB → ${(newSize/1024).toFixed(0)}KB)`)
+    // Persist immediately so the smaller doc replaces the bloated one
+    await compactStore.save(PERSONAL_DOC_ID, Y.encodeStateAsUpdate(ydoc))
   }
 
   // Create CompactStore scheduler (2s debounce)
