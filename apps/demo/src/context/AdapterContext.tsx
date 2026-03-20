@@ -91,6 +91,8 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
 
     async function initAdapters() {
       try {
+        const t0 = performance.now()
+        const lap = (label: string) => console.debug(`[init] ${label}: ${(performance.now() - t0).toFixed(0)}ms`)
         const did = identity.getDid()
 
         // Clean up old data when identity changes (or after logout where previousDid was cleared)
@@ -112,6 +114,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           }
         }
         localStorage.setItem('wot-active-did', did)
+        lap('identity-check')
 
         // Create WebSocket adapter — try to connect quickly, but don't block init
         const wsAdapter = new WebSocketMessagingAdapter(RELAY_URL)
@@ -124,6 +127,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           console.warn('[init] WebSocket not connected yet, continuing with local data')
         }
 
+        lap('ws-connect')
         // VAULT_URL from env (top of file)
 
         // Initialize personal doc — loads from local IndexedDB first, syncs later via relay
@@ -144,6 +148,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           const { AutomergeStorageAdapter } = await import('../adapters/AutomergeStorageAdapter')
           storage = new AutomergeStorageAdapter(did)
         }
+        lap('personal-doc-init')
         const crypto = new WebCryptoAdapter()
         let docFns: { getPersonalDoc: any; changePersonalDoc: any; onPersonalDocChange: any }
         if (USE_YJS) {
@@ -203,12 +208,14 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
           console.warn('[migration] LocalCacheStore migration failed (non-fatal):', err)
         }
 
+        lap('outbox-setup')
         const publishStateStore = new AutomergePublishStateStore(localCacheStore)
         const graphCacheStore = new AutomergeGraphCacheStore(localCacheStore)
         await Promise.all([publishStateStore.load(), graphCacheStore.load()])
         publishStateStore.setDid(did)
         const discovery = new OfflineFirstDiscoveryAdapter(httpDiscovery, publishStateStore, graphCacheStore)
 
+        lap('discovery-setup')
         const attestationService = new AttestationService(storage, crypto)
         attestationService.setMessaging(outboxAdapter)
         attestationService.listenForReceipts(outboxAdapter)
@@ -219,6 +226,7 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         attestationService.restoreDeliveryStatuses(savedStatuses)
         attestationService.initFromOutbox(outboxStore)
 
+        lap('attestation-service')
         const groupKeyService = new GroupKeyService()
         const spaceMetadataStorage = new PersonalDocSpaceMetadataStorage(docFns)
         spaceCompactStore = new CompactStorageManager('wot-space-compact-store')
@@ -437,13 +445,16 @@ export function AdapterProvider({ children, identity }: AdapterProviderProps) {
         if (!cancelled) {
           // Start replication adapter BEFORE setting initialized,
           // so spaces are loaded from IndexedDB before UI renders
+          lap('before-replication-start')
           await replicationAdapter!.start()
+          lap('after-replication-start')
 
           // Watch for remote personal doc sync (multi-device) — restore new spaces + sync
           unsubRemoteSync = docFns.onPersonalDocChange(() => {
             replicationAdapter?.requestSync('__all__').catch(() => {})
           })
 
+          lap('ready')
           setAdapters({
             storage,
             reactiveStorage: storage,
