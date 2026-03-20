@@ -484,19 +484,20 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
   // doesn't reduce binary size. We must rebuild the doc from scratch.
   const legacyOutbox = ydoc.getMap('outbox')
   if (legacyOutbox.size > 0) {
-    const oldSize = Y.encodeStateAsUpdate(ydoc).byteLength
+    const oldDoc = ydoc
+    const oldSize = Y.encodeStateAsUpdate(oldDoc).byteLength
     const freshDoc = new Y.Doc()
     const mapsToKeep = ['profile', 'contacts', 'verifications', 'attestations', 'attestationMetadata', 'spaces', 'groupKeys']
     freshDoc.transact(() => {
       for (const mapName of mapsToKeep) {
-        const src = ydoc.getMap(mapName)
+        const src = oldDoc.getMap(mapName)
         const dst = freshDoc.getMap(mapName)
         for (const [k, v] of src.entries()) {
           dst.set(k, v)
         }
       }
     }, 'local')
-    ydoc.destroy()
+    oldDoc.destroy()
     ydoc = freshDoc
     const newSize = Y.encodeStateAsUpdate(ydoc).byteLength
     console.debug(`[yjs-personal-doc] Migration: rebuilt doc without outbox (${(oldSize/1024).toFixed(0)}KB → ${(newSize/1024).toFixed(0)}KB)`)
