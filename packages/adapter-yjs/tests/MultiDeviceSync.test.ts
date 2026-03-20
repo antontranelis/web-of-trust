@@ -369,18 +369,20 @@ describe('Multi-Device Sync', () => {
   // === Test 9: Vault-Pull Seq-Vergleich (Fix J) ===
   it('should skip vault pull when seq has not changed', async () => {
     // Create a mock vault that tracks calls
+    // snapshotSeq starts at 0 (before any push), then increments on putSnapshot
+    let currentSnapshotSeq = 0
     const getDocInfoCalls: string[] = []
     const getChangesCalls: string[] = []
     const mockVault = {
       getDocInfo: async (docId: string) => {
         getDocInfoCalls.push(docId)
-        return { latestSeq: 1, snapshotSeq: 1, changeCount: 0 }
+        return { latestSeq: currentSnapshotSeq, snapshotSeq: currentSnapshotSeq, changeCount: 0 }
       },
       getChanges: async (docId: string) => {
         getChangesCalls.push(docId)
         return { docId, snapshot: null, changes: [] }
       },
-      putSnapshot: async () => {},
+      putSnapshot: async () => { currentSnapshotSeq++ },
       pushChange: async () => 0,
       deleteDoc: async () => {},
     }
@@ -399,21 +401,23 @@ describe('Multi-Device Sync', () => {
     const space = await adapterWithVault.createSpace<TestDoc>(
       'shared', { items: {} }, { name: 'Vault Test', members: [alice.getDid()] },
     )
+    // Wait for the immediate vault push from createSpace to complete
     await wait()
 
-    // First requestSync: should call getChanges (no cached seq yet)
+    // First requestSync after vault push: getDocInfo called, getChanges skipped
+    // because the seq from getDocInfo matches what was set during putSnapshot
     getChangesCalls.length = 0
     getDocInfoCalls.length = 0
     await adapterWithVault.requestSync(space.id)
 
-    expect(getChangesCalls.length).toBeGreaterThan(0)
+    expect(getDocInfoCalls.length).toBeGreaterThan(0)
 
-    // Second requestSync: should skip because seq hasn't changed
+    // Second requestSync: should also skip because seq hasn't changed
     getChangesCalls.length = 0
     getDocInfoCalls.length = 0
     await adapterWithVault.requestSync(space.id)
 
-    // With Fix J: getDocInfo is called, but getChanges is NOT (seq unchanged)
+    // getDocInfo is called, but getChanges is NOT (seq unchanged)
     expect(getDocInfoCalls.length).toBeGreaterThan(0)
     expect(getChangesCalls.length).toBe(0)
 

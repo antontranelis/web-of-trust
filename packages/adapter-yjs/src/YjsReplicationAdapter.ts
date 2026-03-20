@@ -259,6 +259,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   private vaultSchedulers = new Map<string, VaultPushScheduler>()
   private compactSchedulers = new Map<string, VaultPushScheduler>()
   private vaultSeqs = new Map<string, number>()
+  /** Cache 404 responses from Vault to avoid repeated requests for non-existent docs */
+  private vault404Cache = new Map<string, number>() // spaceId → timestamp
+  private static VAULT_404_TTL = 5 * 60_000 // 5 minutes
   private unsubMessage: (() => void) | null = null
   private unsubStateChange: (() => void) | null = null
   private started = false
@@ -335,18 +338,27 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     // Initial sync: send full state of all spaces to own DID (multi-device)
     // and pull latest from Vault as safety net
     await this._sendFullStateAllSpaces()
-    await this.requestSync('__all__').catch(e =>
-      console.warn('[YjsReplication] Initial vault sync failed:', e)
-    )
 
-    // On reconnect: re-send full state + vault pull
+    // Pull latest Vault snapshots (without re-running restoreSpacesFromMetadata
+    // and _sendFullStateAllSpaces which already ran above)
+    for (const [id, state] of this.spaces) {
+      await this._pullFromVault(state).catch(e =>
+        console.warn(`[YjsReplication] Initial vault pull failed for ${id}:`, e)
+      )
+    }
+
+    // On reconnect: re-send full state + vault pull (without duplicate restoreSpacesFromMetadata)
     if ('onStateChange' in this.messaging && typeof (this.messaging as any).onStateChange === 'function') {
       this.unsubStateChange = (this.messaging as any).onStateChange((state: string) => {
         if (state === 'connected' && this.started) {
           void this._sendFullStateAllSpaces().catch(() => {})
-          void this.requestSync('__all__').catch(e =>
-            console.warn('[YjsReplication] Reconnect sync failed:', e)
-          )
+          void (async () => {
+            for (const [id, s] of this.spaces) {
+              await this._pullFromVault(s).catch(e =>
+                console.warn(`[YjsReplication] Reconnect vault pull failed for ${id}:`, e)
+              )
+            }
+          })().catch(() => {})
         }
       })
     }
@@ -770,6 +782,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   private async _pullFromVault(state: YjsSpaceState, isRetry = false): Promise<void> {
     if (!this.vault) return
 
+    // Skip docs that recently returned 404 from Vault
+    const cached404 = this.vault404Cache.get(state.info.id)
+    if (cached404 && Date.now() - cached404 < YjsReplicationAdapter.VAULT_404_TTL) {
+      return
+    }
+
     const groupKey = this.groupKeyService.getCurrentKey(state.info.id)
     if (!groupKey) {
       // No key at all — try refreshing PersonalDoc from Vault
@@ -785,7 +803,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
     // Seq-Vergleich: skip download if vault snapshot hasn't changed
     const info = await this.vault.getDocInfo(state.info.id)
-    if (info && info.snapshotSeq !== null) {
+    if (!info) {
+      // Doc doesn't exist in Vault — cache 404 to avoid repeated requests
+      this.vault404Cache.set(state.info.id, Date.now())
+      return
+    }
+    if (info.snapshotSeq !== null) {
       const localSeq = this.vaultSeqs.get(state.info.id) ?? -1
       if (info.snapshotSeq === localSeq) return // no change
       this.vaultSeqs.set(state.info.id, info.snapshotSeq)
@@ -1387,6 +1410,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     const nextSeq = currentSeq + 1
     await this.vault.putSnapshot(state.info.id, encrypted.ciphertext, encrypted.nonce, nextSeq)
     this.vaultSeqs.set(state.info.id, nextSeq)
+    // Doc now exists in Vault — clear any cached 404
+    this.vault404Cache.delete(state.info.id)
   }
 
   private ensureSchedulers(state: YjsSpaceState): void {
