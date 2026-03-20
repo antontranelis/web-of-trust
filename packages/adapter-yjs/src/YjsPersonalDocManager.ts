@@ -478,6 +478,19 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
     }
   }
 
+  // Migration: clear legacy outbox entries from PersonalDoc
+  // (outbox moved to LocalOutboxStore / IndexedDB)
+  const legacyOutbox = ydoc.getMap('outbox')
+  if (legacyOutbox.size > 0) {
+    const freedKB = (JSON.stringify(Object.fromEntries(legacyOutbox.entries())).length / 1024).toFixed(0)
+    ydoc.transact(() => {
+      for (const key of Array.from(legacyOutbox.keys())) {
+        legacyOutbox.delete(key)
+      }
+    }, 'local')
+    console.debug(`[yjs-personal-doc] Migration: cleared ${legacyOutbox.size === 0 ? freedKB : '?'}KB legacy outbox entries`)
+  }
+
   // Create CompactStore scheduler (2s debounce)
   compactScheduler = new VaultPushScheduler({
     pushFn: pushToCompactStore,
