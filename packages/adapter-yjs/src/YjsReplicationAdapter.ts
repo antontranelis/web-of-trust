@@ -341,24 +341,14 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
     // Pull latest Vault snapshots (without re-running restoreSpacesFromMetadata
     // and _sendFullStateAllSpaces which already ran above)
-    for (const [id, state] of this.spaces) {
-      await this._pullFromVault(state).catch(e =>
-        console.warn(`[YjsReplication] Initial vault pull failed for ${id}:`, e)
-      )
-    }
+    await this._pullAllFromVault()
 
     // On reconnect: re-send full state + vault pull (without duplicate restoreSpacesFromMetadata)
     if ('onStateChange' in this.messaging && typeof (this.messaging as any).onStateChange === 'function') {
       this.unsubStateChange = (this.messaging as any).onStateChange((state: string) => {
         if (state === 'connected' && this.started) {
           void this._sendFullStateAllSpaces().catch(() => {})
-          void (async () => {
-            for (const [id, s] of this.spaces) {
-              await this._pullFromVault(s).catch(e =>
-                console.warn(`[YjsReplication] Reconnect vault pull failed for ${id}:`, e)
-              )
-            }
-          })().catch(() => {})
+          void this._pullAllFromVault().catch(() => {})
         }
       })
     }
@@ -754,12 +744,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         }
       }
 
-      // Pull latest Vault snapshots for all existing spaces
-      for (const [id, state] of this.spaces) {
-        await this._pullFromVault(state).catch(e =>
-          console.warn(`[YjsReplication] Vault pull failed for ${id}:`, e)
-        )
-      }
+      // Pull latest Vault snapshots for all existing spaces (with concurrency limit)
+      await this._pullAllFromVault()
 
       // Send full state of all spaces to own DID (multi-device state exchange)
       await this._sendFullStateAllSpaces()
@@ -771,6 +757,18 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         )
       }
     }
+  }
+
+  private static readonly VAULT_PULL_CONCURRENCY = 3
+
+  /** Pull from Vault for all spaces with concurrency limit */
+  private async _pullAllFromVault(): Promise<void> {
+    const entries = Array.from(this.spaces.entries())
+    await this._runWithConcurrency(entries, async ([id, state]) => {
+      await this._pullFromVault(state).catch(e =>
+        console.warn(`[YjsReplication] Vault pull failed for ${id}:`, e)
+      )
+    }, YjsReplicationAdapter.VAULT_PULL_CONCURRENCY)
   }
 
   /**
@@ -1466,6 +1464,22 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   }
 
   // --- Helpers ---
+
+  /** Run async tasks with a concurrency limit */
+  private async _runWithConcurrency<T>(
+    items: T[],
+    fn: (item: T) => Promise<void>,
+    limit: number,
+  ): Promise<void> {
+    let i = 0
+    const next = async (): Promise<void> => {
+      while (i < items.length) {
+        const item = items[i++]
+        await fn(item)
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => next()))
+  }
 
   private async sendMemberUpdate(spaceId: string, memberDid: string, action: 'added' | 'removed'): Promise<void> {
     const state = this.spaces.get(spaceId)
