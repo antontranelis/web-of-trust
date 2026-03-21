@@ -136,6 +136,12 @@ export function createWotServer(options: WotServerOptions) {
         return json(res, { ok: true })
       }
 
+      // GET /attestations
+      if (method === 'GET' && path[0] === 'attestations') {
+        const attestations = await client.getAttestations()
+        return json(res, attestations)
+      }
+
       // POST /verify/challenge — create a verification challenge
       if (method === 'POST' && path[0] === 'verify' && path[1] === 'challenge') {
         const result = await client.createChallenge()
