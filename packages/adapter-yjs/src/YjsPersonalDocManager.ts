@@ -478,7 +478,7 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
 
   // Try to restore from CompactStore
   const t0 = Date.now()
-  const snapshot = await compactStore.load(PERSONAL_DOC_ID)
+  const snapshot = await compactStore!.load(PERSONAL_DOC_ID)
   if (snapshot) {
     Y.applyUpdate(ydoc, snapshot)
     loadedFrom = 'compact-store'
@@ -546,7 +546,7 @@ export async function initYjsPersonalDoc(identity: WotIdentity, messaging?: Mess
     console.debug(`[yjs-personal-doc] Migration: rebuilt doc without outbox (${(oldSize/1024).toFixed(0)}KB → ${(newSize/1024).toFixed(0)}KB)`)
     // Persist immediately so the smaller doc replaces the bloated one
     const migratedUpdate = Y.encodeStateAsUpdate(ydoc)
-    await compactStore.save(PERSONAL_DOC_ID, migratedUpdate)
+    await compactStore!.save(PERSONAL_DOC_ID, migratedUpdate)
     // Also push to vault immediately so remote doesn't merge old bloated state back
     if (vaultClient && vaultPersonalKey) {
       try {
