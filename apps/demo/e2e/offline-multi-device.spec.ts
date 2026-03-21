@@ -44,6 +44,10 @@ test.describe('Offline Multi-Device', () => {
       await navigateTo(alice2Page, '/contacts')
       await expect(alice2Page.getByText('Bob')).toBeVisible({ timeout: 30_000 })
 
+      // Navigate Device 2 to home (might be on verification page from auto-propagated verification)
+      await navigateTo(alice2Page, '/')
+      await expect(alice2Page.getByText('Hallo,')).toBeVisible({ timeout: 10_000 })
+
       // --- Phase 2: Device 2 goes offline, Device 1 makes changes ---
       await goOffline(alice2Ctx)
       await alice2Page.waitForTimeout(2_000)
@@ -63,7 +67,6 @@ test.describe('Offline Multi-Device', () => {
 
       // --- Phase 3: Device 2 comes back online → should sync ---
       await goOnline(alice2Ctx)
-      await navigateTo(alice2Page, '/')
       await waitForReconnect(alice2Page)
 
       // Device 2 should see the updated name (via personal-doc sync)
