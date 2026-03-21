@@ -101,8 +101,9 @@ export class WotCliClient {
       sendTimeoutMs: 15_000,
     })
 
-    // 5. Personal doc (Yjs)
-    await initYjsPersonalDoc(this.identity, this.wsAdapter, this.options.vaultUrl)
+    // 5. Personal doc (Yjs) — use SQLite CompactStore instead of IndexedDB
+    const personalCompactStore = new SqliteCompactStore(this.options.dbPath.replace('.db', '-personal.db'))
+    await initYjsPersonalDoc(this.identity, this.wsAdapter, this.options.vaultUrl, personalCompactStore)
     this.storage = new YjsStorageAdapter(did)
 
     // 6. Discovery
