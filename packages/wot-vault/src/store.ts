@@ -208,6 +208,46 @@ export class DocStore {
     return Math.max(maxChange, maxSnapshot) + 1
   }
 
+  getStats(): Record<string, unknown> {
+    const docCount = (this.db
+      .prepare('SELECT COUNT(DISTINCT doc_id) as count FROM doc_changes')
+      .get() as { count: number }).count
+
+    const changeCount = (this.db
+      .prepare('SELECT COUNT(*) as count FROM doc_changes')
+      .get() as { count: number }).count
+
+    const totalBytes = (this.db
+      .prepare('SELECT COALESCE(SUM(LENGTH(data)), 0) as total FROM doc_changes')
+      .get() as { total: number }).total
+
+    const snapshotCount = (this.db
+      .prepare('SELECT COUNT(*) as count FROM doc_snapshots')
+      .get() as { count: number }).count
+
+    const snapshotBytes = (this.db
+      .prepare('SELECT COALESCE(SUM(LENGTH(data)), 0) as total FROM doc_snapshots')
+      .get() as { total: number }).total
+
+    const topDocs = this.db
+      .prepare(`
+        SELECT doc_id, COUNT(*) as changes, SUM(LENGTH(data)) as bytes, MAX(created_at) as last_update
+        FROM doc_changes GROUP BY doc_id ORDER BY bytes DESC LIMIT 10
+      `)
+      .all() as Array<{ doc_id: string; changes: number; bytes: number; last_update: string }>
+
+    return {
+      docCount,
+      changeCount,
+      snapshotCount,
+      totalChangesBytes: totalBytes,
+      totalSnapshotBytes: snapshotBytes,
+      totalBytes: totalBytes + snapshotBytes,
+      topDocs,
+      memoryMB: process.memoryUsage().rss / (1024 * 1024),
+    }
+  }
+
   close(): void {
     this.db.close()
   }
