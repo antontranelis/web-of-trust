@@ -63,17 +63,14 @@ function didToPublicKeyBytes(did: string): Uint8Array {
 
 /** Verify an Ed25519 signature over a message */
 async function verifySignature(publicKeyBytes: Uint8Array, signature: Uint8Array, message: Uint8Array): Promise<boolean> {
-  const keyBuf = publicKeyBytes.buffer.slice(publicKeyBytes.byteOffset, publicKeyBytes.byteOffset + publicKeyBytes.byteLength)
   const publicKey = await crypto.subtle.importKey(
     'raw',
-    keyBuf,
+    publicKeyBytes as any,
     { name: 'Ed25519' },
     false,
     ['verify'],
   )
-  const sigBuf = signature.buffer.slice(signature.byteOffset, signature.byteOffset + signature.byteLength)
-  const msgBuf = message.buffer.slice(message.byteOffset, message.byteOffset + message.byteLength)
-  return crypto.subtle.verify('Ed25519', publicKey, sigBuf, msgBuf)
+  return crypto.subtle.verify('Ed25519', publicKey, signature as any, message as any)
 }
 
 export class RelayServer {
