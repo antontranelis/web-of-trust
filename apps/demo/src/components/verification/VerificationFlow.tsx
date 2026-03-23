@@ -90,8 +90,8 @@ export function VerificationFlow() {
       setScanError(null)
 
       // Try native scanner first (Android/iOS)
-      if (await isNativeScannerAvailable()) {
-        const result = await scanQrCodeNative()
+      if (isNativeScannerAvailable()) {
+        const result = await scanQrCodeNative(t.scanCode.scanButton)
         if (result) handleScanCode(result)
         return
       }

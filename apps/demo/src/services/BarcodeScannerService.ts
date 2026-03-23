@@ -6,15 +6,15 @@ import {
   CapacitorBarcodeScannerCameraDirection,
 } from '@capacitor/barcode-scanner'
 
-export async function isNativeScannerAvailable(): Promise<boolean> {
+export function isNativeScannerAvailable(): boolean {
   return Capacitor.isNativePlatform()
 }
 
-export async function scanQrCodeNative(): Promise<string | null> {
+export async function scanQrCodeNative(scanInstructions: string): Promise<string | null> {
   const result = await CapacitorBarcodeScanner.scanBarcode({
     hint: CapacitorBarcodeScannerTypeHint.QR_CODE,
     cameraDirection: CapacitorBarcodeScannerCameraDirection.BACK,
-    scanInstructions: 'QR-Code scannen',
+    scanInstructions,
     scanButton: false,
     android: {
       scanningLibrary: CapacitorBarcodeScannerAndroidScanningLibrary.ZXING,

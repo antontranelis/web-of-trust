@@ -28,7 +28,11 @@ export function AppShell() {
       <button
         onClick={() => navigate('/verify')}
         aria-label={t.nav.verify}
-        className={`md:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors bg-primary text-primary-foreground active:bg-primary/80`}
+        className={`md:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
+          pathname === '/verify'
+            ? 'bg-primary/80 text-primary-foreground'
+            : 'bg-primary text-primary-foreground active:bg-primary/80'
+        }`}
       >
         <QrCode size={24} />
       </button>
