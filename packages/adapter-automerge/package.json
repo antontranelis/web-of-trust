@@ -1,6 +1,6 @@
 {
   "name": "@web.of.trust/adapter-automerge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Automerge CRDT adapter for Web of Trust — Rust/WASM-based replication and personal document management",
   "repository": {
     "type": "git",
