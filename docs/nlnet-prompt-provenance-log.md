@@ -109,10 +109,10 @@ Interaction 3 was a multi-turn conversation (~50 messages) where the applicant d
 
 ### Unedited Output
 
-The AI generated a complete rewrite (222 lines) incorporating all of the above direction. The full output is the current version of the file:
+The AI generated a complete rewrite (222 lines) incorporating all of the above direction. Committed as `653f461` (2026-03-16). The full output is preserved in git history:
 
 ```
-docs/nlnet-application-2026.md
+git show 653f461:docs/nlnet-application-2026.md
 ```
 
 Key changes in this rewrite:
@@ -161,7 +161,11 @@ Continued review of the application. The applicant directed corrections and impr
 
 ### Unedited Output
 
-Changes were made incrementally through individual edits, not as a single generation. Each change was directed by the applicant and applied as a targeted text replacement. The cumulative result is the current version of the file, committed alongside this log update.
+Changes were made incrementally through individual edits, not as a single generation. Each change was directed by the applicant and applied as a targeted text replacement. Committed as `1c20f29` (2026-03-27). The full output is preserved in git history:
+
+```
+git show 1c20f29:docs/nlnet-application-2026.md
+```
 
 ---
 
