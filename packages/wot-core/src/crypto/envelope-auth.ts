@@ -27,6 +27,12 @@ export function canonicalSigningInput(envelope: MessageEnvelope): string {
 export type EnvelopeSignFn = (data: string) => Promise<string>
 
 /**
+ * Verify function type — takes data string, base64url signature, and signer DID.
+ * Returns true if signature is valid. Portable: can be implemented with any crypto backend.
+ */
+export type EnvelopeVerifyFn = (data: string, signature: string, signerDid: string) => Promise<boolean>
+
+/**
  * Sign a MessageEnvelope.
  * Mutates the envelope's `signature` field in-place and returns it.
  *
@@ -43,6 +49,34 @@ export async function signEnvelope(
 }
 
 /**
+ * Default verify implementation using Web Crypto API.
+ * Extracts Ed25519 public key from did:key and verifies signature.
+ */
+async function webCryptoVerify(data: string, signature: string, signerDid: string): Promise<boolean> {
+  const publicKeyBytes = didToPublicKeyBytes(signerDid)
+  const publicKey = await crypto.subtle.importKey(
+    'raw',
+    publicKeyBytes,
+    { name: 'Ed25519' },
+    true,
+    ['verify'],
+  )
+
+  const inputBytes = new TextEncoder().encode(data)
+  const signatureBytes = decodeBase64Url(signature)
+
+  return crypto.subtle.verify(
+    'Ed25519',
+    publicKey,
+    signatureBytes.buffer.slice(
+      signatureBytes.byteOffset,
+      signatureBytes.byteOffset + signatureBytes.byteLength,
+    ),
+    inputBytes,
+  )
+}
+
+/**
  * Verify a MessageEnvelope's signature against fromDid.
  *
  * Extracts the Ed25519 public key from envelope.fromDid (did:key),
@@ -50,37 +84,19 @@ export async function signEnvelope(
  *
  * Returns true if signature is valid, false otherwise.
  * Never throws — returns false on any error.
+ *
+ * @param envelope - The envelope to verify
+ * @param verify - Optional verify function (default: Web Crypto API)
  */
-export async function verifyEnvelope(envelope: MessageEnvelope): Promise<boolean> {
+export async function verifyEnvelope(
+  envelope: MessageEnvelope,
+  verify: EnvelopeVerifyFn = webCryptoVerify,
+): Promise<boolean> {
   try {
     if (!envelope.signature) return false
 
-    // Extract public key from fromDid
-    const publicKeyBytes = didToPublicKeyBytes(envelope.fromDid)
-    const publicKey = await crypto.subtle.importKey(
-      'raw',
-      publicKeyBytes,
-      { name: 'Ed25519' },
-      true,
-      ['verify'],
-    )
-
-    // Reconstruct signing input
     const input = canonicalSigningInput(envelope)
-    const inputBytes = new TextEncoder().encode(input)
-
-    // Decode signature
-    const signatureBytes = decodeBase64Url(envelope.signature)
-
-    return await crypto.subtle.verify(
-      'Ed25519',
-      publicKey,
-      signatureBytes.buffer.slice(
-        signatureBytes.byteOffset,
-        signatureBytes.byteOffset + signatureBytes.byteLength,
-      ),
-      inputBytes,
-    )
+    return await verify(input, envelope.signature, envelope.fromDid)
   } catch {
     return false
   }

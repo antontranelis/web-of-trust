@@ -8,6 +8,9 @@
  * - Session cache: non-extractable CryptoKey in IndexedDB with TTL
  */
 
+import { encodeBase64Url, decodeBase64Url } from '../crypto/encoding'
+import type { SeedStorageAdapter } from '../adapters/interfaces/SeedStorageAdapter'
+
 interface EncryptedSeed {
   ciphertext: string // base64url
   salt: string // base64url for PBKDF2
@@ -19,7 +22,7 @@ interface SessionEntry {
   expiresAt: number // Date.now() + ttl
 }
 
-export class SeedStorage {
+export class SeedStorage implements SeedStorageAdapter {
   private static readonly DB_NAME = 'wot-identity'
   private static readonly STORE_NAME = 'seeds'
   private static readonly SESSION_STORE_NAME = 'session'
@@ -81,9 +84,9 @@ export class SeedStorage {
 
     // Store encrypted data
     const encrypted: EncryptedSeed = {
-      ciphertext: this.arrayBufferToBase64Url(ciphertext),
-      salt: this.arrayBufferToBase64Url(salt.buffer),
-      iv: this.arrayBufferToBase64Url(iv.buffer)
+      ciphertext: encodeBase64Url(new Uint8Array(ciphertext)),
+      salt: encodeBase64Url(salt),
+      iv: encodeBase64Url(iv)
     }
 
     return new Promise((resolve, reject) => {
@@ -116,15 +119,15 @@ export class SeedStorage {
 
     try {
       // Derive encryption key from passphrase
-      const salt = this.base64UrlToArrayBuffer(encrypted.salt)
-      const encryptionKey = await this.deriveEncryptionKey(passphrase, new Uint8Array(salt))
+      const salt = decodeBase64Url(encrypted.salt)
+      const encryptionKey = await this.deriveEncryptionKey(passphrase, salt)
 
       // Decrypt seed
-      const iv = this.base64UrlToArrayBuffer(encrypted.iv)
-      const ciphertext = this.base64UrlToArrayBuffer(encrypted.ciphertext)
+      const iv = decodeBase64Url(encrypted.iv)
+      const ciphertext = decodeBase64Url(encrypted.ciphertext)
 
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        { name: 'AES-GCM', iv },
         encryptionKey,
         ciphertext
       )
@@ -167,11 +170,11 @@ export class SeedStorage {
     }
 
     try {
-      const iv = this.base64UrlToArrayBuffer(encrypted.iv)
-      const ciphertext = this.base64UrlToArrayBuffer(encrypted.ciphertext)
+      const iv = decodeBase64Url(encrypted.iv)
+      const ciphertext = decodeBase64Url(encrypted.ciphertext)
 
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        { name: 'AES-GCM', iv },
         session.key,
         ciphertext
       )
@@ -328,26 +331,4 @@ export class SeedStorage {
     )
   }
 
-  // Utility methods
-
-  private arrayBufferToBase64Url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return btoa(binary)
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '')
-  }
-
-  private base64UrlToArrayBuffer(base64: string): ArrayBuffer {
-    const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i)
-    }
-    return bytes.buffer
-  }
 }

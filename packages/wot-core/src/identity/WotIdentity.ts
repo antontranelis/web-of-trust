@@ -1,12 +1,13 @@
 import { generateMnemonic, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39'
-import * as ed25519 from '@noble/ed25519'
 import { SeedStorage } from './SeedStorage'
+import { WebCryptoAdapter } from '../adapters/crypto/WebCryptoAdapter'
 import { germanPositiveWordlist } from '../wordlists/german-positive'
 import { signJws as signJwsUtil } from '../crypto/jws'
-import type { EncryptedPayload } from '../adapters/interfaces/CryptoAdapter'
+import type { CryptoAdapter, EncryptedPayload, MasterKeyHandle, EncryptionKeyPair } from '../adapters/interfaces/CryptoAdapter'
+import type { SeedStorageAdapter } from '../adapters/interfaces/SeedStorageAdapter'
 
 /**
- * WotIdentity - BIP39-based identity with native WebCrypto
+ * WotIdentity - BIP39-based identity with pluggable crypto and storage
  *
  * Security architecture:
  * - BIP39 Mnemonic (12 words, 128 bit entropy)
@@ -16,15 +17,25 @@ import type { EncryptedPayload } from '../adapters/interfaces/CryptoAdapter'
  *
  * Storage:
  * - Mnemonic: User must write down (never stored)
- * - Master Seed: Encrypted with PBKDF2(passphrase) + AES-GCM in IndexedDB
+ * - Master Seed: Encrypted with PBKDF2(passphrase) + AES-GCM via SeedStorageAdapter
  * - Keys: All derived from master seed via HKDF
  */
 export class WotIdentity {
-  private masterKey: CryptoKey | null = null
-  private identityKeyPair: CryptoKeyPair | null = null
-  private encryptionKeyPair: CryptoKeyPair | null = null
+  private masterKey: MasterKeyHandle | null = null
+  private identityKeyPair: { publicKey: CryptoKey; privateKey: CryptoKey } | null = null
+  private encKeyPair: EncryptionKeyPair | null = null
   private did: string | null = null
-  private storage: SeedStorage = new SeedStorage()
+  private storage: SeedStorageAdapter
+  private crypto: CryptoAdapter
+
+  /**
+   * @param storage - Seed storage adapter (default: IndexedDB-based SeedStorage)
+   * @param cryptoAdapter - Crypto adapter (default: WebCryptoAdapter)
+   */
+  constructor(storage?: SeedStorageAdapter, cryptoAdapter?: CryptoAdapter) {
+    this.storage = storage ?? new SeedStorage()
+    this.crypto = cryptoAdapter ?? new WebCryptoAdapter()
+  }
 
   /**
    * Create a new identity with BIP39 mnemonic
@@ -48,22 +59,10 @@ export class WotIdentity {
       await this.storage.storeSeed(new Uint8Array(seed.slice(0, 32)), userPassphrase)
     }
 
-    // 3. Import Master Key (non-extractable!)
-    this.masterKey = await crypto.subtle.importKey(
-      'raw',
-      seed.slice(0, 32), // First 32 bytes
-      { name: 'HKDF' },
-      false, // non-extractable!
-      ['deriveKey', 'deriveBits']
-    )
+    // 3. Import Master Key via adapter
+    await this.initFromSeed(new Uint8Array(seed.slice(0, 32)))
 
-    // 4. Derive Identity Key Pair (Ed25519, non-extractable)
-    await this.deriveIdentityKeyPair()
-
-    // 5. Generate DID from public key
-    this.did = await this.generateDID()
-
-    return { mnemonic, did: this.did }
+    return { mnemonic, did: this.did! }
   }
 
   /**
@@ -87,20 +86,7 @@ export class WotIdentity {
       await this.storage.storeSeed(new Uint8Array(seed.slice(0, 32)), passphrase)
     }
 
-    // Import Master Key (non-extractable)
-    this.masterKey = await crypto.subtle.importKey(
-      'raw',
-      seed.slice(0, 32),
-      { name: 'HKDF' },
-      false, // non-extractable!
-      ['deriveKey', 'deriveBits']
-    )
-
-    // Derive Identity Key Pair
-    await this.deriveIdentityKeyPair()
-
-    // Generate DID
-    this.did = await this.generateDID()
+    await this.initFromSeed(new Uint8Array(seed.slice(0, 32)))
   }
 
 
@@ -128,20 +114,7 @@ export class WotIdentity {
       }
     }
 
-    // Import Master Key (non-extractable)
-    this.masterKey = await crypto.subtle.importKey(
-      'raw',
-      seed,
-      { name: 'HKDF' },
-      false, // non-extractable!
-      ['deriveKey', 'deriveBits']
-    )
-
-    // Derive Identity Key Pair
-    await this.deriveIdentityKeyPair()
-
-    // Generate DID
-    this.did = await this.generateDID()
+    await this.initFromSeed(seed)
   }
 
   /**
@@ -172,7 +145,7 @@ export class WotIdentity {
   async lock(): Promise<void> {
     this.masterKey = null
     this.identityKeyPair = null
-    this.encryptionKeyPair = null
+    this.encKeyPair = null
     this.did = null
     await this.storage.clearSessionKey()
   }
@@ -210,15 +183,7 @@ export class WotIdentity {
     if (!this.identityKeyPair) {
       throw new Error('Identity not unlocked')
     }
-
-    const encoder = new TextEncoder()
-    const signature = await crypto.subtle.sign(
-      'Ed25519',
-      this.identityKeyPair.privateKey,
-      encoder.encode(data)
-    )
-
-    return this.arrayBufferToBase64Url(signature)
+    return this.crypto.signString(data, this.identityKeyPair.privateKey)
   }
 
   /**
@@ -231,19 +196,7 @@ export class WotIdentity {
     if (!this.masterKey) {
       throw new Error('Identity not unlocked')
     }
-
-    const bits = await crypto.subtle.deriveBits(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(),
-        info: new TextEncoder().encode(info)
-      },
-      this.masterKey,
-      256 // 32 bytes
-    )
-
-    return new Uint8Array(bits)
+    return this.crypto.deriveBits(this.masterKey, info, 256)
   }
 
   /**
@@ -271,21 +224,9 @@ export class WotIdentity {
     if (!this.identityKeyPair) {
       throw new Error('Identity not unlocked')
     }
-
-    // Export public key
-    const publicKeyJwk = await crypto.subtle.exportKey(
-      'jwk',
-      this.identityKeyPair.publicKey
-    )
-
-    // Encode as multibase (same as in DID generation)
-    const publicKeyBytes = this.base64UrlToArrayBuffer(publicKeyJwk.x!)
-    const multicodecPrefix = new Uint8Array([0xed, 0x01]) // Ed25519 public key
-    const combined = new Uint8Array(multicodecPrefix.length + publicKeyBytes.byteLength)
-    combined.set(multicodecPrefix)
-    combined.set(new Uint8Array(publicKeyBytes), multicodecPrefix.length)
-
-    return 'z' + this.base58Encode(combined)
+    // DID format is did:key:z<multibase>, extract z... part
+    const did = this.getDid()
+    return did.replace('did:key:', '')
   }
 
   // --- Encryption (X25519 ECDH + AES-GCM) ---
@@ -298,10 +239,14 @@ export class WotIdentity {
     if (!this.masterKey) {
       throw new Error('Identity not unlocked')
     }
-    if (!this.encryptionKeyPair) {
-      await this.deriveEncryptionKeyPair()
+    if (!this.encKeyPair) {
+      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
+      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
     }
-    return this.encryptionKeyPair!
+    // For backward compatibility, return the internal CryptoKeyPair
+    // This is a Web Crypto specific detail that will change when CryptoKey becomes opaque
+    const handle = this.encKeyPair as unknown as { keyPair: CryptoKeyPair }
+    return handle.keyPair
   }
 
   /**
@@ -309,9 +254,14 @@ export class WotIdentity {
    * This is what others need to encrypt messages for this identity.
    */
   async getEncryptionPublicKeyBytes(): Promise<Uint8Array> {
-    const kp = await this.getEncryptionKeyPair()
-    const raw = await crypto.subtle.exportKey('raw', kp.publicKey)
-    return new Uint8Array(raw)
+    if (!this.masterKey) {
+      throw new Error('Identity not unlocked')
+    }
+    if (!this.encKeyPair) {
+      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
+      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
+    }
+    return this.crypto.exportEncryptionPublicKey(this.encKeyPair)
   }
 
   /**
@@ -325,69 +275,7 @@ export class WotIdentity {
     if (!this.masterKey) {
       throw new Error('Identity not unlocked')
     }
-
-    // 1. Generate ephemeral X25519 key pair
-    const ephemeral = await crypto.subtle.generateKey(
-      { name: 'X25519' },
-      true, // extractable (need to send public key)
-      ['deriveBits'],
-    ) as CryptoKeyPair
-
-    // 2. Import recipient's public key
-    const recipientPub = await crypto.subtle.importKey(
-      'raw',
-      recipientPublicKeyBytes,
-      { name: 'X25519' },
-      true,
-      [],
-    )
-
-    // 3. ECDH: ephemeral private × recipient public → shared secret
-    const sharedBits = await crypto.subtle.deriveBits(
-      { name: 'X25519', public: recipientPub },
-      ephemeral.privateKey,
-      256,
-    )
-
-    // 4. HKDF: shared secret → AES-GCM key
-    const hkdfKey = await crypto.subtle.importKey(
-      'raw',
-      sharedBits,
-      { name: 'HKDF' },
-      false,
-      ['deriveKey'],
-    )
-    const aesKey = await crypto.subtle.deriveKey(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(32),
-        info: new TextEncoder().encode('wot-ecies-v1'),
-      },
-      hkdfKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt'],
-    )
-
-    // 5. AES-GCM encrypt
-    const nonce = crypto.getRandomValues(new Uint8Array(12))
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: nonce },
-      aesKey,
-      plaintext,
-    )
-
-    // 6. Export ephemeral public key
-    const ephemeralPubBytes = new Uint8Array(
-      await crypto.subtle.exportKey('raw', ephemeral.publicKey),
-    )
-
-    return {
-      ciphertext: new Uint8Array(ciphertext),
-      nonce,
-      ephemeralPublicKey: ephemeralPubBytes,
-    }
+    return this.crypto.encryptAsymmetric(plaintext, recipientPublicKeyBytes)
   }
 
   /**
@@ -401,262 +289,28 @@ export class WotIdentity {
     if (!payload.ephemeralPublicKey) {
       throw new Error('Missing ephemeral public key')
     }
-
-    const kp = await this.getEncryptionKeyPair()
-
-    // 1. Import sender's ephemeral public key
-    const ephemeralPub = await crypto.subtle.importKey(
-      'raw',
-      payload.ephemeralPublicKey,
-      { name: 'X25519' },
-      true,
-      [],
-    )
-
-    // 2. ECDH: own private × ephemeral public → same shared secret
-    const sharedBits = await crypto.subtle.deriveBits(
-      { name: 'X25519', public: ephemeralPub },
-      kp.privateKey,
-      256,
-    )
-
-    // 3. HKDF: shared secret → AES-GCM key (same params as encrypt)
-    const hkdfKey = await crypto.subtle.importKey(
-      'raw',
-      sharedBits,
-      { name: 'HKDF' },
-      false,
-      ['deriveKey'],
-    )
-    const aesKey = await crypto.subtle.deriveKey(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(32),
-        info: new TextEncoder().encode('wot-ecies-v1'),
-      },
-      hkdfKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt'],
-    )
-
-    // 4. AES-GCM decrypt
-    const plaintext = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: payload.nonce },
-      aesKey,
-      payload.ciphertext,
-    )
-
-    return new Uint8Array(plaintext)
+    if (!this.encKeyPair) {
+      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
+      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
+    }
+    return this.crypto.decryptAsymmetric(payload, this.encKeyPair)
   }
 
-  // Private methods
-
-  private async deriveIdentityKeyPair(): Promise<void> {
-    if (!this.masterKey) {
-      throw new Error('Master key not initialized')
-    }
-
-    // Derive identity seed via HKDF (32 bytes)
-    const identitySeed = await crypto.subtle.deriveBits(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(),
-        info: new TextEncoder().encode('wot-identity-v1')
-      },
-      this.masterKey,
-      256 // 32 bytes for Ed25519
-    )
-
-    // Derive Ed25519 key pair from seed using @noble/ed25519
-    // This ensures deterministic key generation: same seed → same keys
-    const privateKeyBytes = new Uint8Array(identitySeed)
-    const publicKeyBytes = await ed25519.getPublicKeyAsync(privateKeyBytes)
-
-    // Import into WebCrypto (keep private key non-extractable where possible)
-    // Note: We need to use JWK format for proper Ed25519 import
-    const privateKeyJwk: JsonWebKey = {
-      kty: 'OKP',
-      crv: 'Ed25519',
-      x: this.arrayBufferToBase64Url(publicKeyBytes.buffer),
-      d: this.arrayBufferToBase64Url(privateKeyBytes.buffer),
-      ext: false, // non-extractable
-      key_ops: ['sign']
-    }
-
-    const publicKeyJwk: JsonWebKey = {
-      kty: 'OKP',
-      crv: 'Ed25519',
-      x: this.arrayBufferToBase64Url(publicKeyBytes.buffer),
-      ext: true,
-      key_ops: ['verify']
-    }
-
-    // Import keys
-    const privateKey = await crypto.subtle.importKey(
-      'jwk',
-      privateKeyJwk,
-      'Ed25519',
-      false, // non-extractable!
-      ['sign']
-    )
-
-    const publicKey = await crypto.subtle.importKey(
-      'jwk',
-      publicKeyJwk,
-      'Ed25519',
-      true, // public key can be extractable
-      ['verify']
-    )
-
-    this.identityKeyPair = { privateKey, publicKey }
-  }
-
-  private async deriveEncryptionKeyPair(): Promise<void> {
-    if (!this.masterKey) {
-      throw new Error('Master key not initialized')
-    }
-
-    // Derive X25519 seed via HKDF with a DIFFERENT info string
-    // This ensures cryptographic independence from the Ed25519 identity key
-    const encryptionSeed = await crypto.subtle.deriveBits(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(),
-        info: new TextEncoder().encode('wot-encryption-v1'),
-      },
-      this.masterKey,
-      256, // 32 bytes for X25519
-    )
-
-    // Import as X25519 private key via PKCS8
-    // X25519 raw import requires PKCS8 wrapping for private keys
-    const pkcs8 = this.wrapX25519PrivateKey(new Uint8Array(encryptionSeed))
-    const privateKey = await crypto.subtle.importKey(
-      'pkcs8',
-      pkcs8,
-      { name: 'X25519' },
-      false, // non-extractable
-      ['deriveBits'],
-    )
-
-    // Derive public key by generating bits with a known base point
-    // WebCrypto doesn't have a direct "get public key from private" for X25519
-    // So we import as extractable, export JWK, and re-import
-    const extractablePriv = await crypto.subtle.importKey(
-      'pkcs8',
-      pkcs8,
-      { name: 'X25519' },
-      true, // extractable to get JWK
-      ['deriveBits'],
-    )
-    const jwk = await crypto.subtle.exportKey('jwk', extractablePriv)
-    const publicKey = await crypto.subtle.importKey(
-      'jwk',
-      { kty: jwk.kty, crv: jwk.crv, x: jwk.x },
-      { name: 'X25519' },
-      true,
-      [],
-    )
-
-    this.encryptionKeyPair = { privateKey, publicKey }
-  }
+  // --- Private methods ---
 
   /**
-   * Wrap raw 32-byte X25519 private key in PKCS8 DER format.
-   * PKCS8 = SEQUENCE { version, algorithm, key }
+   * Initialize identity from a 32-byte seed.
+   * Shared logic for create(), unlock(), and unlockFromStorage().
    */
-  private wrapX25519PrivateKey(rawKey: Uint8Array): Uint8Array {
-    // OID for X25519: 1.3.101.110
-    const prefix = new Uint8Array([
-      0x30, 0x2e, // SEQUENCE (46 bytes)
-      0x02, 0x01, 0x00, // INTEGER version = 0
-      0x30, 0x05, // SEQUENCE (5 bytes)
-      0x06, 0x03, 0x2b, 0x65, 0x6e, // OID 1.3.101.110 (X25519)
-      0x04, 0x22, // OCTET STRING (34 bytes)
-      0x04, 0x20, // OCTET STRING (32 bytes) — the actual key
-    ])
-    const pkcs8 = new Uint8Array(prefix.length + rawKey.length)
-    pkcs8.set(prefix)
-    pkcs8.set(rawKey, prefix.length)
-    return pkcs8
-  }
+  private async initFromSeed(seed: Uint8Array): Promise<void> {
+    // 1. Import master key via adapter
+    this.masterKey = await this.crypto.importMasterKey(seed)
 
-  private async generateDID(): Promise<string> {
-    if (!this.identityKeyPair) {
-      throw new Error('Key pair not initialized')
-    }
+    // 2. Derive identity seed via HKDF, then derive Ed25519 key pair
+    const identitySeed = await this.crypto.deriveBits(this.masterKey, 'wot-identity-v1', 256)
+    this.identityKeyPair = await this.crypto.deriveKeyPairFromSeed(identitySeed)
 
-    // Export public key
-    const publicKeyJwk = await crypto.subtle.exportKey(
-      'jwk',
-      this.identityKeyPair.publicKey
-    )
-
-    // Create did:key identifier (multibase encoded)
-    // Format: did:key:z...
-    const publicKeyBytes = this.base64UrlToArrayBuffer(publicKeyJwk.x!)
-    const multicodecPrefix = new Uint8Array([0xed, 0x01]) // Ed25519 public key
-    const combined = new Uint8Array(multicodecPrefix.length + publicKeyBytes.byteLength)
-    combined.set(multicodecPrefix)
-    combined.set(new Uint8Array(publicKeyBytes), multicodecPrefix.length)
-
-    const base58 = this.base58Encode(combined)
-    return `did:key:z${base58}`
-  }
-
-  // Utility methods
-
-  private arrayBufferToBase64Url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return btoa(binary)
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '')
-  }
-
-  private base64UrlToArrayBuffer(base64: string): ArrayBuffer {
-    const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i)
-    }
-    return bytes.buffer
-  }
-
-  private base58Encode(bytes: Uint8Array): string {
-    const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-    let result = ''
-
-    // Convert to big integer
-    let num = BigInt(0)
-    for (const byte of bytes) {
-      num = num * BigInt(256) + BigInt(byte)
-    }
-
-    // Convert to base58
-    while (num > 0) {
-      const remainder = num % BigInt(58)
-      result = ALPHABET[Number(remainder)] + result
-      num = num / BigInt(58)
-    }
-
-    // Handle leading zeros
-    for (const byte of bytes) {
-      if (byte === 0) {
-        result = ALPHABET[0] + result
-      } else {
-        break
-      }
-    }
-
-    return result
+    // 3. Generate DID from public key
+    this.did = await this.crypto.createDid(this.identityKeyPair.publicKey)
   }
 }
