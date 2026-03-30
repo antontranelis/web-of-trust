@@ -122,4 +122,4 @@ Type safety is maintained through Tauri's code generation.
 
 If the WoT Core is eventually ported to Rust (see [wot-rust-migration.md](wot-rust-migration.md)), both libraries would run natively in the Rust backend. The WebView would only contain the UI. This is the long-term vision — but not required to start building today.
 
-Alternatively, Sebastian could implement the WoT protocol in Rust independently, using the [WoT Protocol Specification](wot-protocol-spec.md) to ensure compatibility.
+Alternatively, Sebastian could implement the WoT protocol in Rust independently, using the [WoT Protocol Specification](../spec/wot-protocol-spec.md) to ensure compatibility.
