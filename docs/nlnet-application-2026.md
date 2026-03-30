@@ -28,55 +28,29 @@ https://web-of-trust.de
 
 ### Abstract
 
-Web of Trust is open commons infrastructure for decentralized identity, in-person verification, and end-to-end encrypted collaboration — built entirely on W3C standards (did:key, Ed25519) without reliance on centralized infrastructure.
+Web of Trust is decentralized digital social infrastructure that puts data sovereignty at its center. It provides self-sovereign identity, mutual verification, signed attestations, and end-to-end encrypted collaboration — as an open JavaScript library any developer can integrate.
 
-Existing decentralized protocols (Nostr, Matrix, AT Protocol) solve messaging and social networking, but none provide a trust layer based on real-world encounters. Local-first CRDT frameworks (Yjs, Automerge, Jazz) solve data synchronization, but none provide trust based on real-world encounters and reputation. Web of Trust fills this gap: a JavaScript library that developers can integrate into any application to add self-sovereign identity, in-person verification, signed attestations, and encrypted group collaboration.
+Today, communities that want to coordinate locally depend on corporate platforms they don't control. Decentralized protocols solve messaging but lack a trust layer based on direct verification between people. Web of Trust fills this gap.
 
-The architecture is CRDT-agnostic with 7 swappable adapter interfaces. This makes Web of Trust not only a library but also a testbed for local-first protocols: we have already built adapters for both Yjs and Automerge, evaluated 16 frameworks systematically, and published comparative benchmarks. Any component — storage, encryption, discovery, messaging, replication, authorization — can be replaced independently.
+A working prototype exists: identity (did:key, Ed25519), mutual verification via QR code, encrypted group spaces (Yjs/Automerge), offline support, 534 tests, published npm packages, and a live demo. Funding will enable access control, guardian-based identity recovery using the trust network itself, developer documentation, and a community pilot with real user groups.
 
-**What exists today (working prototype):**
-
-- Identity system: BIP39 mnemonics → HKDF → Ed25519 signing + X25519 encryption + did:key
-- In-person verification: challenge-response protocol with mutual QR-code exchange
-- Attestation system: signed claims with end-to-end delivery via WebSocket relay (offline queue with ACK)
-- Public profiles: JWS-signed, served via HTTP discovery service
-- Encrypted group spaces: CRDT-based (Yjs default, Automerge option) with AES-256-GCM group key rotation
-- Two blind infrastructure services (Relay, Vault) that see only encrypted bytes, never plaintext — plus one public discovery service (Profiles) where users control what they share
-- 534 passing tests across 6 packages, 17 end-to-end tests, 11 offline scenario tests
-- Published npm packages: `@web_of_trust/core`, `@web_of_trust/adapter-yjs`, `@web_of_trust/adapter-automerge`
-- Live demo tested with a small community: https://web-of-trust.de/demo/
-
-**What this funding will enable:**
-
-- Authorization system with space-level and item-level access control (read/write/admin)
-- Identity recovery and key rotation using the trust network itself as guardian network — no secrets are shared, no server backup needed
-- Developer documentation: getting-started guides, integration examples, API reference
-- Community pilot with real user groups, using a reference application (Real Life Stack) built on Web of Trust
-- We would also welcome NLNet's guidance on selecting an appropriate security reviewer for the cryptographic components
-
-**Expected outcomes:**
-
-Production-ready commons infrastructure that any developer can integrate into community applications — from cooperative platforms to local marketplaces to neighbourhood coordination tools — without depending on centralized platforms or corporate identity providers. The infrastructure belongs to the community, not to a company.
+The outcome is production-ready commons infrastructure for community applications — belonging to the community, not to a company.
 
 ### Prior Experience
 
-I am a full-time open-source developer based in Germany, working with Sebastian Stein (frontend developer). We have been self-funding our work on community-oriented software and I will continue to work on Web of Trust full-time if funded.
+I am a full-time open-source developer based in Germany, self-funding my work on community-oriented software. I will continue to work on Web of Trust full-time if funded.
 
 - **Utopia Map** — An open-source mapping platform for local initiatives and community resources, with 860 registered users and ~ 50 map instances deployed by community groups across Germany. https://github.com/utopia-os/utopia-map
 
-- **Web of Trust** — Over the past 3 months, I have designed and implemented the complete architecture from scratch: 7 adapter interfaces, two CRDT backends (Yjs + Automerge), 534 tests including 17 end-to-end tests and 11 offline scenario tests, 3 deployed services (Relay, Vault, Profiles), and comprehensive English documentation including a systematic evaluation of 16 frameworks, 6 DID methods, and detailed threat models. All self-funded. https://github.com/antontranelis/web-of-trust
+- **Web of Trust** — Designed and implemented from scratch over 3 months: 7 adapter interfaces, two CRDT backends (Yjs + Automerge), 534 tests (17 E2E, 11 offline), 3 deployed services, comprehensive documentation including evaluation of 16 frameworks and threat models. All self-funded. https://github.com/antontranelis/web-of-trust
 
-- **Real Life Stack** — A modular, backend-agnostic UI toolkit for building community applications focused on real-life encounters: shared calendars, maps, marketplaces, and tasks. Designed to work with any data backend — Web of Trust is the first integration, serving as the reference implementation. Being developed in collaboration with Sebastian Stein. https://github.com/antontranelis/real-life-stack
+- **Real Life Stack** — Modular, backend-agnostic UI toolkit for community apps: calendars, maps, marketplaces. Web of Trust is the first integration. https://github.com/antontranelis/real-life-stack
 
 **Why I build this:**
 
-The internet was built on open protocols — but identity, trust, and collaboration have been captured by closed platforms. There is no open, decentralized standard for "I met this person and I trust them."
+The internet was built on open protocols — but identity, trust, and collaboration have been captured by closed platforms. Community groups that want to coordinate locally end up depending on corporate infrastructure they don't control. The building blocks for a better alternative exist today: local-first software, E2EE, self-sovereign identity. What's missing is someone putting them together into infrastructure that real communities can use. That's what I'm doing.
 
-Real change happens in real life — in local cooperation, self-organization, and people taking initiative in their communities. As a developer who has been building open-source community software for years, I see the same pattern everywhere: community groups that want to coordinate locally end up depending on corporate infrastructure. Their data, their relationships, their communication — all on servers they don't control.
-
-I believe the building blocks for a better alternative exist today: local-first software, end-to-end encryption, self-sovereign identity. What's missing is someone putting them together into infrastructure that real communities can actually use. That's what I'm doing with Web of Trust.
-
-**License:** AGPL-3.0 — ensuring that all modifications remain open, including server-side deployments. This aligns with the project's core principle: infrastructure that belongs to the community.
+**License:** AGPL-3.0 — ensuring all modifications remain open, including server-side deployments.
 
 ---
 
@@ -84,7 +58,7 @@ I believe the building blocks for a better alternative exist today: local-first 
 
 ### Amount
 
-€33,000
+€35,000
 
 ### Budget Allocation
 
@@ -99,7 +73,7 @@ The project follows a phased development approach over approximately 9 months. B
 - Integration with Vault for capability backup and distribution to space members
 - Comprehensive test suite
 
-**WP2: Identity Recovery & Key Rotation (€8,000 — ~160h @ €50/h)**
+**WP2: Identity Recovery & Key Rotation (€10,000 — ~200h @ €50/h)**
 
 - Guardian-based recovery using the existing Web of Trust network
 - User creates new DID, verified contacts confirm identity through signed attestations
@@ -121,35 +95,15 @@ The project follows a phased development approach over approximately 9 months. B
 **WP4: Community Pilot (€10,000 — ~200h @ €50/h)**
 
 - Stabilize reference application (based on Real Life Stack) for pilot deployment — calendar, marketplace, map modules built on Web of Trust
-- Identify and onboard pilot groups from our network of local community initiatives
-- We have learned from previous projects that adoption requires excellent usability and low barriers to entry — Web of Trust and Real Life Stack are designed with these lessons in mind
+- Onboard 2-3 pilot groups from our network of local community initiatives
+- Target: at least 30 users completing in-person verification during the pilot
 - User onboarding materials (multilingual)
 - Gather feedback, iterate, document lessons learned
 - Explore alternative verification methods beyond QR codes to lower adoption barriers
 
-**Total: €33,000**
+**Total: €35,000**
 
-### Timeline
-
-| Quarter | Work Package | Milestones |
-| --- | --- | --- |
-| Q1 (Month 1-3) | WP1: Authorization | Space/item access control, persistent storage, revocation |
-| Q2 (Month 4-6) | WP2: Recovery & Rotation | Guardian recovery flow, key rotation, DID migration, equivalence proofs |
-| Q3 (Month 7-9) | WP3 + WP4 | API reference, getting-started guide, npm docs; reference app stabilized, 2-3 pilot groups onboarded |
-
-### Security
-
-We have conducted an internal security review (threat model, crypto inventory, best practices documentation) and use established cryptographic libraries (WebCrypto API, @noble/ed25519) rather than custom implementations. We would welcome NLNet's guidance on selecting an appropriate external security reviewer for the cryptographic components.
-
-### Sustainability
-
-Web of Trust is designed for long-term sustainability beyond the funding period:
-
-- **Open source (AGPL-3.0)** ensures the infrastructure remains community-owned
-- **npm packages** allow any developer to integrate WoT into their applications, creating organic adoption
-- **Real Life Stack** is the first application built on Web of Trust, demonstrating the integration path for others
-- **Self-hostable infrastructure** — communities can run their own Relay, Vault, and Profiles services via Docker
-- Future revenue through consulting, hosted infrastructure, and support for organizations deploying Web of Trust — while the core library remains free and open
+**Team:** Sebastian Stein (frontend/UX, Real Life Stack) and Tillmann Heigel (infrastructure, native mobile apps) contribute actively but their work is outside this application's scope. We are considering a separate application for the Real Life Stack in the next funding round.
 
 ### Other Funding Sources
 
@@ -159,34 +113,33 @@ No prior or current external funding. The project has been developed entirely th
 
 Web of Trust occupies a unique position in the landscape of decentralized identity and trust systems:
 
-**vs. Solid / WebID:**
-Solid focuses on data pods and linked data. Web of Trust focuses on trust relationships between people through real-world encounters. They are complementary — WoT could serve as a trust layer for Solid pods.
+**vs. OpenPGP Web of Trust:**
+The classic PGP Web of Trust established the concept of decentralized trust through key signing. However, it remained a tool for technical users, required manual key management, and never achieved mainstream adoption. Our Web of Trust builds on the same philosophical foundation but with a modern approach: BIP39 seed phrases instead of PGP key management, automatic key derivation, QR-code verification flows designed for non-technical users, and encrypted collaboration built in.
 
-**vs. Keyoxide / OpenPGP Web of Trust:**
-Keyoxide provides identity verification through cryptographic proofs linked to online accounts. Our Web of Trust requires in-person encounters for verification — a fundamentally different trust model that creates stronger, locality-based trust graphs.
+**vs. CRDT frameworks (Automerge, Yjs, Jazz, DXOS, Loro):**
+These are local-first CRDT frameworks for data synchronization. Some include their own identity systems (Jazz has CoID accounts, DXOS has HALO), but none provide a trust layer with mutual verification between people. We evaluated 16 of them systematically and built a CRDT-agnostic adapter architecture with swappable backends — currently supporting both Yjs and Automerge. Our contribution is the trust layer — mutual verification, signed attestations, guardian recovery — that none of these frameworks provide.
 
 **vs. Messaging protocols (Nostr, Matrix):**
-Both provide messaging infrastructure but lack a trust layer based on real-world encounters. Our adapter architecture is designed so that either could serve as a messaging transport — adding the trust layer on top.
+Both provide messaging infrastructure but lack a trust layer based on direct mutual verification. Our adapter architecture is designed so that either could serve as a messaging transport — adding the trust layer on top.
+
+**vs. Solid / WebID:**
+Solid focuses on data pods and linked data. Web of Trust focuses on trust relationships through direct mutual verification. They are complementary — WoT could serve as a trust layer for Solid pods.
 
 **vs. Keyhive:**
-Keyhive provides group key agreement and invites for local-first data. We address a complementary problem: establishing trust between people through in-person verification before they collaborate. Our GroupKeyService handles group encryption today; Keyhive's approach could be integrated as a future upgrade path for more sophisticated group key management.
+Keyhive provides group key agreement and invites for local-first data. We address a complementary problem: establishing trust between people through mutual verification before they collaborate. Our GroupKeyService handles group encryption today; Keyhive's approach could be integrated as a future upgrade path for more sophisticated group key management.
 
 **vs. NextGraph:**
 NextGraph provides a comprehensive local-first framework with Graph CRDT (RDF), DID support, and built-in E2EE. We are in contact with NextGraph's maintainer and see strong potential for collaboration — NextGraph's Graph CRDT is a natural fit for modeling trust relationships. Our CRDT-agnostic adapter architecture makes NextGraph integration realistic as a future backend.
 
-**vs. CRDT frameworks (Automerge, Yjs, Jazz, DXOS, Loro):**
-These are local-first CRDT frameworks for data synchronization. Some include their own identity systems (Jazz has CoID accounts, DXOS has HALO), but none provide trust based on real-world encounters or a verification protocol for in-person meetings. We evaluated 16 of them systematically and built a CRDT-agnostic adapter architecture with swappable backends — currently supporting both Yjs and Automerge. Our contribution is the trust layer — in-person verification, signed attestations, guardian recovery — that none of these frameworks provide.
-
 **What makes Web of Trust unique:**
 
-1. **Trust based on real-world encounters** — not online proofs or algorithmic scores
+1. **Trust through mutual verification** — the protocol uses deliberate friction (mutual QR-code exchange) to encourage real encounters, but does not technically enforce physical presence. Trust is built through direct human interaction, not online proofs or algorithmic scores
 2. **Reputation through signed attestations** — verifiable claims about skills, contributions, and collaboration — building organic reputation over time
-3. **Open commons infrastructure** — a library, not a platform. `npm install` and go.
-4. **CRDT-agnostic adapter architecture** — swap any of the 7 components independently
-5. **Single BIP39 seed derives all keys** — identity, encryption, storage. One seed, one identity.
-6. **Guardian recovery via the trust network** — your verified contacts are your recovery network. No secrets shared, no server backup.
-7. **Servers are blind** — Relay and Vault see only encrypted bytes, never plaintext. Profiles is public but under user control.
-8. **Designed for local action** — optimized for communities that meet in person and collaborate in the real world
+3. **CRDT-agnostic adapter architecture** — swap any of the 7 components independently
+4. **Single BIP39 seed derives all keys** — identity, encryption, storage. One seed, one identity.
+5. **Guardian recovery via the trust network** — your verified contacts are your recovery network. No secrets shared, no server backup.
+6. **Servers are blind** — Relay and Vault see only encrypted bytes, never plaintext. Profiles is public but under user control.
+7. **Designed for local action** — optimized for communities that coordinate and collaborate in the real world
 
 ### Technical Challenges
 
@@ -198,15 +151,17 @@ These are local-first CRDT frameworks for data synchronization. Some include the
 
 4. **Key Management Across Devices:** Deriving deterministic keys from a single BIP39 seed across different browsers and environments while maintaining security. Our HKDF-based derivation path solves this architecturally, but ensuring consistent behavior and secure seed storage across environments requires careful implementation.
 
+5. **Security Review:** We have conducted an internal security review (threat model, crypto inventory, key derivation documentation) and use established cryptographic libraries (WebCrypto API, @noble/ed25519) rather than custom implementations. A formal external security audit is intentionally not part of this application — it would exceed the scope and budget of this funding round. We would welcome the opportunity to discuss a dedicated security audit with NLNet.
+
 ### Ecosystem Engagement
 
-**Primary audience: Developers building decentralized software**
+**Developers building decentralized software**
 
-Web of Trust is infrastructure — a JavaScript library that developers integrate into their applications. The npm packages (`@web_of_trust/core`, `@web_of_trust/adapter-yjs`) provide self-sovereign identity, in-person verification, encrypted collaboration, and trust attestations as composable building blocks. Any developer building local-first, decentralized, or community-oriented software can add a trust layer without building their own identity system.
+Web of Trust is infrastructure — a JavaScript library that developers integrate into their applications. The npm packages (`@web_of_trust/core`, `@web_of_trust/adapter-yjs`) provide self-sovereign identity, mutual verification, encrypted collaboration, and trust attestations as composable building blocks. Any developer building local-first, decentralized, or community-oriented software can add a trust layer without building their own identity system.
 
-**Secondary audience: Local communities (via applications built on Web of Trust)**
+**Communities building decentralized trust networks**
 
-Through applications like Real Life Stack and Utopia Map (860 users, ~60 community instances), we reach neighbourhood initiatives, cooperative gardens, repair cafés, foodsharing groups, and local exchange networks — real-world communities that meet in person, not online communities.
+Web of Trust is commons infrastructure for any community that wants to establish trust without depending on corporate platforms — neighbourhood initiatives, cooperatives, local exchange networks, transition towns. The community pilot (WP4) ensures we build the right thing: good infrastructure is shaped by real usage, not just technical correctness. Through Utopia Map (860 users, ~50 community instances) we already have direct access to some communities.
 
 **Engagement Strategy:**
 
@@ -220,23 +175,9 @@ Through applications like Real Life Stack and Utopia Map (860 users, ~60 communi
 
 ## AI Disclosure
 
-This application was drafted with the assistance of Claude (Anthropic, model: claude-opus-4-6) via Claude Code (CLI tool). All technical decisions, architecture choices, budget allocations, and strategic direction are the applicant's. The applicant reviewed, edited, and approved the final submission.
+This application was drafted with the assistance of Claude (Anthropic, model: claude-opus-4-6) via Claude Code (CLI tool). Claude was used for structuring and writing — all technical decisions, architecture choices, budget allocations, and strategic direction are the applicant's. The application went through multiple revisions incorporating feedback from team members (Sebastian Stein, Tillmann Heigel). The applicant reviewed, edited, and approved the final submission.
 
-### Prompt Provenance Log
-
-**Interaction 1 — Initial Draft (2026-02-11)**
-
-Prompt: "Write an NLNet NGI Zero Commons Fund application for the Web of Trust project. Read the project documentation (CURRENT_IMPLEMENTATION.md, adapter-architektur-v2.md, architektur.md). Budget: €50,000, 5 Work Packages: WP1 Authorization/UCAN (€10k), WP2 Social Recovery/Shamir (€6k), WP3 Federated Messaging/Matrix or Nostr (€12k), WP4 Security Audit (€15k), WP5 Community Pilot & Docs (€7k). License: AGPL-3.0."
-
-Output: Initial application draft with 5 WPs and €50k budget. Committed as part of repository setup (2026-02-16).
-
-**Interaction 2 — Major Revision (2026-03-16)**
-
-Prompt: "Rewrite the NLNet application based on all changes since February. We now have 534 tests, 17 E2E tests, Yjs migration complete, 3 deployed services. Incorporate team feedback: tighten scope, add timeline, reduce budget. Remove Federation and Security Audit WPs. Replace Shamir recovery with guardian-based recovery using the trust network. Primary audience is developers, not communities. Add sustainability section."
-
-Output: Complete rewrite with 4 WPs, €28k budget, Q1-Q3 timeline, guardian recovery model, developer-focused framing.
-
-Full conversation logs are available on request.
+A detailed prompt provenance log documenting all AI interactions is maintained separately: [nlnet-prompt-provenance-log.md](nlnet-prompt-provenance-log.md)
 
 ---
 
@@ -245,7 +186,7 @@ Full conversation logs are available on request.
 - [x] Contact information filled in
 - [x] License: AGPL-3.0
 - [x] LICENSE file in repository
-- [x] Budget allocation reviewed (€28k, 4 WPs)
+- [x] Budget allocation reviewed (€35k, 4 WPs)
 - [x] Work packages realistic and focused
 - [x] Timeline with milestones
 - [x] AI Disclosure with prompt provenance log
