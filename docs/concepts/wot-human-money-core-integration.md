@@ -1,8 +1,24 @@
 # WoT × Human Money Core — Integrationskonzept
 
-**Status:** Entwurf (2026-03-29)
+**Status:** Entwurf (2026-03-30)
 **Autoren:** Anton Tranelis, Sebastian Galek, Eli
-**Kontext:** Kooperation zwischen Web of Trust und Human Money Core (E-Minuto)
+**Kontext:** Kooperation zwischen Web of Trust und Human Money Core
+
+---
+
+## Kontext
+
+Dieses Dokument beschreibt die geplante Integration dreier unabhaengiger Open-Source-Projekte:
+
+- **Web of Trust** (Anton Tranelis) — Dezentrales Vertrauensnetzwerk auf Basis echter Begegnungen. Persoenliche Verifikation per QR-Code, verschluesselte Spaces, Sybil-Resistenz ohne Blockchain.
+- **Human Money Core** (Sebastian Galek) — Rust-Library fuer dezentrale Gutscheine ([Minuto-Konzept](https://minuto.org)). Jeder Gutschein traegt seine eigene Micro-Chain, offline-faehig, automatische Double-Spend-Erkennung via Gossip-Protokoll.
+- **Real Life Stack** (Anton Tranelis, Sebastian Stein) — Backend-agnostischer App-Baukasten fuer Gemeinschaften. Module (Karte, Kalender, Marktplatz, u.a.) lassen sich frei kombinieren.
+
+**Ziele:**
+- Gutscheine als eigenstaendiges RLS-Modul bereitstellen, nutzbar fuer jede Community
+- Eine eigene Gutschein-App auf Basis des Real Life Stack bauen
+
+WoT liefert die Vertrauensinfrastruktur, HMC das Wertschoepfungssystem, RLS die App-Plattform. Dieses Dokument dient als Diskussionsgrundlage fuer die bestmoegliche Integration.
 
 ---
 
@@ -99,137 +115,50 @@ Module, die auf dem Core aufbauen, aber nicht jede App braucht:
 
 ---
 
-## Double-Spend als Schluesselkonzept
+## Architektur: Web und Native
 
-Human Money Core verhindert Betrug nicht — es **garantiert die Erkennung und den unwiderlegbaren Nachweis**.
-
-```
-Betrug passiert
-    │
-    ▼
-Micro-Chain forkt (zwei Transaktionen vom selben Zustand)
-    │
-    ▼
-Fingerprint-Gossip verbreitet beide Versionen
-    │
-    ▼
-Kollision erkannt → ProofOfDoubleSpend (kryptographisch)
-    │
-    ├─→ HMC: Frueheste Transaktion gewinnt, spaetere in Quarantaene
-    │
-    └─→ WoT Extension: Trust-Score des Betruegers → 0
-         Trust-Score leichtfertiger Buergen → sinkt
-```
-
-Das verbindet die beiden Systeme: **HMC liefert den Beweis, WoT vollstreckt die Konsequenz.**
-
----
-
-## Architektur-Optionen: Sprache und Plattform
+WoT + HMC sollen auf zwei Plattformen laufen. Beide muessen unterstuetzt werden, und die Zielarchitektur sollte moeglichst beiden gerecht werden.
 
 ### Ausgangslage
 
 - WoT Core: TypeScript, Web Crypto API
 - Human Money Core: Rust, Ed25519 (dalek)
-- Erfahrung: WASM (Automerge) hatte **massive Performance-Probleme** auf Mobile (Vanadium) — Hauptgrund fuer Migration zu Yjs
-- Ziel: Native Mobile Apps (Android + iOS) mit sicherer Schluesselverwaltung, Push, Offline, schneller Performance
+- Erfahrung: WASM (Automerge/Rust) hatte auf Mobile-Browsern (Vanadium) Performance-Probleme — Hauptgrund fuer Migration zu Yjs
 
-### Option A: Tauri 2.0 (Rust-nativ + WebView)
+### Plattform-Vergleich
 
-```
-┌────────────────────────────────────────────────┐
-│              React UI (WebView)                 │
-│  RLS Module, Marktplatz, Karte, Gutscheine     │
-│  Yjs (CRDT, laeuft im WebView / JS)            │
-├────────────────────────────────────────────────┤
-│              Tauri Bridge                       │
-│  invoke() — typsichere Commands                │
-├────────────────────────────────────────────────┤
-│          Native Rust Core                       │
-│  ┌──────────────┐  ┌────────────────────────┐  │
-│  │ WoT Core     │  │ Human Money Core       │  │
-│  │ (portiert    │  │ (unveraendert,         │  │
-│  │  oder neu    │  │  Sebastians Repo)      │  │
-│  │  in Rust)    │  │                        │  │
-│  └──────────────┘  └────────────────────────┘  │
-│  ┌──────────────┐  ┌────────────────────────┐  │
-│  │ Keychain /   │  │ Push Notifications     │  │
-│  │ Keystore     │  │ (native APIs)          │  │
-│  │ Integration  │  │                        │  │
-│  └──────────────┘  └────────────────────────┘  │
-└────────────────────────────────────────────────┘
-```
+| | Web (Browser) | Native App (iOS/Android) |
+| --- | --- | --- |
+| **UI** | React | React (im WebView) |
+| **CRDT** | Yjs (JavaScript) | Yjs (JavaScript im WebView) |
+| **WoT Core** | TypeScript + Web Crypto | TypeScript oder Rust Portierung |
+| **HMC** | Rust via WASM oder TS Portierung | Rust nativ |
+| **Schluesselverwaltung** | Web Crypto API (Browser-Sandbox) | Keychain (iOS) / Keystore (Android) |
+| **Push** | Service Worker | Native Push APIs |
+| **Offline** | Service Worker + IndexedDB | Filesystem + SQLite |
 
-**Pro:**
-- Rust laeuft **nativ** auf iOS, Android, Desktop — kein WASM, keine Performance-Probleme
-- Human Money Core kann direkt als Rust-Crate eingebunden werden
-- React UI bleibt unveraendert im WebView, Yjs bleibt in JS
-- Native APIs (Keychain, Keystore, Push, NFC) ueber Tauri Plugins
-- Eine Codebasis fuer alle Plattformen
+**Herausforderung WASM im Browser:** HMC (Rust) muss im Browser als WASM laufen. HMC-Operationen (Gutschein erstellen, uebertragen, verifizieren) sind deutlich seltener als CRDT-Sync, das WASM-Performance-Risiko ist daher geringer als bei Automerge. Trotzdem muss die WASM-Performance frueh getestet werden.
 
-**Contra:**
-- Tauri Mobile ist noch relativ jung — Reife und Stabilitaet muessen geprueft werden
-- WebView-Qualitaet variiert auf Android (insb. aeltere Geraete)
-- WoT Core muesste mittelfristig nach Rust portiert werden, oder zwei Sprachen koexistieren dauerhaft
+### Optionen fuer die native App
 
-### Option B: Capacitor + reines TypeScript
+Fuer die Web-Version gibt es keine Architektur-Entscheidung — der Stack (React + TS + WASM) steht. Fuer die native Mobile App gibt es drei Optionen:
 
-```
-┌────────────────────────────────────────────────┐
-│              React UI                           │
-│  RLS Module, Yjs, WoT Core, HMC (portiert)    │
-├────────────────────────────────────────────────┤
-│              Capacitor Bridge                   │
-│  Web → Native (Plugins fuer Keychain, Push)    │
-├────────────────────────────────────────────────┤
-│          Native Shell (iOS / Android)           │
-│  Keychain/Keystore, Push, Filesystem           │
-└────────────────────────────────────────────────┘
-```
+**Option A: Tauri 2.0** — React-UI im WebView, Rust-Core (WoT + HMC) laeuft nativ ueber Tauri Bridge.
+- Pro: HMC direkt als Rust-Crate, native APIs (Keychain, Push, NFC), eine Codebasis
+- Contra: Tauri Mobile noch jung, WebView-Qualitaet variiert auf Android
 
-**Pro:**
-- Kein WASM, kein Rust im Frontend — alles bleibt TypeScript
-- Web Crypto API ist ueberall schnell (Ed25519 nativ im Browser)
-- Groesseres Oekosystem, mehr Plugins, erprobter fuer Produktion
-- Gleicher Code fuer Web und Mobile
+**Option B: Capacitor** — React-UI im WebView, alles in TypeScript, native APIs ueber Capacitor-Plugins.
+- Pro: Erprobtes Oekosystem, gleicher Code fuer Web und Mobile
+- Contra: HMC muesste nach TS portiert oder als WASM eingebunden werden
 
-**Contra:**
-- Human Money Core muesste nach TypeScript portiert werden (oder als WASM eingebunden — siehe Performance-Risiko)
-- Trust Graph Berechnung in TS koennte bei grossem Netzwerk langsam werden
-- Kein nativer Rust-Vorteil fuer rechenintensive Operationen
-
-### Option C: Hybrid — TypeScript-first, Rust als Opt-in
-
-```
-┌────────────────────────────────────────────────┐
-│              React UI                           │
-│  RLS Module, Yjs                               │
-├────────────────────────────────────────────────┤
-│         WoT Core (TypeScript)                   │
-│  Identity, Attestations, Crypto (Web Crypto)   │
-│  Trust Graph (TS), HMC Port (TS)               │
-├────────────────────────────────────────────────┤
-│    Optional: Rust/WASM oder Tauri Native        │
-│    Nur fuer Graph-Berechnung / HMC              │
-│    wenn TS-Performance nicht ausreicht           │
-└────────────────────────────────────────────────┘
-```
-
-**Pro:**
-- Geringste initiale Komplexitaet — alles in einer Sprache
-- Kein WASM-Zwang, Rust nur wo es wirklich noetig wird
-- Schnellster Weg zu einem funktionierenden Prototyp
-- Flexibel: Spaeter Tauri oder Capacitor als Native-Shell
-
-**Contra:**
-- Sebastians HMC-Code muss (teilweise) portiert werden
-- Zwei Implementierungen desselben Systems (Rust + TS) waeren auf Dauer schwer wartbar
-- Kein klarer Pfad fuer native Schluesselverwaltung ohne App-Framework-Entscheidung
+**Option C: Hybrid** — TypeScript-first, Rust nur wo noetig (Graph-Berechnung, HMC).
+- Pro: Geringste Komplexitaet, schnellster Prototyp
+- Contra: Zwei Implementierungen (Rust + TS) auf Dauer schwer wartbar
 
 ### Bewertungsmatrix
 
 | Kriterium | A: Tauri | B: Capacitor | C: Hybrid |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | HMC-Integration | Direkt (Rust-Crate) | Port noetig | Port noetig |
 | Performance (Mobile) | Nativ, schnell | JS, ausreichend? | JS + Opt-in Rust |
 | Schluesselverwaltung | Nativ (Keychain) | Plugin (Capacitor) | Abhaengig von Shell |
@@ -239,101 +168,12 @@ Das verbindet die beiden Systeme: **HMC liefert den Beweis, WoT vollstreckt die 
 | Wartbarkeit | Ein Core (Rust) | Ein Core (TS) | Zwei Cores moeglich |
 | Time-to-Market | Mittel | Schnell | Am schnellsten |
 
-### Web vs. Native: Nicht alles muss ueberall laufen
-
-WoT + RLS Apps sollen definitiv im Web verfuegbar sein. Fuer HMC (Gutscheine) ist eine reine Web-Version nicht zwingend noetig.
-
-Das bedeutet fuer Option A (Tauri): Der WoT Core bleibt in TypeScript und laeuft im Browser wie in der App. HMC ist ein reines Native-Feature — kein WASM noetig.
-
-```
-Web (Browser):              Native App (Tauri):
-┌──────────────────┐        ┌──────────────────┐
-│ React UI         │        │ React UI         │
-│ WoT Core (TS)    │        │ WoT Core (TS)    │
-│ RLS Module       │        │ RLS Module       │
-│ Yjs              │        │ Yjs              │
-│ Web Crypto API   │        ├──────────────────┤
-│                  │        │ Tauri Bridge     │
-│ (kein HMC)       │        ├──────────────────┤
-└──────────────────┘        │ HMC (Rust nativ) │
-                            │ Keychain/Push    │
-                            └──────────────────┘
-```
-
-### Querschnittsfrage: WoT Core nach Rust migrieren?
-
-Unabhaengig von der Plattform-Entscheidung stellt sich die Frage, ob der WoT Core langfristig von TypeScript nach Rust migriert werden sollte. Das betrifft alle drei Optionen.
-
-**Rust vs. TypeScript — unabhaengig von HMC:**
-
-Bevor man ueber die Kopplung mit HMC spricht, lohnt sich die Frage: Was bringt Rust dem WoT Core *an sich*?
-
-*Was Rust bringt:*
-
-- **Kryptografische Korrektheit durch das Typsystem** — Ein Private Key ist ein eigener Typ, der nicht versehentlich geloggt oder serialisiert werden kann. In TS ist ein Key ein `Uint8Array` — nichts hindert daran, ihn in `console.log()` zu werfen. Rust's Compiler erzwingt diese Invarianten.
-- **Garantiertes Key-Zeroizing** — Das `zeroize` Crate loescht Schluessel garantiert aus dem Speicher. In JS/TS entscheidet der Garbage Collector wann — und "wann" kann "nie" sein.
-- **Keine Runtime-Ueberraschungen** — Kein `undefined is not a function`, kein implizites Type Coercion, kein `NaN`-Poisoning. Exhaustive Pattern Matching zwingt dazu, jeden Fall zu behandeln.
-- **Auditierbarkeit** — Ein Rust-Core ist fuer Security Auditors einfacher zu pruefen: weniger versteckte Laufzeit-Magie, expliziter Kontrollfluss. Kein `node_modules`-Dschungel mit tausenden transitiven Dependencies.
-- **Performance bei Skalierung** — Trust Graph Berechnung (Decay, Multipath) ueber viele Hops, Batch-Verification von hunderten Signaturen: hier macht 10-100x Geschwindigkeit einen Unterschied.
-
-*Was Rust NICHT bringt:*
-
-- **Memory Safety ist kein Argument gegen TS** — TypeScript/JavaScript ist bereits memory-safe durch die Runtime (Garbage Collector, keine manuelle Speicherverwaltung). Buffer Overflows und Use-after-free sind in TS kein Thema.
-- **Fuer einzelne Crypto-Operationen** ist Web Crypto API bereits nativ und schnell — sign/verify profitieren kaum von Rust.
-- **UI, CRDT-Sync (Yjs), Netzwerk** — bleiben so oder so in JS/TS. Rust bringt hier keinen Vorteil.
-
-*Ehrliche Einschaetzung:* Fuer den aktuellen Stand — kleines Netzwerk, wenige hundert Nutzer, Grundlagenarbeit — bringt Rust keinen unmittelbaren Vorteil. Der TS-Core funktioniert, Web Crypto API ist schnell genug, und das Team ist produktiver in TS. Der pragmatische Weg: Den WoT Core so designen, dass er portierbar *waere* (saubere Interfaces, klare Trennung von Crypto/Graph/Adapter), aber nicht jetzt portieren.
-
-**Zusaetzliche Vorteile durch HMC-Integration:**
-
-- **Ein einheitlicher Core** — WoT + HMC teilen sich Crypto-Primitives, Identity, Datenstrukturen direkt. Kein Mapping zwischen zwei Welten. Sebastian kann direkt gegen den WoT Core entwickeln, keine Bridge noetig.
-- **Eine Quelle der Wahrheit** — Keine Gefahr, dass TS-Core und Rust-Core auseinanderlaufen. Security Audits muessen nur einen Crypto-Stack pruefen.
-
-**Contra Migration nach Rust:**
-
-- **Web-Version wird WASM-abhaengig** — WoT Core im Browser = WASM. Die Automerge-Erfahrung (massive Performance-Probleme auf Vanadium) sitzt tief. Allerdings: WoT-Operationen (sign, verify, graph query) sind diskrete Calls — nicht vergleichbar mit Automerge's staendigem CRDT-Sync ueber die Boundary. Das Risiko ist geringer, aber nicht null.
-- **Massiver Migrationsaufwand** — 7 Adapter, Identity, Attestations, Crypto: alles neu in Rust. Yjs-Anbindung bleibt in JS, die Bridge zwischen Rust-Core und Yjs muss sauber designt werden. Waehrend der Migration muessen zwei Systeme gleichzeitig gewartet werden.
-- **Team-Engpass** — Rust-Kompetenz aktuell: Anton, Sebastian Galek. TypeScript-Oekosystem ist deutlich groesser (NPM, Community, Contributor-Pool). Neue Mitwirkende muessen Rust koennen oder lernen.
-- **Verlangsamte Feature-Entwicklung** — Waehrend der Migration stehen neue Features still. Rust hat eine steilere Lernkurve und langsamere Iteration (Compile-Zeiten, Borrow Checker).
-
-**Entscheidungshilfe:**
-
-| Frage | Antwort → Tendenz |
-|---|---|
-| Wird der Trust Graph in 12 Monaten > 10.000 Knoten? | Ja → Rust. Nein → TS reicht. |
-| Wie eng wird HMC in den WoT Core integriert? | Tief (Library) → Rust. Lose gekoppelt (API) → TS reicht. |
-| Wie viele Devs koennen/wollen Rust? | Viele → Rust. Wenige → TS sicherer. |
-| Wie kritisch ist Time-to-Market? | Sehr → TS. Weniger → Rust lohnt sich langfristig. |
-
-Die Kernfrage: **Wie eng werden WoT und HMC wirklich verschraenkt?** Wenn HMC den WoT Core als Library konsumiert (so wie Sebastians Concept Canvas es beschreibt), ist ein gemeinsamer Rust-Core ein enormer Vorteil. Wenn HMC eher ein lose gekoppeltes Modul bleibt, reicht die Bridge.
-
-### Portierbarkeit vorbereiten (ohne jetzt zu migrieren)
-
-Unabhaengig von der Architektur-Entscheidung sollte der WoT Core so designt werden, dass eine spaetere Migration moeglich waere — ohne sie jetzt durchzufuehren. Folgende Massnahmen wurden bereits umgesetzt (Stand 2026-03-29):
-
-**Bereits erledigt:**
-
-- **Encoding-Utils dedupliziert** — `encodeBase58`, `encodeBase64Url`, `decodeBase64Url` leben jetzt zentral in `crypto/encoding.ts`. Duplizierte private Methoden in `WotIdentity` und `SeedStorage` wurden entfernt.
-- **SeedStorageAdapter Interface extrahiert** — Neues Interface `SeedStorageAdapter` in `adapters/interfaces/`. Die bisherige IndexedDB-Implementierung (`SeedStorage`) implementiert dieses Interface. Auf Native kann eine Keychain/Keystore-Implementierung eingesetzt werden.
-- **WotIdentity: Constructor Injection** — `WotIdentity` akzeptiert jetzt einen optionalen `SeedStorageAdapter` im Constructor (Default: IndexedDB). Alle bestehenden Aufrufer (`new WotIdentity()`) funktionieren unveraendert.
-- **verifyEnvelope: Portable Verify-Funktion** — `verifyEnvelope()` akzeptiert jetzt eine optionale `EnvelopeVerifyFn` (Default: Web Crypto API). Kann mit jedem Crypto-Backend implementiert werden.
-
-- **CryptoAdapter erweitert** — Neue Methoden: `importMasterKey`, `deriveBits` (HKDF), `deriveKeyPairFromSeed` (deterministisch Ed25519), `deriveEncryptionKeyPair` (X25519), `encryptAsymmetric`/`decryptAsymmetric` (ECIES), `randomBytes`. Opake Typen `MasterKeyHandle` und `EncryptionKeyPair` fuer plattformunabhaengige Handles.
-- **WotIdentity vollstaendig auf CryptoAdapter migriert** — Null direkte `crypto.subtle` Calls. Alle Krypto-Operationen (HKDF, Ed25519 Key Derivation, X25519, ECIES, Signing) gehen durch den injizierbaren `CryptoAdapter`. `@noble/ed25519` Import aus WotIdentity entfernt (lebt jetzt im Adapter). Gemeinsame `initFromSeed()` Methode eliminiert Duplikation zwischen `create()`, `unlock()`, `unlockFromStorage()`.
-- 17 neue Tests fuer die erweiterten CryptoAdapter-Methoden, 308 Tests gesamt — alle gruen.
-
-**Noch offen:**
-
-- **CryptoKey als Plattform-spezifischer Typ** — Das CryptoAdapter Interface verwendet `CryptoKey` (Web Crypto API) in der oeffentlichen API (z.B. `getPublicKey()`, `sign()`). Fuer einen Rust-Port muesste dieser Typ durch einen opaken Handle oder Byte-Arrays ersetzt werden. Aufwand: mittel, betrifft alle Aufrufer.
-- **exportPublicKeyJwk()** — Einziger verbleibender direkter `crypto.subtle` Call in WotIdentity. JWK-Export ist Web Crypto spezifisch. Kann spaeter durch eine Adapter-Methode ersetzt werden.
-- **signJws()** — Delegiert an `jws.ts`, das ebenfalls `crypto.subtle` direkt nutzt. Portierung analog zu `verifyEnvelope` moeglich.
+Die Frage ob der WoT Core langfristig nach Rust migriert werden sollte, wird separat behandelt: siehe [wot-rust-migration.md](wot-rust-migration.md).
 
 ### Zu klaeren
 
 - **Tauri Mobile Reife:** Wie stabil ist Tauri 2.0 auf iOS/Android fuer Produktions-Apps? Erfahrungen sammeln.
 - **HMC Port:** Waere Sebastian bereit, Kernlogik auch in TS anzubieten? Oder ist Rust gesetzt?
-- **Rust-Kompetenz im Team:** Anton, Sebastian Galek — wer noch? Reicht das?
-- **Trust Graph Skalierung:** Wie gross wird der Graph realistisch in 6-12 Monaten? Reicht TS?
 - **Kopplungsgrad WoT ↔ HMC:** Library-Integration oder lose API-Kopplung?
 
 ---
