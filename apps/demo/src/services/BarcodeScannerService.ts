@@ -23,8 +23,12 @@ export async function scanQrCodeNative(scanInstructions: string): Promise<string
     })
 
     return result.ScanResult || null
-  } catch {
+  } catch (err) {
     // User cancelled or scanner closed — not an error
+    // But log unexpected errors so they're not silently swallowed
+    if (err instanceof Error && !err.message.includes('cancel')) {
+      console.warn('[BarcodeScannerService]', err.message)
+    }
     return null
   }
 }

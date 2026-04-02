@@ -53,20 +53,20 @@ The existing UI is functional and well-structured (React 19, Tailwind 4, respons
 ### Prerequisites
 - Xcode installed with command line tools (`xcode-select -s /Applications/Xcode.app/Contents/Developer`)
 - iPhone connected via USB with Developer Mode enabled
-- Device target ID: `00008110-000874901A09801E` (iPhone 13 mini "🦋")
+- Find your device target ID: `npx cap run ios --list`
 
 ### Build & Deploy
+
 ```bash
 # 1. Build web assets (VITE_BASE_PATH must be / for Capacitor, not /demo/)
-cd /Users/tillmann.heigel/code/web-of-trust
 VITE_BASE_PATH=/ pnpm build --filter=demo
 
 # 2. Sync web assets to iOS project
 cd apps/demo
 npx cap sync ios
 
-# 3. Deploy to device
-npx cap run ios --target 00008110-000874901A09801E
+# 3. Deploy to device (replace <target-id> with your device ID from --list)
+npx cap run ios --target <target-id>
 ```
 
 ### Key Notes
