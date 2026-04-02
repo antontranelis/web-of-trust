@@ -4,7 +4,7 @@ import {
   CapacitorBarcodeScannerTypeHint,
   CapacitorBarcodeScannerAndroidScanningLibrary,
   CapacitorBarcodeScannerCameraDirection,
-} from '@capacitor/barcode-scanner'
+} from '@real-life-org/capacitor-zxing-scanner'
 
 export function isNativeScannerAvailable(): boolean {
   return Capacitor.isNativePlatform()
