@@ -8,6 +8,7 @@ import { ShowCode } from './ShowCode'
 import { ScanCode } from './ScanCode'
 import { useAdapters } from '../../context'
 import { useLanguage } from '../../i18n'
+import { isNativeScannerAvailable, scanQrCodeNative } from '../../services/BarcodeScannerService'
 import { useConfetti } from '../../context/PendingVerificationContext'
 
 type Mode = 'ready' | 'confirm' | 'success' | 'error'
@@ -87,6 +88,15 @@ export function VerificationFlow() {
   const startScanning = async () => {
     try {
       setScanError(null)
+
+      // Try native scanner first (Android/iOS)
+      if (isNativeScannerAvailable()) {
+        const result = await scanQrCodeNative(t.scanCode.scanButton)
+        if (result) handleScanCode(result)
+        return
+      }
+
+      // Fallback: html5-qrcode for web
       setIsScanning(true)
 
       // Wait for DOM to render the scanner element

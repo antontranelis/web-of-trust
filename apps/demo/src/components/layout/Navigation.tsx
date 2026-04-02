@@ -1,5 +1,5 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Fingerprint, Users, UserPlus, QrCode, Award, Home, Boxes } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { Fingerprint, Users, UserPlus, Award, Home, Boxes } from 'lucide-react'
 import { useLanguage } from '../../i18n'
 
 /** Phosphor "Graph" icon — matches the WoT network visualization better than lucide's Share2 */
@@ -14,8 +14,6 @@ function GraphIcon({ size = 20 }: { size?: number }) {
 
 export function Navigation() {
   const { t } = useLanguage()
-  const navigate = useNavigate()
-  const location = useLocation()
 
   const mobileItems = [
     { to: '/', icon: Home, label: t.nav.home },
@@ -35,21 +33,7 @@ export function Navigation() {
   ]
 
   return (
-    <>
-      {/* Mobile: Verify FAB — fixed bottom-right, above the nav bar */}
-      <button
-        onClick={() => navigate('/verify')}
-        aria-label={t.nav.verify}
-        className={`md:hidden fixed right-4 bottom-20 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-colors ${
-          location.pathname === '/verify'
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-primary text-primary-foreground active:bg-primary/80'
-        }`}
-      >
-        <QrCode size={24} />
-      </button>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border md:sticky md:top-0 md:border-t-0 md:border-r md:h-screen md:w-64 md:shrink-0">
+      <nav className="shrink-0 bg-card border-t border-border md:border-t-0 md:border-r md:h-auto md:w-64 md:order-first md:overflow-auto">
         {/* Desktop: show all items in sidebar */}
         <ul className="hidden md:flex md:flex-col md:p-4 md:gap-2">
           {sidebarItems.map(({ to, icon: Icon, label }) => (
@@ -93,6 +77,5 @@ export function Navigation() {
           ))}
         </ul>
       </nav>
-    </>
   )
 }

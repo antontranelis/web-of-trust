@@ -10,4 +10,6 @@ dist
 backups/
 test-results/
 apps/video/
+.idea/
+.DS_Store
 docs/nlnet-application-2026.md

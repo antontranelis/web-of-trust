@@ -528,7 +528,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
   // Still checking if identity exists in storage
   if (hasStoredIdentity === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="h-full flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-muted-foreground">{t.common.loading}</p>
         </div>
@@ -539,7 +539,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
   // Identity not unlocked yet (but might be stored)
   if (!identity || !did) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="h-full overflow-y-auto flex items-center justify-center p-4">
         <IdentityManagement
           onComplete={(newIdentity, newDid, initialProfile) => {
             setIdentity(newIdentity, newDid, initialProfile)

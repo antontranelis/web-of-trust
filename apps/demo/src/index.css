@@ -118,8 +118,31 @@
   * {
     @apply border-border;
   }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply bg-background text-foreground antialiased;
+  }
+  /* Fixed bar behind iOS status bar so scrolling content doesn't overlap */
+  body::before {
+    content: '';
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top);
+    background: var(--background);
+    z-index: 9999;
+  }
+  #root {
+    padding-top: env(safe-area-inset-top);
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   /* Global focus ring — replaces browser default orange outline */
   :focus-visible {
