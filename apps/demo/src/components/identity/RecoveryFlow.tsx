@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { KeyRound, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react'
-import { WotIdentity } from '@real-life/wot-core'
+import { WotIdentity } from '@web_of_trust/core'
 import { ProgressIndicator, InfoTooltip } from '../shared'
 import { useLanguage } from '../../i18n'
 
@@ -38,13 +38,25 @@ export function RecoveryFlow({ onComplete, onCancel }: RecoveryFlowProps) {
     return stepMap[step]
   }
 
+  /** Clean pasted mnemonic: remove numbering (1.word, 2.word), line breaks, extra whitespace */
+  const cleanMnemonicInput = (text: string): string => {
+    return text
+      .trim()
+      .toLowerCase()
+      .split(/[\n\r]+/)
+      .map(line => line.trim().replace(/^\d+[.):\-]\s*/, ''))
+      .filter(w => w.length > 0)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+  }
+
   const validateMnemonic = (text: string): boolean => {
     const words = text.trim().split(/\s+/)
-    return words.length === 12 && words.every((word) => word.match(/^[a-z]+$/))
+    return words.length === 12 && words.every((word) => word.match(/^[a-zäöü]+$/))
   }
 
   const handleValidate = async () => {
-    const cleanMnemonic = mnemonic.trim().toLowerCase()
+    const cleanMnemonic = cleanMnemonicInput(mnemonic)
     const words = cleanMnemonic.split(/\s+/)
 
     if (words.length !== 12) {

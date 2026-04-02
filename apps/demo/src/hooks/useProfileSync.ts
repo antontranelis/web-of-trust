@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react'
-import { type PublicProfile, type MessageEnvelope, encodeBase64Url } from '@real-life/wot-core'
+import { type PublicProfile, type MessageEnvelope, encodeBase64Url } from '@web_of_trust/core'
 import { useAdapters } from '../context'
 import { useIdentity } from '../context'
 

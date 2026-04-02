@@ -51,7 +51,7 @@ All messages are JSON over a single persistent WebSocket connection.
 ## Programmatic Usage (tests / embedding)
 
 ```typescript
-import { RelayServer } from '@real-life/wot-relay'
+import { RelayServer } from '@web_of_trust/relay'
 
 const relay = new RelayServer({ port: 9700, dbPath: './relay.db' })
 await relay.start()

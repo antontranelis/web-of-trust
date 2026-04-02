@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Key, Copy, Check, AlertTriangle, Shield, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { WotIdentity, type Profile } from '@real-life/wot-core'
+import { WotIdentity, type Profile } from '@web_of_trust/core'
 import { ProgressIndicator, SecurityChecklist, InfoTooltip, AvatarUpload } from '../shared'
 import { useLanguage } from '../../i18n'
 
@@ -8,9 +8,10 @@ type OnboardingStep = 'generate' | 'display' | 'verify' | 'profile' | 'protect' 
 
 interface OnboardingFlowProps {
   onComplete: (identity: WotIdentity, did: string, initialProfile?: Profile) => void
+  onRecover?: () => void
 }
 
-export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ onComplete, onRecover }: OnboardingFlowProps) {
   const { t, fmt } = useLanguage()
   const [step, setStepRaw] = useState<OnboardingStep>('generate')
 
@@ -226,11 +227,23 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <button
             onClick={handleGenerate}
             disabled={isLoading}
-            className="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            className="w-full py-3 bg-primary-600 text-white font-medium rounded-xl hover:bg-primary-700 transition-colors disabled:opacity-50"
             autoFocus
           >
             {isLoading ? t.onboarding.generating : t.onboarding.generateButton}
           </button>
+
+          {onRecover && (
+            <>
+              <p className="text-sm text-muted-foreground text-center">Bereits Magische Wörter?</p>
+              <button
+                onClick={onRecover}
+                className="w-full py-3 border border-stone-300 dark:border-stone-600 text-foreground font-medium rounded-xl hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950 transition-colors"
+              >
+                Identität importieren
+              </button>
+            </>
+          )}
         </div>
       )}
 

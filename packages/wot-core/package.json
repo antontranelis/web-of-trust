@@ -1,6 +1,6 @@
 {
-  "name": "@real-life/wot-core",
-  "version": "0.2.0",
+  "name": "@web_of_trust/core",
+  "version": "0.2.2",
   "description": "Core library for building decentralized Web of Trust applications",
   "repository": {
     "type": "git",

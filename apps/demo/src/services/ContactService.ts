@@ -1,4 +1,4 @@
-import type { StorageAdapter, Contact, ContactStatus } from '@real-life/wot-core'
+import type { StorageAdapter, Contact, ContactStatus } from '@web_of_trust/core'
 
 /**
  * ContactService - Business logic layer for contact management.

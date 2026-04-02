@@ -13,13 +13,13 @@
 import { Repo, stringifyAutomergeUrl, parseAutomergeUrl } from '@automerge/automerge-repo'
 import type { DocHandle, DocumentId, AutomergeUrl, BinaryDocumentId } from '@automerge/automerge-repo'
 import * as Automerge from '@automerge/automerge'
-import type { WotIdentity } from '@real-life/wot-core'
-import type { MessagingAdapter } from '@real-life/wot-core'
-import { VaultClient, base64ToUint8 } from '@real-life/wot-core'
-import { VaultPushScheduler } from '@real-life/wot-core'
-import { EncryptedSyncService } from '@real-life/wot-core'
-import { CompactStorageManager } from '@real-life/wot-core'
-import { getMetrics, registerDebugApi } from '@real-life/wot-core'
+import type { WotIdentity } from '@web_of_trust/core'
+import type { MessagingAdapter } from '@web_of_trust/core'
+import { VaultClient, base64ToUint8 } from '@web_of_trust/core'
+import { VaultPushScheduler } from '@web_of_trust/core'
+import { EncryptedSyncService } from '@web_of_trust/core'
+import { CompactStorageManager } from '@web_of_trust/core'
+import { getMetrics, registerDebugApi } from '@web_of_trust/core'
 import { PersonalNetworkAdapter } from './PersonalNetworkAdapter'
 import { SyncOnlyStorageAdapter } from './SyncOnlyStorageAdapter'
 import { CompactionService } from './CompactionService'
@@ -703,6 +703,7 @@ export async function initPersonalDoc(identity: WotIdentity, messaging?: Messagi
   if (messaging) {
     networkAdapter = new PersonalNetworkAdapter(messaging, personalKey, did)
     networkAdapter.setDocumentId(documentId)
+    networkAdapter.setDocHandle(handle)
     personalRepo.networkSubsystem.addNetworkAdapter(networkAdapter)
     networkAdapter.setDocReady()
   }

@@ -1,6 +1,6 @@
 {
-  "name": "@real-life/adapter-automerge",
-  "version": "0.1.0",
+  "name": "@web_of_trust/adapter-automerge",
+  "version": "0.1.2",
   "description": "Automerge CRDT adapter for Web of Trust — Rust/WASM-based replication and personal document management",
   "repository": {
     "type": "git",
@@ -37,10 +37,10 @@
     "@automerge/automerge-repo-storage-indexeddb": "^2.5.3"
   },
   "peerDependencies": {
-    "@real-life/wot-core": "workspace:*"
+    "@web_of_trust/core": "workspace:*"
   },
   "devDependencies": {
-    "@real-life/wot-core": "workspace:*",
+    "@web_of_trust/core": "workspace:*",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.5.0",
     "typescript": "~5.7.2",

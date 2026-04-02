@@ -1,6 +1,6 @@
 {
-  "name": "@real-life/wot-vault",
-  "version": "0.1.0",
+  "name": "@web_of_trust/vault",
+  "version": "0.1.2",
   "type": "module",
   "private": true,
   "main": "./src/index.ts",
@@ -13,7 +13,7 @@
     "start": "node dist/start.js"
   },
   "dependencies": {
-    "@real-life/wot-core": "workspace:*",
+    "@web_of_trust/core": "workspace:*",
     "better-sqlite3": "^11.7.0"
   },
   "devDependencies": {

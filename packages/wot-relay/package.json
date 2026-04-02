@@ -1,6 +1,6 @@
 {
-  "name": "@real-life/wot-relay",
-  "version": "0.1.0",
+  "name": "@web_of_trust/relay",
+  "version": "0.1.2",
   "type": "module",
   "private": true,
   "main": "./src/index.ts",
@@ -17,7 +17,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@real-life/wot-core": "workspace:*",
+    "@web_of_trust/core": "workspace:*",
     "@types/better-sqlite3": "^7.6.12",
     "@types/ws": "^8.5.13",
     "tsx": "^4.19.0",

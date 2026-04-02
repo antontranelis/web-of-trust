@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useAdapters } from '../context'
-import type { MessageEnvelope } from '@real-life/wot-core'
+import type { MessageEnvelope } from '@web_of_trust/core'
 
 export function useMessaging() {
   const { messaging, messagingState } = useAdapters()

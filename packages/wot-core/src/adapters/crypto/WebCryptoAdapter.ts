@@ -1,7 +1,36 @@
-import type { CryptoAdapter } from '../interfaces/CryptoAdapter'
+import type { CryptoAdapter, MasterKeyHandle, EncryptionKeyPair, EncryptedPayload } from '../interfaces/CryptoAdapter'
 import type { KeyPair } from '../../types'
 import { encodeBase64Url, decodeBase64Url, toBuffer } from '../../crypto/encoding'
 import { createDid, didToPublicKeyBytes } from '../../crypto/did'
+import * as ed25519 from '@noble/ed25519'
+
+/** Internal wrapper to satisfy the branded MasterKeyHandle type */
+class WebCryptoMasterKey {
+  readonly _brand = 'MasterKeyHandle' as const
+  constructor(public readonly key: CryptoKey) {}
+}
+
+/** Internal wrapper to satisfy the branded EncryptionKeyPair type */
+class WebCryptoEncryptionKeyPair {
+  readonly _brand = 'EncryptionKeyPair' as const
+  constructor(public readonly keyPair: CryptoKeyPair) {}
+}
+
+/** OID for X25519: 1.3.101.110 — wraps raw 32-byte key in PKCS8 DER */
+function wrapX25519PrivateKey(rawKey: Uint8Array): Uint8Array {
+  const prefix = new Uint8Array([
+    0x30, 0x2e, // SEQUENCE (46 bytes)
+    0x02, 0x01, 0x00, // INTEGER version = 0
+    0x30, 0x05, // SEQUENCE (5 bytes)
+    0x06, 0x03, 0x2b, 0x65, 0x6e, // OID 1.3.101.110 (X25519)
+    0x04, 0x22, // OCTET STRING (34 bytes)
+    0x04, 0x20, // OCTET STRING (32 bytes)
+  ])
+  const pkcs8 = new Uint8Array(prefix.length + rawKey.length)
+  pkcs8.set(prefix)
+  pkcs8.set(rawKey, prefix.length)
+  return pkcs8
+}
 
 export class WebCryptoAdapter implements CryptoAdapter {
   async generateKeyPair(): Promise<KeyPair> {
@@ -171,5 +200,230 @@ export class WebCryptoAdapter implements CryptoAdapter {
   async hashData(data: Uint8Array): Promise<Uint8Array> {
     const hash = await crypto.subtle.digest('SHA-256', toBuffer(data))
     return new Uint8Array(hash)
+  }
+
+  // --- Deterministic Key Derivation ---
+
+  async importMasterKey(seed: Uint8Array): Promise<MasterKeyHandle> {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      toBuffer(seed),
+      { name: 'HKDF' },
+      false,
+      ['deriveKey', 'deriveBits'],
+    )
+    return new WebCryptoMasterKey(key)
+  }
+
+  async deriveBits(masterKey: MasterKeyHandle, info: string, bits: number): Promise<Uint8Array> {
+    const handle = masterKey as WebCryptoMasterKey
+    const derived = await crypto.subtle.deriveBits(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new Uint8Array(),
+        info: new TextEncoder().encode(info),
+      },
+      handle.key,
+      bits,
+    )
+    return new Uint8Array(derived)
+  }
+
+  async deriveKeyPairFromSeed(seed: Uint8Array): Promise<KeyPair> {
+    // Derive public key deterministically using @noble/ed25519
+    const publicKeyBytes = await ed25519.getPublicKeyAsync(seed)
+
+    // Import into WebCrypto via JWK
+    const privateKeyJwk: JsonWebKey = {
+      kty: 'OKP',
+      crv: 'Ed25519',
+      x: encodeBase64Url(new Uint8Array(publicKeyBytes.buffer)),
+      d: encodeBase64Url(new Uint8Array(seed.buffer)),
+      ext: false,
+      key_ops: ['sign'],
+    }
+    const publicKeyJwk: JsonWebKey = {
+      kty: 'OKP',
+      crv: 'Ed25519',
+      x: encodeBase64Url(new Uint8Array(publicKeyBytes.buffer)),
+      ext: true,
+      key_ops: ['verify'],
+    }
+
+    const [privateKey, publicKey] = await Promise.all([
+      crypto.subtle.importKey('jwk', privateKeyJwk, 'Ed25519', false, ['sign']),
+      crypto.subtle.importKey('jwk', publicKeyJwk, 'Ed25519', true, ['verify']),
+    ])
+
+    return { publicKey, privateKey }
+  }
+
+  // --- Asymmetric Encryption (ECIES) ---
+
+  async deriveEncryptionKeyPair(seed: Uint8Array): Promise<EncryptionKeyPair> {
+    const pkcs8 = wrapX25519PrivateKey(seed)
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      pkcs8,
+      { name: 'X25519' },
+      false,
+      ['deriveBits'],
+    )
+
+    // Derive public key: import extractable, export JWK, re-import public only
+    const extractablePriv = await crypto.subtle.importKey(
+      'pkcs8',
+      pkcs8,
+      { name: 'X25519' },
+      true,
+      ['deriveBits'],
+    )
+    const jwk = await crypto.subtle.exportKey('jwk', extractablePriv)
+    const publicKey = await crypto.subtle.importKey(
+      'jwk',
+      { kty: jwk.kty, crv: jwk.crv, x: jwk.x },
+      { name: 'X25519' },
+      true,
+      [],
+    )
+
+    return new WebCryptoEncryptionKeyPair({ privateKey, publicKey })
+  }
+
+  async exportEncryptionPublicKey(keyPair: EncryptionKeyPair): Promise<Uint8Array> {
+    const handle = keyPair as WebCryptoEncryptionKeyPair
+    const raw = await crypto.subtle.exportKey('raw', handle.keyPair.publicKey)
+    return new Uint8Array(raw)
+  }
+
+  async encryptAsymmetric(
+    plaintext: Uint8Array,
+    recipientPublicKeyBytes: Uint8Array,
+  ): Promise<EncryptedPayload> {
+    // 1. Generate ephemeral X25519 key pair
+    const ephemeral = await crypto.subtle.generateKey(
+      { name: 'X25519' },
+      true,
+      ['deriveBits'],
+    ) as CryptoKeyPair
+
+    // 2. Import recipient's public key
+    const recipientPub = await crypto.subtle.importKey(
+      'raw',
+      toBuffer(recipientPublicKeyBytes),
+      { name: 'X25519' },
+      true,
+      [],
+    )
+
+    // 3. ECDH: ephemeral private x recipient public → shared secret
+    const sharedBits = await crypto.subtle.deriveBits(
+      { name: 'X25519', public: recipientPub },
+      ephemeral.privateKey,
+      256,
+    )
+
+    // 4. HKDF: shared secret → AES-GCM key
+    const hkdfKey = await crypto.subtle.importKey(
+      'raw',
+      sharedBits,
+      { name: 'HKDF' },
+      false,
+      ['deriveKey'],
+    )
+    const aesKey = await crypto.subtle.deriveKey(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new Uint8Array(32),
+        info: new TextEncoder().encode('wot-ecies-v1'),
+      },
+      hkdfKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt'],
+    )
+
+    // 5. AES-GCM encrypt
+    const nonce = crypto.getRandomValues(new Uint8Array(12))
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce },
+      aesKey,
+      toBuffer(plaintext),
+    )
+
+    // 6. Export ephemeral public key
+    const ephemeralPubBytes = new Uint8Array(
+      await crypto.subtle.exportKey('raw', ephemeral.publicKey),
+    )
+
+    return {
+      ciphertext: new Uint8Array(ciphertext),
+      nonce,
+      ephemeralPublicKey: ephemeralPubBytes,
+    }
+  }
+
+  async decryptAsymmetric(
+    payload: EncryptedPayload,
+    keyPair: EncryptionKeyPair,
+  ): Promise<Uint8Array> {
+    const handle = keyPair as WebCryptoEncryptionKeyPair
+    if (!payload.ephemeralPublicKey) {
+      throw new Error('Missing ephemeral public key')
+    }
+
+    // 1. Import sender's ephemeral public key
+    const ephemeralPub = await crypto.subtle.importKey(
+      'raw',
+      toBuffer(payload.ephemeralPublicKey),
+      { name: 'X25519' },
+      true,
+      [],
+    )
+
+    // 2. ECDH: own private x ephemeral public → same shared secret
+    const sharedBits = await crypto.subtle.deriveBits(
+      { name: 'X25519', public: ephemeralPub },
+      handle.keyPair.privateKey,
+      256,
+    )
+
+    // 3. HKDF: shared secret → AES-GCM key (same params as encrypt)
+    const hkdfKey = await crypto.subtle.importKey(
+      'raw',
+      sharedBits,
+      { name: 'HKDF' },
+      false,
+      ['deriveKey'],
+    )
+    const aesKey = await crypto.subtle.deriveKey(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new Uint8Array(32),
+        info: new TextEncoder().encode('wot-ecies-v1'),
+      },
+      hkdfKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['decrypt'],
+    )
+
+    // 4. AES-GCM decrypt
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: payload.nonce },
+      aesKey,
+      toBuffer(payload.ciphertext),
+    )
+
+    return new Uint8Array(decrypted)
+  }
+
+  // --- Utilities ---
+
+  randomBytes(length: number): Uint8Array {
+    return crypto.getRandomValues(new Uint8Array(length))
   }
 }

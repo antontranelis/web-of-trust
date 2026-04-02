@@ -68,7 +68,7 @@ Response `200`:
 ### Using HttpDiscoveryAdapter from wot-core
 
 ```typescript
-import { HttpDiscoveryAdapter, OfflineFirstDiscoveryAdapter } from '@real-life/wot-core'
+import { HttpDiscoveryAdapter, OfflineFirstDiscoveryAdapter } from '@web_of_trust/core'
 
 const http = new HttpDiscoveryAdapter({
   baseUrl: 'https://profiles.utopia-lab.org',

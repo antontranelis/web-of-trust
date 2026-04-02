@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
-import { VerificationHelper } from '@real-life/wot-core'
-import type { VerificationChallenge, MessageEnvelope } from '@real-life/wot-core'
+import { VerificationHelper } from '@web_of_trust/core'
+import type { VerificationChallenge, MessageEnvelope } from '@web_of_trust/core'
 import { useAdapters } from '../context'
 import { useIdentity } from '../context'
 import { useConfetti } from '../context/PendingVerificationContext'
@@ -80,6 +80,12 @@ export function useVerification() {
         setError(null)
 
         const decodedChallenge = JSON.parse(atob(challengeCode))
+
+        // Prevent self-verification
+        if (decodedChallenge.fromDid === did) {
+          throw new Error('Du kannst dich nicht selbst verifizieren')
+        }
+
         setChallenge(decodedChallenge)
         setPeerName(decodedChallenge.fromName || null)
         setPeerDid(decodedChallenge.fromDid || null)
@@ -93,7 +99,7 @@ export function useVerification() {
         throw err
       }
     },
-    []
+    [did]
   )
 
   // After confirmation: create verification, add contact, send via relay

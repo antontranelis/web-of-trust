@@ -6,9 +6,9 @@
 import type {
   OutboxStore,
   OutboxEntry,
-} from '@real-life/wot-core'
-import type { MessageEnvelope } from '@real-life/wot-core'
-import type { Subscribable } from '@real-life/wot-core'
+} from '@web_of_trust/core'
+import type { MessageEnvelope } from '@web_of_trust/core'
+import type { Subscribable } from '@web_of_trust/core'
 import {
   getPersonalDoc as defaultGetPersonalDoc,
   changePersonalDoc as defaultChangePersonalDoc,

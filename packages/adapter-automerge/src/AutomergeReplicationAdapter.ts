@@ -2,18 +2,18 @@ import { Repo, parseAutomergeUrl, type DocumentId, type AutomergeUrl, type PeerI
 import type { StorageAdapterInterface } from '@automerge/automerge-repo'
 import type { DocHandle } from '@automerge/automerge-repo'
 import * as Automerge from '@automerge/automerge'
-import type { ReplicationAdapter, SpaceHandle, TransactOptions } from '@real-life/wot-core'
-import type { Subscribable } from '@real-life/wot-core'
-import type { MessagingAdapter } from '@real-life/wot-core'
-import type { MessageEnvelope } from '@real-life/wot-core'
-import type { SpaceInfo, SpaceMemberChange, ReplicationState } from '@real-life/wot-core'
-import { GroupKeyService } from '@real-life/wot-core'
-import { EncryptedSyncService } from '@real-life/wot-core'
-import type { SpaceMetadataStorage } from '@real-life/wot-core'
-import type { WotIdentity } from '@real-life/wot-core'
-import { VaultClient, base64ToUint8 } from '@real-life/wot-core'
-import { VaultPushScheduler } from '@real-life/wot-core'
-import { signEnvelope, verifyEnvelope } from '@real-life/wot-core'
+import type { ReplicationAdapter, SpaceHandle, TransactOptions } from '@web_of_trust/core'
+import type { Subscribable } from '@web_of_trust/core'
+import type { MessagingAdapter } from '@web_of_trust/core'
+import type { MessageEnvelope } from '@web_of_trust/core'
+import type { SpaceInfo, SpaceMemberChange, ReplicationState } from '@web_of_trust/core'
+import { GroupKeyService } from '@web_of_trust/core'
+import { EncryptedSyncService } from '@web_of_trust/core'
+import type { SpaceMetadataStorage } from '@web_of_trust/core'
+import type { WotIdentity } from '@web_of_trust/core'
+import { VaultClient, base64ToUint8 } from '@web_of_trust/core'
+import { VaultPushScheduler } from '@web_of_trust/core'
+import { signEnvelope, verifyEnvelope } from '@web_of_trust/core'
 import { EncryptedMessagingNetworkAdapter } from './EncryptedMessagingNetworkAdapter'
 import { CompactionService } from './CompactionService'
 
@@ -86,7 +86,7 @@ class AutomergeSpaceHandle<T> implements SpaceHandle<T> {
     return this.docHandle.doc() as T
   }
 
-  getMeta(): import('@real-life/wot-core').SpaceDocMeta {
+  getMeta(): import('@web_of_trust/core').SpaceDocMeta {
     return {}
   }
 
@@ -907,7 +907,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     throw new Error('leaveSpace not implemented for Automerge adapter')
   }
 
-  async updateSpace(_spaceId: string, _meta: import('@real-life/wot-core').SpaceDocMeta): Promise<void> {
+  async updateSpace(_spaceId: string, _meta: import('@web_of_trust/core').SpaceDocMeta): Promise<void> {
     throw new Error('updateSpace not implemented for Automerge adapter')
   }
 

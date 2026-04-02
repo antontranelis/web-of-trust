@@ -20,7 +20,7 @@ export default defineConfig({
         'yjs',
         'y-protocols',
         'y-protocols/sync',
-        '@real-life/wot-core',
+        '@web_of_trust/core',
       ],
     },
   },

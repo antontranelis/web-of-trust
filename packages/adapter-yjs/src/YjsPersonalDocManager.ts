@@ -15,7 +15,7 @@
  * that the Automerge version uses.
  */
 import * as Y from 'yjs'
-import type { WotIdentity, MessagingAdapter } from '@real-life/wot-core'
+import type { WotIdentity, MessagingAdapter } from '@web_of_trust/core'
 import {
   CompactStorageManager,
   VaultPushScheduler,
@@ -24,7 +24,7 @@ import {
   EncryptedSyncService,
   getMetrics,
   registerDebugApi,
-} from '@real-life/wot-core'
+} from '@web_of_trust/core'
 import { YjsPersonalSyncAdapter } from './YjsPersonalSyncAdapter'
 
 import type {

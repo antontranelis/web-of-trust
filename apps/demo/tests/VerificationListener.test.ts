@@ -13,8 +13,8 @@
  * user confirms in the UI (confirmIncoming in useVerification).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { VerificationHelper } from '@real-life/wot-core'
-import type { Verification, MessageEnvelope } from '@real-life/wot-core'
+import { VerificationHelper } from '@web_of_trust/core'
+import type { Verification, MessageEnvelope } from '@web_of_trust/core'
 
 // --- Test helpers ---
 

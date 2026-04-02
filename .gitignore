@@ -1,5 +1,6 @@
 node_modules
 dist
+!packages/wot-vault/wot-core-dist/dist/
 .turbo
 *.db
 *.db-shm
@@ -11,3 +12,4 @@ test-results/
 apps/video/
 .idea/
 .DS_Store
+docs/nlnet-application-2026.md

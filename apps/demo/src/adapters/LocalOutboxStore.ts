@@ -8,9 +8,9 @@
  * Keys: `outbox::{envelope.id}` in the LocalCacheStore.
  */
 
-import type { OutboxStore, OutboxEntry } from '@real-life/wot-core'
-import type { MessageEnvelope } from '@real-life/wot-core'
-import type { Subscribable } from '@real-life/wot-core'
+import type { OutboxStore, OutboxEntry } from '@web_of_trust/core'
+import type { MessageEnvelope } from '@web_of_trust/core'
+import type { Subscribable } from '@web_of_trust/core'
 import type { LocalCacheStore } from './LocalCacheStore'
 
 const PREFIX = 'outbox::'

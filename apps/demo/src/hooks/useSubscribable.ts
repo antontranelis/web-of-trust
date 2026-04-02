@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import type { Subscribable } from '@real-life/wot-core'
+import type { Subscribable } from '@web_of_trust/core'
 
 /**
  * React hook that subscribes to a Subscribable<T> and re-renders on changes.

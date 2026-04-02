@@ -1,8 +1,8 @@
-name: Publish Package
+name: Publish Packages
 
 on:
   release:
-    types: [created]
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -20,16 +20,27 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build
-        run: pnpm --filter @real-life/wot-core build
+      - name: Build all packages
+        run: |
+          pnpm --filter @web_of_trust/core build
+          pnpm --filter @web_of_trust/adapter-yjs build
+          pnpm --filter @web_of_trust/adapter-automerge build
 
-      - name: Publish with Trusted Publishers
+      - name: Publish @web_of_trust/core
         working-directory: packages/wot-core
-        run: npm publish --access public
+        run: npm publish --access public --provenance 2>&1 || echo "Already published or error"
+
+      - name: Publish @web_of_trust/adapter-yjs
+        working-directory: packages/adapter-yjs
+        run: npm publish --access public --provenance 2>&1 || echo "Already published or error"
+
+      - name: Publish @web_of_trust/adapter-automerge
+        working-directory: packages/adapter-automerge
+        run: npm publish --access public --provenance 2>&1 || echo "Already published or error"

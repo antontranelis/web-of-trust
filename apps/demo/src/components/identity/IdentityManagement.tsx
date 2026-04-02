@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { WotIdentity, type Profile } from '@real-life/wot-core'
+import { WotIdentity, type Profile } from '@web_of_trust/core'
 import { useIdentity } from '../../context'
 import { OnboardingFlow } from './OnboardingFlow'
 import { RecoveryFlow } from './RecoveryFlow'
@@ -52,16 +52,6 @@ export function IdentityManagement({ onComplete }: IdentityManagementProps) {
 
   // mode === 'onboarding'
   return (
-    <div>
-      <OnboardingFlow onComplete={onComplete} />
-      <div className="max-w-2xl mx-auto px-6 mt-4">
-        <button
-          onClick={() => setMode('recovery')}
-          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Bereits Magische Wörter? → Identität importieren
-        </button>
-      </div>
-    </div>
+    <OnboardingFlow onComplete={onComplete} onRecover={() => setMode('recovery')} />
   )
 }
