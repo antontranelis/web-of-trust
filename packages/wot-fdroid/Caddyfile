@@ -1,6 +1,13 @@
 :80 {
     root * /srv/fdroid
 
+    # F-Droid convention: /fdroid/repo -> /repo
+    handle_path /fdroid/* {
+        rewrite * /repo{path}
+        root * /srv/fdroid
+        file_server
+    }
+
     # Block sensitive files
     @sensitive path *.p12 *.yml *.yaml
     respond @sensitive 404
