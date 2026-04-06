@@ -21,12 +21,6 @@ android {
     }
 
     signingConfigs {
-        fdroidRelease {
-            storeFile file(project.findProperty('FDROID_STORE_FILE') ?: '/dev/null')
-            storePassword project.findProperty('FDROID_STORE_PASSWORD') ?: ''
-            keyAlias project.findProperty('FDROID_KEY_ALIAS') ?: ''
-            keyPassword project.findProperty('FDROID_KEY_PASSWORD') ?: ''
-        }
         playstoreRelease {
             storeFile file(project.findProperty('PLAYSTORE_STORE_FILE') ?: '/dev/null')
             storePassword project.findProperty('PLAYSTORE_STORE_PASSWORD') ?: ''
@@ -39,7 +33,8 @@ android {
     productFlavors {
         fdroid {
             dimension "store"
-            signingConfig signingConfigs.fdroidRelease
+            // No signingConfig — F-Droid signs the APK itself.
+            // For local/self-hosted builds, sign manually with apksigner.
         }
         playstore {
             dimension "store"

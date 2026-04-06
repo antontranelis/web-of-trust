@@ -84,33 +84,36 @@ VITE_UPDATE_SERVER_URL=https://web-of-trust.de VITE_UPDATE_CHANNEL=android-foss 
 
 ### Schritt 5a: F-Droid APK bauen (bei `apk` oder `full`)
 
-Das APK wird mit dem F-Droid Keystore signiert. Signing-Properties als Gradle-Flags:
+Der fdroid Flavor hat kein signingConfig — Gradle baut ein unsigned APK.
+Danach manuell mit dem F-Droid Keystore signieren.
+
+```bash
+cd "$DEMO_DIR/android"
+./gradlew assembleFdroidRelease
+```
+
+APK signieren und ins F-Droid Repo kopieren:
 
 ```bash
 cd "$FDROID_DIR/fdroid"
+KEYSTORE="$HOME/.android/fdroid-keystore.p12"
 PASS=$(grep keystorepass config.yml | awk '{print $2}')
-ALIAS=$(keytool -list -keystore keystore.p12 -storetype PKCS12 -storepass "$PASS" 2>/dev/null | grep PrivateKeyEntry | cut -d, -f1)
-
-cd "$DEMO_DIR/android"
-./gradlew assembleFdroidRelease \
-  -PFDROID_STORE_FILE="$FDROID_DIR/fdroid/keystore.p12" \
-  -PFDROID_STORE_PASSWORD="$PASS" \
-  -PFDROID_KEY_ALIAS="$ALIAS" \
-  -PFDROID_KEY_PASSWORD="$PASS"
-```
-
-APK ins F-Droid Repo kopieren:
-
-```bash
+ALIAS=$(keytool -list -keystore "$KEYSTORE" -storetype PKCS12 -storepass "$PASS" 2>/dev/null | grep PrivateKeyEntry | cut -d, -f1)
 VERSION_CODE=$(grep VERSION_CODE "$DEMO_DIR/android/version.properties" | cut -d= -f2)
-cp "$DEMO_DIR/android/app/build/outputs/apk/fdroid/release/app-fdroid-release.apk" \
-   "$FDROID_DIR/fdroid/repo/org.reallife.weboftrust_${VERSION_CODE}.apk"
+
+export PATH="$HOME/Android/Sdk/build-tools/36.0.0:$PATH"
+apksigner sign \
+  --ks "$KEYSTORE" \
+  --ks-key-alias "$ALIAS" \
+  --ks-pass "pass:$PASS" \
+  --key-pass "pass:$PASS" \
+  --out "repo/org.reallife.weboftrust_${VERSION_CODE}.apk" \
+  "$DEMO_DIR/android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk"
 ```
 
 F-Droid Index aktualisieren:
 
 ```bash
-cd "$FDROID_DIR/fdroid"
 fdroid update
 ```
 

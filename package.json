@@ -2,6 +2,9 @@
   "name": "web-of-trust",
   "private": true,
   "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

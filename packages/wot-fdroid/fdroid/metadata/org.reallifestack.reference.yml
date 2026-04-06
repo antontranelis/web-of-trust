@@ -1,0 +1,27 @@
+AuthorName: Anton Tranelis
+Categories:
+  - Internet
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1
+Description: |
+  Real Life Stack is a modular, backend-agnostic toolkit for community apps.
+
+  Build apps with pluggable UI modules that work against any data backend:
+  * Feed — posts, comments, reactions
+  * Kanban — drag-and-drop task boards
+  * Calendar — events and scheduling
+  * Map — location-based community resources
+  * Contacts — member directory
+
+  Switch between data backends without changing your UI:
+  * Local (IndexedDB, works offline)
+  * GraphQL (server-based)
+  * Web of Trust (decentralized, encrypted)
+
+  Real Life Stack is free and open-source software (MIT license).
+IssueTracker: https://github.com/IT4Change/real-life-stack/issues
+License: MIT
+Name: Real Life Stack
+SourceCode: https://github.com/IT4Change/real-life-stack
+Summary: Modular toolkit for community apps
+WebSite: https://web-of-trust.de

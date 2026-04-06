@@ -41,9 +41,10 @@ Builds:
     commit: v0.2.0
     subdir: apps/demo/android
     sudo:
-      - apt-get update
-      - apt-get install -y nodejs npm
-      - npm install -g pnpm@9
+      - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+      - apt-get install -y nodejs
+      - corepack enable
+      - corepack prepare pnpm@9.15.4 --activate
     init: |-
       cd ../../..
       pnpm install --frozen-lockfile
@@ -52,8 +53,11 @@ Builds:
       npx cap sync android
     gradle:
       - fdroid
+    scandelete:
+      - app/build
+    ndk: r27c
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags
+UpdateCheckMode: Tags ^v
 CurrentVersion: 0.2.0
 CurrentVersionCode: 2

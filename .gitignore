@@ -13,6 +13,10 @@ apps/video/
 .idea/
 .DS_Store
 # F-Droid repo (local build artifacts + secrets)
+packages/wot-fdroid/fdroid/repo/
+packages/wot-fdroid/fdroid/tmp/
+packages/wot-fdroid/fdroid/config.yml
+packages/wot-fdroid/fdroid/srclibs/
 packages/wot-fdroid/repo/
 keystore.p12
 docs/nlnet-application-2026.md
