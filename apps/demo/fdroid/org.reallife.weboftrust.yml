@@ -53,6 +53,7 @@ Builds:
       npx cap sync android
     gradle:
       - fdroid
+    output: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
     scanignore:
       - apps/demo/android/app/src/main/assets/public/assets
     scandelete:
