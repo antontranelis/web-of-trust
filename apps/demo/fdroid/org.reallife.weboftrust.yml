@@ -54,11 +54,11 @@ Builds:
     gradle:
       - fdroid
     scanignore:
-      - app/src/main/assets/public/assets/automerge_wasm_bg-*.wasm
+      - apps/demo/android/app/src/main/assets/public/assets
     scandelete:
-      - ../../../node_modules
-      - ../../../apps/demo/dist
-      - ../../../apps/benchmark/dist
+      - node_modules
+      - apps/demo/dist
+      - apps/benchmark/dist
     ndk: r27c
 
 AutoUpdateMode: Version
