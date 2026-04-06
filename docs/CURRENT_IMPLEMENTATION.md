@@ -5,12 +5,14 @@
 
 ## Last Updated
 
-**Date:** 2026-03-16
-**Phase:** Offline Hardening + Real Life Stack Connector
+**Date:** 2026-04-06
+**Phase:** Native Apps + OTA + Biometric
 **Demo:** https://web-of-trust.de/demo/
 **Relay:** wss://relay.utopia-lab.org
 **Profiles:** https://profiles.utopia-lab.org
 **Benchmark:** <https://web-of-trust.de/benchmark>
+**F-Droid:** <https://fdroid.utopia-lab.org/fdroid/repo> (Web of Trust + Real Life Stack)
+**OTA Updates:** <https://web-of-trust.de/updates/> (android, android-foss, ios channels)
 
 ---
 
@@ -90,6 +92,23 @@ getDid(): string
 getPublicKeyMultibase(): Promise<string>
 deriveFrameworkKey(info): Promise<Uint8Array>
 ```
+
+### Biometric Unlock (`apps/demo/android/...BiometricKeystorePlugin.java`, `ios/...BiometricKeystorePlugin.swift`)
+
+Native Capacitor plugin for fingerprint/face unlock on both platforms:
+
+- **Android:** AES-256-GCM key in Android Keystore, `BiometricPrompt` with `setUserAuthenticationRequired(true)`
+- **iOS:** Keychain with `kSecAccessControlUserPresence`, `LAContext` for Face ID/Touch ID
+- **Flow:** Passphrase encrypted with biometric-protected key → on unlock, biometric prompt → decrypt passphrase → `unlockFromStorage(passphrase)`
+- **Password-free onboarding:** When biometric available, auto-generates random passphrase (user never sees it)
+- **Fallback:** Recovery via Magic Words (BIP39 seed)
+
+TypeScript wrapper: `BiometricService.ts` — `isAvailable()`, `enroll()`, `authenticate()`, `unenroll()`, `isEnrolled()`
+
+Unlock priority chain:
+1. Session cache (30 min) → auto-unlock
+2. Biometric enrolled → fingerprint/face prompt → decrypt passphrase
+3. Fallback → manual passphrase entry
 
 ### Multi-Device
 
@@ -300,11 +319,34 @@ VITE_CRDT=automerge pnpm dev:demo  # Automerge
 
 Environment variable `VITE_CRDT` controls which StorageAdapter + PersonalDocManager is loaded.
 
+### Native App Distribution
+
+**Android Product Flavors** (`apps/demo/android/app/build.gradle`):
+
+- **`fdroid`** — 100% FOSS, no Google dependencies, OTA channel `android-foss`
+- **`playstore`** — Can include Google Play Services (future FCM push), OTA channel `android`
+- Same `applicationId` for both — users can switch stores without reinstall
+- Separate signing configs per flavor (credentials in `~/.gradle/gradle.properties`)
+
+**OTA Live Updates** (`@capawesome/capacitor-live-update`):
+
+- Web assets updated without new APK/IPA, pushed via GitHub Actions on `main`
+- Server: `https://web-of-trust.de/updates/{channel}/latest.json`
+- Three channels: `ios`, `android`, `android-foss`
+- Build requires `VITE_UPDATE_SERVER_URL` and `VITE_UPDATE_CHANNEL` env vars
+- Native changes still require a full APK rebuild
+
+**Claude Code Skills** (`.claude/skills/`):
+
+- `/android-deploy` — Native APK build + deploy to device (only for native changes)
+- `/android-release` — Version bump, APK signing, F-Droid repo update, OTA tagging
+- `/ota-status` — Check bundle on device vs server, pipeline status
+
 ### Features
 
-- **Onboarding** — Create identity (Magic Words + passphrase)
-- **Recovery** — Restore identity from seed
-- **Unlock** — Passphrase-protected login
+- **Onboarding** — Create identity (Magic Words), biometric enrollment if available
+- **Recovery** — Restore identity from seed, biometric auto-enrollment
+- **Unlock** — Biometric (fingerprint/face) or passphrase fallback
 - **QR Verification** — In-person verification via camera
 - **Contacts** — Manage verified contacts
 - **Attestations** — Attest skills/properties, receive, publish
@@ -315,7 +357,7 @@ Environment variable `VITE_CRDT` controls which StorageAdapter + PersonalDocMana
 - **Offline-First** — Local data, offline banner, outbox
 - **i18n** — German + English
 - **Dark Mode** — Fully supported
-- **Debug Panel** — Persistence metrics, relay status, CRDT info
+- **Debug Panel** — Dev-only (hidden in production builds)
 - **Benchmark** — In-browser CRDT performance measurement (`/benchmark`)
 
 ### Routes
@@ -646,4 +688,4 @@ Three patterns documented (`docs/concepts/vault-sync.md`):
 ---
 
 *This document is updated on significant changes.*
-*Last change: Offline Hardening + RLS Connector (2026-03-16)*
+*Last change: Biometric Unlock + Product Flavors + OTA Live Updates (2026-04-06)*
