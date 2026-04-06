@@ -33,8 +33,10 @@ android {
     productFlavors {
         fdroid {
             dimension "store"
-            // No signingConfig — F-Droid signs the APK itself.
-            // For local/self-hosted builds, sign manually with apksigner.
+            // Use debug signing so Gradle produces a signed APK.
+            // F-Droid strips this and re-signs with their own key.
+            // For self-hosted repo, re-sign with apksigner.
+            signingConfig signingConfigs.debug
         }
         playstore {
             dimension "store"
