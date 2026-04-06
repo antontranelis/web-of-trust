@@ -128,13 +128,9 @@ Falls `fdroid` nicht installiert: Sage dem User `pip install fdroidserver` oder 
 
 ### Schritt 5b: OTA-Bundle erstellen (bei `ota` oder `full`)
 
-Das passiert automatisch über die GitHub Actions Pipeline bei Push auf `main`.
-Erstelle einen Git-Tag damit die Pipeline triggered:
-
-```bash
-SHORT_SHA=$(git rev-parse --short HEAD)
-git tag "ota-${SHORT_SHA}"
-```
+Das passiert automatisch bei jedem Push auf `main` — kein separater Tag nötig.
+Die Pipeline baut die 3 Channel-Bundles, erstellt einen GitHub Release (`ota-<sha>`)
+und aktualisiert `web-of-trust.de/updates/<channel>/latest.json`.
 
 ### Schritt 6: Commit + Tag + Push
 
