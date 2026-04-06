@@ -33,7 +33,7 @@ export function Navigation() {
   ]
 
   return (
-      <nav className="shrink-0 bg-card border-t border-border md:border-t-0 md:border-r md:h-auto md:w-64 md:order-first md:overflow-auto">
+      <nav className="shrink-0 bg-card border-t border-border pb-4 md:pb-0 md:border-t-0 md:border-r md:h-auto md:w-64 md:order-first md:overflow-auto">
         {/* Desktop: show all items in sidebar */}
         <ul className="hidden md:flex md:flex-col md:p-4 md:gap-2">
           {sidebarItems.map(({ to, icon: Icon, label }) => (
