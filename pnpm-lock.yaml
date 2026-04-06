@@ -76,8 +76,8 @@ importers:
         specifier: ^8.2.1
         version: 8.2.1(@capacitor/core@8.3.0)
       '@real-life-org/capacitor-zxing-scanner':
-        specifier: github:real-life-org/capacitor-zxing-scanner
-        version: https://codeload.github.com/real-life-org/capacitor-zxing-scanner/tar.gz/451dbb442a7c32898644b3a125ce9d84628a889f(@capacitor/core@8.3.0)
+        specifier: ^1.1.0
+        version: 1.1.0(@capacitor/core@8.3.0)
       '@types/d3-force':
         specifier: ^3.0.10
         version: 3.0.10
@@ -1370,9 +1370,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@real-life-org/capacitor-zxing-scanner@https://codeload.github.com/real-life-org/capacitor-zxing-scanner/tar.gz/451dbb442a7c32898644b3a125ce9d84628a889f':
-    resolution: {tarball: https://codeload.github.com/real-life-org/capacitor-zxing-scanner/tar.gz/451dbb442a7c32898644b3a125ce9d84628a889f}
-    version: 1.0.0
+  '@real-life-org/capacitor-zxing-scanner@1.1.0':
+    resolution: {integrity: sha512-LV67MoP35RXKO0XVdt25upd1ZUv6ZSUKtkHknkB9TfkJQ0MO1aVh8MT7CRyzyJsTNtQ6A317PtEDtRcKdAT6rg==}
     peerDependencies:
       '@capacitor/core': '>=4.0.0'
 
@@ -5325,7 +5324,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.7
 
-  '@real-life-org/capacitor-zxing-scanner@https://codeload.github.com/real-life-org/capacitor-zxing-scanner/tar.gz/451dbb442a7c32898644b3a125ce9d84628a889f(@capacitor/core@8.3.0)':
+  '@real-life-org/capacitor-zxing-scanner@1.1.0(@capacitor/core@8.3.0)':
     dependencies:
       '@capacitor/core': 8.3.0
 

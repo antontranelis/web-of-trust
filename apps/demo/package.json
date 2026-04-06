@@ -21,10 +21,10 @@
   "dependencies": {
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
-    "@real-life-org/capacitor-zxing-scanner": "github:real-life-org/capacitor-zxing-scanner",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
     "@capawesome/capacitor-live-update": "^8.2.1",
+    "@real-life-org/capacitor-zxing-scanner": "^1.1.0",
     "@types/d3-force": "^3.0.10",
     "@web_of_trust/adapter-automerge": "workspace:*",
     "@web_of_trust/adapter-yjs": "workspace:*",
