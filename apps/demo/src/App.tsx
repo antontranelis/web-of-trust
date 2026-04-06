@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, lazy } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AdapterProvider, IdentityProvider, useIdentity, useAdapters, PendingVerificationProvider, usePendingVerification } from './context'
 import { useConfetti } from './context/PendingVerificationContext'
@@ -11,7 +11,9 @@ import { useVerificationStatus, getVerificationStatus } from './hooks/useVerific
 import { VerificationHelper } from '@web_of_trust/core'
 import type { Attestation, Verification, PublicProfile as PublicProfileType } from '@web_of_trust/core'
 import { LanguageProvider, useLanguage } from './i18n'
-import { DebugPanel } from './components/debug/DebugPanel'
+const DebugPanel = import.meta.env.DEV
+  ? lazy(() => import('./components/debug/DebugPanel').then(m => ({ default: m.DebugPanel })))
+  : () => null
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
