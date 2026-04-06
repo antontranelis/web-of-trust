@@ -17,6 +17,7 @@ Erstellt ein neues Release der WoT Demo App. Unterstützt drei Modi:
 REPO_ROOT=$(git rev-parse --show-toplevel)
 DEMO_DIR="$REPO_ROOT/apps/demo"
 FDROID_DIR="$REPO_ROOT/packages/wot-fdroid"
+export PATH="$HOME/Android/Sdk/build-tools/36.0.0:$PATH"
 ```
 
 ## Ablauf
@@ -24,6 +25,7 @@ FDROID_DIR="$REPO_ROOT/packages/wot-fdroid"
 ### Schritt 1: Modus bestimmen
 
 Interpretiere $ARGUMENTS:
+
 - `ota`, `web`, `hotfix` → Modus `ota`
 - `apk`, `native`, `fdroid` → Modus `apk`
 - `full`, `release`, ohne Argument → Modus `full`
@@ -33,7 +35,6 @@ Interpretiere $ARGUMENTS:
 
 ```bash
 cd "$REPO_ROOT"
-# Zeige Änderungen seit letztem Tag
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
   git log --oneline "$LAST_TAG"..HEAD -- apps/demo/
@@ -41,6 +42,7 @@ fi
 ```
 
 Prüfe ob native Änderungen dabei sind:
+
 ```bash
 git diff --name-only "$LAST_TAG"..HEAD -- \
   apps/demo/android/ \
@@ -54,6 +56,7 @@ Wenn native Änderungen vorhanden aber Modus `ota` gewählt:
 ### Schritt 3: Version bumpen (nur bei `apk` oder `full`)
 
 Lies aktuelle Version:
+
 ```bash
 cat "$DEMO_DIR/android/version.properties"
 ```
@@ -62,43 +65,58 @@ Bump-Logik (wenn keine Version angegeben):
 - Patch-Bump: `0.1.0` → `0.1.1`, VERSION_CODE +1
 
 Aktualisiere:
+
 1. `apps/demo/android/version.properties` — VERSION_CODE und VERSION_NAME
-2. `packages/wot-fdroid/repo/metadata/org.reallife.weboftrust.yml` — CurrentVersion und CurrentVersionCode
+2. `packages/wot-fdroid/fdroid/metadata/org.reallife.weboftrust.yml` — CurrentVersion und CurrentVersionCode
 
 Zeige dem User die neue Version und frage ob sie passt.
 
 ### Schritt 4: Web-Assets bauen
 
-**Wichtig:** Der OTA-Channel muss als Env-Variable mitgegeben werden, damit die App weiß wo sie nach Updates suchen soll.
+**Wichtig:** Der OTA-Channel muss als Env-Variable mitgegeben werden.
 
-Für F-Droid (FOSS):
 ```bash
 cd "$DEMO_DIR"
 VITE_UPDATE_SERVER_URL=https://web-of-trust.de VITE_UPDATE_CHANNEL=android-foss pnpm build:mobile
 ```
 
-Für Play Store:
-```bash
-cd "$DEMO_DIR"
-VITE_UPDATE_SERVER_URL=https://web-of-trust.de VITE_UPDATE_CHANNEL=android pnpm build:mobile
-```
-
 `build:mobile` setzt bereits `VITE_BASE_PATH=/`, baut und synct.
 
-Der Gradle-Flavor (fdroid/playstore) ist **separat** vom OTA-Channel — er bestimmt welche nativen Features drin sind (z.B. Google Push), nicht den Update-Kanal.
+### Schritt 5a: F-Droid APK bauen (bei `apk` oder `full`)
 
-### Schritt 5a: Artefakte bauen (bei `apk` oder `full`)
-
-**F-Droid APK:**
+Das APK wird mit dem F-Droid Keystore signiert. Signing-Properties als Gradle-Flags:
 
 ```bash
+cd "$FDROID_DIR/fdroid"
+PASS=$(grep keystorepass config.yml | awk '{print $2}')
+ALIAS=$(keytool -list -keystore keystore.p12 -storetype PKCS12 -storepass "$PASS" 2>/dev/null | grep PrivateKeyEntry | cut -d, -f1)
+
 cd "$DEMO_DIR/android"
-./gradlew assembleFdroidRelease
+./gradlew assembleFdroidRelease \
+  -PFDROID_STORE_FILE="$FDROID_DIR/fdroid/keystore.p12" \
+  -PFDROID_STORE_PASSWORD="$PASS" \
+  -PFDROID_KEY_ALIAS="$ALIAS" \
+  -PFDROID_KEY_PASSWORD="$PASS"
 ```
 
-APK: `app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk`
+APK ins F-Droid Repo kopieren:
 
-**Play Store AAB:**
+```bash
+VERSION_CODE=$(grep VERSION_CODE "$DEMO_DIR/android/version.properties" | cut -d= -f2)
+cp "$DEMO_DIR/android/app/build/outputs/apk/fdroid/release/app-fdroid-release.apk" \
+   "$FDROID_DIR/fdroid/repo/org.reallife.weboftrust_${VERSION_CODE}.apk"
+```
+
+F-Droid Index aktualisieren:
+
+```bash
+cd "$FDROID_DIR/fdroid"
+fdroid update
+```
+
+Falls `fdroid` nicht installiert: `pip install fdroidserver`
+
+### Schritt 5b: Play Store AAB bauen (optional)
 
 ```bash
 cd "$DEMO_DIR/android"
@@ -107,93 +125,50 @@ cd "$DEMO_DIR/android"
 
 AAB: `app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab`
 
-Das AAB wird automatisch mit dem `playstoreRelease` Signing-Key signiert (Gradle Properties).
+Sage dem User den Pfad — Upload manuell über https://play.google.com/console
 
-**F-Droid APK signieren:**
+### Schritt 5c: OTA-Bundle (bei `ota` oder `full`)
 
-```bash
-cd "$FDROID_DIR"
-PASS=$(grep keystorepass repo/config.yml | awk '{print $2}')
-ALIAS=$(keytool -list -keystore repo/keystore.p12 -storetype PKCS12 -storepass "$PASS" 2>/dev/null | grep PrivateKeyEntry | cut -d, -f1)
-VERSION_CODE=$(grep VERSION_CODE "$DEMO_DIR/android/version.properties" | cut -d= -f2)
-
-ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
-BUILD_TOOLS=$(ls -d "$ANDROID_HOME/build-tools"/*/ 2>/dev/null | sort -V | tail -1)
-APKSIGNER="${BUILD_TOOLS}apksigner"
-
-$APKSIGNER sign \
-  --ks repo/keystore.p12 \
-  --ks-key-alias "$ALIAS" \
-  --ks-pass "pass:$PASS" \
-  --key-pass "pass:$PASS" \
-  --out "repo/fdroid/repo/org.reallife.weboftrust_${VERSION_CODE}.apk" \
-  "$DEMO_DIR/android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk"
-```
-
-**F-Droid Index aktualisieren:**
-
-```bash
-cd "$FDROID_DIR/repo"
-fdroid update
-```
-
-Falls `fdroid` nicht installiert: Sage dem User `pip install fdroidserver` oder `apt install fdroidserver`.
-
-**Play Store Upload:**
-
-```bash
-# AAB liegt bereit unter:
-echo "$DEMO_DIR/android/app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab"
-# Upload manuell über https://play.google.com/console
-```
-
-Sage dem User den Pfad zum AAB und dass er es in der Play Console hochladen muss.
-
-### Schritt 5b: OTA-Bundle erstellen (bei `ota` oder `full`)
-
-Das passiert automatisch bei jedem Push auf `main` — kein separater Tag nötig.
-Die Pipeline baut die 3 Channel-Bundles, erstellt einen GitHub Release (`ota-<sha>`)
-und aktualisiert `web-of-trust.de/updates/<channel>/latest.json`.
+Passiert automatisch bei Push auf `main` — GitHub Actions baut die 3 Channel-Bundles.
 
 ### Schritt 6: Commit + Tag + Push
 
-Bei `apk` oder `full`:
 ```bash
 cd "$REPO_ROOT"
 VERSION_NAME=$(grep VERSION_NAME "$DEMO_DIR/android/version.properties" | cut -d= -f2)
 
 git add apps/demo/android/version.properties
-git add packages/wot-fdroid/repo/metadata/org.reallife.weboftrust.yml
 git commit -m "release: v${VERSION_NAME}"
 git tag "v${VERSION_NAME}"
 ```
 
 Frage den User ob gepusht werden soll. Wenn ja:
+
 ```bash
 git push && git push --tags
 ```
 
-### Schritt 7: F-Droid Repo deployen (bei `apk` oder `full`)
+### Schritt 7: F-Droid Repo deployen
 
-Frage den User nach dem Server-Zugang:
+Sage dem User: "Lade den Ordner `packages/wot-fdroid/fdroid/` per FileZilla auf den Server hoch."
+
+Alternativ:
+
 ```bash
-rsync -av "$FDROID_DIR/repo/" user@server:/path/to/wot-fdroid/repo/
+rsync -av "$FDROID_DIR/fdroid/" user@server:/path/to/wot-fdroid/fdroid/
 ```
-
-Oder sage dem User welche Dateien manuell auf den Server müssen.
 
 ### Schritt 8: Zusammenfassung
 
 Zeige dem User:
+
 - Welcher Modus (ota/apk/full)
 - Neue Version (wenn gebumpt)
 - Was gebaut wurde (APK-Pfad, OTA-Tag)
-- Was deployed wurde
-- Nächste Schritte (z.B. "F-Droid Repo auf Server syncen")
+- Nächste Schritte (F-Droid Repo hochladen, Play Console)
 
 ## Changelog generieren
 
-Zwischen zwei Tags:
 ```bash
 git log --oneline "$LAST_TAG"..HEAD -- apps/demo/ | sed 's/^[a-f0-9]* /- /'
 ```
