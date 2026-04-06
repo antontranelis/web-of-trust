@@ -53,8 +53,12 @@ Builds:
       npx cap sync android
     gradle:
       - fdroid
+    scanignore:
+      - app/src/main/assets/public/assets/automerge_wasm_bg-*.wasm
     scandelete:
-      - app/build
+      - ../../../node_modules
+      - ../../../apps/demo/dist
+      - ../../../apps/benchmark/dist
     ndk: r27c
 
 AutoUpdateMode: Version
