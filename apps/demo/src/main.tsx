@@ -47,6 +47,9 @@ window.addEventListener('unhandledrejection', (e) => {
   </div>`
 })
 
+import { checkForLiveUpdate } from './live-update'
+checkForLiveUpdate()
+
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <App />

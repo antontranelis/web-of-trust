@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   android: {
     flavor: 'fdroid',
   },
+  plugins: {
+    LiveUpdate: {
+      appId: 'org.utopialab.weboftrust',
+    },
+  },
 };
 
 export default config;

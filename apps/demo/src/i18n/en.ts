@@ -79,6 +79,8 @@ export const en: Translations = {
     attestationPublicTitle: 'Public — click to hide',
     attestationPrivateTitle: 'Private — click to publish',
     detailsAndMaintenance: 'Details & Maintenance',
+    appVersion: 'App Version',
+    lastUpdated: 'Last updated',
     deleteWarning: 'You need your Magic Words to log back in.',
     deleteButton: 'Log out',
     deleteConfirmTitle: 'All local data will be deleted.',

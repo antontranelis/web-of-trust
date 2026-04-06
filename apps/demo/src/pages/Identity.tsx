@@ -10,6 +10,7 @@ import { Tooltip } from '../components/ui/Tooltip'
 import { useProfile, useProfileSync, useAttestations, useContacts } from '../hooks'
 import { useSubscribable } from '../hooks/useSubscribable'
 import { BiometricService } from '../services/BiometricService'
+import { getCurrentBundleId, getLastUpdatedAt } from '../live-update'
 
 export function Identity() {
   const { t, fmt, formatDate } = useLanguage()
@@ -42,10 +43,13 @@ export function Identity() {
   const [shared, setShared] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricToggling, setBiometricToggling] = useState(false)
+  const [bundleId, setBundleId] = useState<string | null>(null)
+  const lastUpdatedAt = getLastUpdatedAt()
 
   // Check biometric hardware availability
   useEffect(() => {
     BiometricService.isAvailable().then(setBiometricAvailable)
+    getCurrentBundleId().then(setBundleId)
   }, [])
 
   // Sync profile reactively — updates when synced from other device
@@ -430,6 +434,18 @@ export function Identity() {
           </button>
           {showDetails && (
             <div className="px-4 pb-4 space-y-5 border-t border-border pt-4">
+              {/* App Version */}
+              {bundleId && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.identity.appVersion}</p>
+                  <p className="text-sm font-mono text-foreground">{bundleId}</p>
+                  {lastUpdatedAt && (
+                    <p className="text-xs text-muted-foreground">
+                      {t.identity.lastUpdated}: {formatDate(lastUpdatedAt)}
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Biometric Toggle */}
               {biometricAvailable && (
                 <div className="flex items-center justify-between">

@@ -75,6 +75,8 @@ export const de = {
     attestationPublicTitle: 'Öffentlich — klicken zum Verbergen',
     attestationPrivateTitle: 'Privat — klicken zum Veröffentlichen',
     detailsAndMaintenance: 'Details & Wartung',
+    appVersion: 'App-Version',
+    lastUpdated: 'Zuletzt aktualisiert',
     deleteWarning: 'Du brauchst deine Magischen Wörter um dich wieder einzuloggen.',
     deleteButton: 'Ausloggen',
     deleteConfirmTitle: 'Alle lokalen Daten werden gelöscht.',

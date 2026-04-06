@@ -75,6 +75,9 @@ importers:
       '@capacitor/ios':
         specifier: ^8.1.0
         version: 8.3.0(@capacitor/core@8.3.0)
+      '@capawesome/capacitor-live-update':
+        specifier: ^8.2.1
+        version: 8.2.1(@capacitor/core@8.3.0)
       '@types/d3-force':
         specifier: ^3.0.10
         version: 3.0.10
@@ -570,6 +573,11 @@ packages:
     resolution: {integrity: sha512-5Rtwv8SITKlYTt8lAZG+khnVIdzPtqbocH3eP+JkEmX1vpSMwx4TOKtT8OBz8gpQ+pUJDRp7DBYOv3U6l/obCw==}
     peerDependencies:
       '@capacitor/core': ^8.3.0
+
+  '@capawesome/capacitor-live-update@8.2.1':
+    resolution: {integrity: sha512-oQYBXl75mvFboWfqOBXC7Z5T5PmevTQzv5YqTr2n21Q43+SakLKuyQT3N8vvb4sERsPxi8zzjslocHb6b328bg==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@cbor-extract/cbor-extract-darwin-arm64@2.2.0':
     resolution: {integrity: sha512-P7swiOAdF7aSi0H+tHtHtr6zrpF3aAq/W9FXx5HektRvLTM2O89xCyXF3pk7pLc7QpaY7AoaE8UowVf9QBdh3w==}
@@ -3648,6 +3656,10 @@ snapshots:
       tslib: 2.8.1
 
   '@capacitor/ios@8.3.0(@capacitor/core@8.3.0)':
+    dependencies:
+      '@capacitor/core': 8.3.0
+
+  '@capawesome/capacitor-live-update@8.2.1(@capacitor/core@8.3.0)':
     dependencies:
       '@capacitor/core': 8.3.0
 

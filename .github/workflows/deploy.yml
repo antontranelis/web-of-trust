@@ -12,9 +12,14 @@ on:
       - 'packages/adapter-automerge/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: 'OTA rollback: release tag to restore (e.g. ota-a3f9c12). Leave empty for normal deploy.'
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -53,19 +58,88 @@ jobs:
       - name: Build landing
         run: pnpm --filter landing build
 
-      - name: Build demo with base path
+      - name: Build demo (ios)
         run: pnpm --filter demo build
         env:
           VITE_BASE_PATH: /demo/
+          VITE_UPDATE_SERVER_URL: https://web-of-trust.de
+          VITE_UPDATE_CHANNEL: ios
+
+      - name: Zip iOS bundle
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
+          (cd apps/demo/dist && zip -r "../../../bundle-ios-${SHORT_SHA}.zip" .)
+
+      - name: Build demo (android)
+        run: pnpm --filter demo build
+        env:
+          VITE_BASE_PATH: /demo/
+          VITE_UPDATE_SERVER_URL: https://web-of-trust.de
+          VITE_UPDATE_CHANNEL: android
+
+      - name: Zip Android bundle
+        run: cd apps/demo/dist && zip -r "../../../bundle-android-${SHORT_SHA}.zip" .
+
+      - name: Build demo (android-foss)
+        run: pnpm --filter demo build
+        env:
+          VITE_BASE_PATH: /demo/
+          VITE_UPDATE_SERVER_URL: https://web-of-trust.de
+          VITE_UPDATE_CHANNEL: android-foss
+          # TODO: add FOSS-specific env vars here once push notifications are implemented
+
+      - name: Zip Android FOSS bundle
+        run: cd apps/demo/dist && zip -r "../../../bundle-android-foss-${SHORT_SHA}.zip" .
 
       - name: Build benchmark with base path
         run: pnpm --filter benchmark build
         env:
           VITE_BASE_PATH: /benchmark/
 
+      - name: Create GitHub Release with OTA bundles
+        if: inputs.rollback_tag == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "ota-${SHORT_SHA}" \
+            --title "OTA ${SHORT_SHA}" \
+            --notes "Automatic OTA release from commit ${SHORT_SHA}" \
+            bundle-ios-${SHORT_SHA}.zip \
+            bundle-android-${SHORT_SHA}.zip \
+            bundle-android-foss-${SHORT_SHA}.zip
+
+      - name: Generate latest.json (normal deploy)
+        if: inputs.rollback_tag == ''
+        run: |
+          REPO="${{ github.repository }}"
+          for channel in ios android android-foss; do
+            mkdir -p combined/updates/${channel}
+            printf '{"bundleId":"%s","url":"%s"}\n' \
+              "${SHORT_SHA}" \
+              "https://github.com/${REPO}/releases/download/ota-${SHORT_SHA}/bundle-${channel}-${SHORT_SHA}.zip" \
+              > combined/updates/${channel}/latest.json
+          done
+
+      - name: Generate latest.json (rollback)
+        if: inputs.rollback_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          TAG="${{ inputs.rollback_tag }}"
+          BUNDLE_ID="${TAG#ota-}"
+          for channel in ios android android-foss; do
+            mkdir -p combined/updates/${channel}
+            printf '{"bundleId":"%s","url":"%s"}\n' \
+              "${BUNDLE_ID}" \
+              "https://github.com/${REPO}/releases/download/${TAG}/bundle-${channel}-${BUNDLE_ID}.zip" \
+              > combined/updates/${channel}/latest.json
+          done
+          echo "Rolling back OTA to ${TAG}"
+
       - name: Combine builds
         run: |
-          mkdir -p combined
           cp -r apps/landing/dist/* combined/
           mkdir -p combined/demo
           cp -r apps/demo/dist/* combined/demo/
@@ -74,14 +148,8 @@ jobs:
 
       - name: SPA fallback (GitHub Pages serves 404.html on unknown routes)
         run: |
-          cat > combined/404.html << 'HTMLEOF'
-          <!DOCTYPE html><html><head><meta charset="utf-8"><script>
-          var p = location.pathname + location.search + location.hash;
-          var target = p.startsWith('/demo') ? '/demo/' : '/';
-          sessionStorage.setItem('spa-redirect', p);
-          location.replace(target);
-          </script></head><body></body></html>
-          HTMLEOF
+          printf '<!DOCTYPE html><html><head><meta charset="utf-8"><script>var p=location.pathname+location.search+location.hash;var t=p.startsWith("/demo")?"/demo/":"/";sessionStorage.setItem("spa-redirect",p);location.replace(t);</script></head><body></body></html>' \
+            > combined/404.html
           cp combined/404.html combined/demo/404.html
 
       - name: Setup Pages
