@@ -21,7 +21,7 @@
   "dependencies": {
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
-    "@capacitor/barcode-scanner": "^3.0.2",
+    "@real-life-org/capacitor-zxing-scanner": "github:real-life-org/capacitor-zxing-scanner",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
     "@capawesome/capacitor-live-update": "^8.2.1",
