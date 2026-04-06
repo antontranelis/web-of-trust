@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AdapterProvider, IdentityProvider, useIdentity, useAdapters, PendingVerificationProvider, usePendingVerification } from './context'
 import { useConfetti } from './context/PendingVerificationContext'
@@ -11,9 +11,7 @@ import { useVerificationStatus, getVerificationStatus } from './hooks/useVerific
 import { VerificationHelper } from '@web_of_trust/core'
 import type { Attestation, Verification, PublicProfile as PublicProfileType } from '@web_of_trust/core'
 import { LanguageProvider, useLanguage } from './i18n'
-const DebugPanel = import.meta.env.DEV
-  ? lazy(() => import('./components/debug/DebugPanel').then(m => ({ default: m.DebugPanel })))
-  : () => null
+import { DebugPanel } from './components/debug/DebugPanel'
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
@@ -565,7 +563,7 @@ function RequireIdentity({ children }: { children: React.ReactNode }) {
         <IncomingAttestationDialog />
         <IncomingSpaceInviteDialog />
         {children}
-        <DebugPanel />
+        {import.meta.env.DEV && <DebugPanel />}
       </PendingVerificationProvider>
     </AdapterProvider>
   )
