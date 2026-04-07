@@ -59,5 +59,6 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v
+UpdateCheckData: apps/demo/android/version.properties|VERSION_CODE=(\d+)|.|VERSION_NAME=(.+)
 CurrentVersion: 0.2.1
 CurrentVersionCode: 3
