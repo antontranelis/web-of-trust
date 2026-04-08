@@ -41,7 +41,7 @@ export function SpaceDetail() {
     if (!spaceId || !spaces || loading) return
     const current = spaces.find(s => s.id === spaceId)
     if (!current) {
-      navigate('/spaces', { replace: true })
+      navigate('/chats', { replace: true })
     } else {
       setSpace(current)
     }
@@ -110,10 +110,10 @@ export function SpaceDetail() {
     <div className="flex flex-col -mb-4" style={{ height: 'calc(100vh - 12rem)' }}>
       {/* Header — like a chat app */}
       <div className="flex items-center gap-3 pb-3 shrink-0 border-b border-border">
-        <button onClick={() => navigate('/spaces')} className="p-2 hover:bg-muted rounded-lg transition-colors" aria-label={t.aria.goBack}>
+        <button onClick={() => navigate('/chats')} className="p-2 hover:bg-muted rounded-lg transition-colors" aria-label={t.aria.goBack}>
           <ArrowLeft size={20} />
         </button>
-        <Link to={`/spaces/${spaceId}/edit`} className="flex-1 min-w-0 flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <Link to={`/chats/${spaceId}/edit`} className="flex-1 min-w-0 flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Avatar name={displayName} avatar={spaceMeta.image || space.image} size="sm" />
           <div className="min-w-0">
             <h1 className="text-base font-bold text-foreground truncate">{displayName}</h1>

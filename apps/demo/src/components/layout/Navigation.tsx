@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Fingerprint, Users, UserPlus, Award, Home, Boxes } from 'lucide-react'
+import { Fingerprint, Users, UserPlus, Award, Home, MessageCircle } from 'lucide-react'
 import { useLanguage } from '../../i18n'
 
 /** Phosphor "Graph" icon — matches the WoT network visualization better than lucide's Share2 */
@@ -20,6 +20,7 @@ export function Navigation() {
     { to: '/identity', icon: Fingerprint, label: t.nav.identity },
     { to: '/contacts', icon: Users, label: t.nav.contacts },
     { to: '/attestations', icon: Award, label: t.nav.attestations },
+    { to: '/chats', icon: MessageCircle, label: t.nav.chats },
   ]
 
   const sidebarItems = [
@@ -27,8 +28,8 @@ export function Navigation() {
     { to: '/identity', icon: Fingerprint, label: t.nav.identity },
     { to: '/contacts', icon: Users, label: t.nav.contacts },
     { to: '/verify', icon: UserPlus, label: t.nav.verify },
+    { to: '/chats', icon: MessageCircle, label: t.nav.chats },
     { to: '/attestations', icon: Award, label: t.nav.attestations },
-    { to: '/spaces', icon: Boxes, label: t.nav.spaces },
     { to: '/network', icon: GraphIcon, label: t.nav.network },
   ]
 
@@ -56,7 +57,7 @@ export function Navigation() {
         </ul>
 
         {/* Mobile: 4 items (Spaces accessible from Home) */}
-        <ul className="grid grid-cols-4 md:hidden">
+        <ul className="grid grid-cols-5 md:hidden">
           {mobileItems.map(({ to, icon: Icon, label }) => (
             <li key={to}>
               <NavLink

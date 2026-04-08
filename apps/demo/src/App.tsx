@@ -377,7 +377,7 @@ function IncomingSpaceInviteDialog() {
 
   const handleOpen = () => {
     dismissSpaceInviteDialog()
-    navigate(`/spaces/${incomingSpaceInvite.spaceId}`)
+    navigate(`/chats/${incomingSpaceInvite.spaceId}`)
   }
 
   return (
@@ -604,7 +604,7 @@ function AppRoutes() {
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/verify" element={<Verify />} />
             <Route path="/attestations/*" element={<Attestations />} />
-            <Route path="/spaces/*" element={<Spaces />} />
+            <Route path="/chats/*" element={<Spaces />} />
             <Route path="/network" element={<Network />} />
             <Route path="/p/:did" element={<PublicProfile />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -642,7 +642,7 @@ function AppRoutes() {
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/attestations/*" element={<Attestations />} />
-          <Route path="/spaces/*" element={<Spaces />} />
+          <Route path="/chats/*" element={<Spaces />} />
           <Route path="/network" element={<Network />} handle={{ fullscreen: true }} />
           <Route path="/p/:did" element={<PublicProfile />} />
           <Route path="*" element={<Navigate to="/" replace />} />

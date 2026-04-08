@@ -37,7 +37,7 @@ export const en: Translations = {
     contacts: 'Contacts',
     verify: 'Connect',
     attestations: 'Confirmations',
-    spaces: 'Spaces',
+    chats: 'Chats',
     network: 'Network',
     more: 'More',
   },
@@ -409,7 +409,7 @@ export const en: Translations = {
   },
 
   spaces: {
-    title: 'Spaces',
+    title: 'Chats',
     createButton: 'Create',
     createTitle: 'Create new space',
     editTitle: 'Edit space',

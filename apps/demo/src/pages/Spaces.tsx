@@ -23,7 +23,7 @@ function SpacesIndex() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t.spaces.title}</h1>
         <Link
-          to="/spaces/new"
+          to="/chats/new"
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
         >
           <Plus size={16} />
@@ -42,7 +42,7 @@ function SpacesIndex() {
           {mySpaces.map(space => (
             <Link
               key={space.id}
-              to={`/spaces/${space.id}`}
+              to={`/chats/${space.id}`}
               className="flex items-center gap-3 bg-card rounded-xl border border-border p-3 hover:border-primary-300 transition-colors"
             >
               <Avatar name={space.name || t.spaces.unnamed} avatar={space.image} size="md" />

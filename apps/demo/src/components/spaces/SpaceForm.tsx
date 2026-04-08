@@ -124,14 +124,18 @@ export function SpaceForm({ mode }: SpaceFormProps) {
             ...(image ? { image } : {}),
           })
         }
-        navigate(`/spaces/${space.id}`, { replace: true })
+        // Invite selected contacts
+        for (const contactDid of selectedDids) {
+          try { await inviteMember(space.id, contactDid) } catch {}
+        }
+        navigate(`/chats/${space.id}`, { replace: true })
       } else if (spaceId) {
         await updateSpace(spaceId, {
           name: name.trim(),
           description: description.trim(),
           image: image || '',
         })
-        navigate(`/spaces/${spaceId}`, { replace: true })
+        navigate(`/chats/${spaceId}`, { replace: true })
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t.spaces.errorCreationFailed)
@@ -145,7 +149,7 @@ export function SpaceForm({ mode }: SpaceFormProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate(mode === 'edit' ? `/spaces/${spaceId}` : '/spaces')}
+          onClick={() => navigate(mode === 'edit' ? `/chats/${spaceId}` : '/chats')}
           className="p-2 hover:bg-muted rounded-lg transition-colors"
           aria-label={t.aria.goBack}
         >
@@ -217,6 +221,34 @@ export function SpaceForm({ mode }: SpaceFormProps) {
           rows={2}
           className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm text-foreground placeholder-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
+
+        {/* Contact selection (create mode) */}
+        {mode === 'create' && activeContacts.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
+              {t.spaces.inviteDialogTitle}
+            </label>
+            <div className="space-y-1">
+              {activeContacts.map(contact => {
+                const selected = selectedDids.has(contact.did)
+                return (
+                  <button
+                    key={contact.did}
+                    type="button"
+                    onClick={() => setSelectedDids(prev => { const next = new Set(prev); if (next.has(contact.did)) next.delete(contact.did); else next.add(contact.did); return next })}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${selected ? 'bg-primary-600/10 ring-1 ring-primary-600/30' : 'hover:bg-muted'}`}
+                  >
+                    <Avatar name={contact.name} avatar={contact.avatar} size="xs" />
+                    <span className="font-medium text-sm text-foreground truncate flex-1 text-left">{contact.name || contact.did.slice(-12)}</span>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${selected ? 'bg-primary-600 border-primary-600' : 'border-border'}`}>
+                      {selected && <Check size={14} className="text-white" />}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -313,7 +345,7 @@ export function SpaceForm({ mode }: SpaceFormProps) {
                       setLeaving(true)
                       try {
                         await leaveSpace(spaceId!)
-                        navigate('/spaces')
+                        navigate('/chats')
                       } catch (err) {
                         setError(err instanceof Error ? err.message : t.spaces.leaveFailed)
                         setLeaving(false)

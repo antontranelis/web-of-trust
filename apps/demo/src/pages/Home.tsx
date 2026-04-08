@@ -136,7 +136,7 @@ export function Home() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-medium text-muted-foreground">{t.spaces.title}</h2>
-            <Link to="/spaces/new" className="text-xs text-primary-600 hover:text-primary-700 transition-colors">
+            <Link to="/chats/new" className="text-xs text-primary-600 hover:text-primary-700 transition-colors">
               + {t.spaces.createButton}
             </Link>
           </div>
@@ -144,7 +144,7 @@ export function Home() {
             {previewSpaces.map(space => (
               <Link
                 key={space.id}
-                to={`/spaces/${space.id}`}
+                to={`/chats/${space.id}`}
                 className="flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -158,7 +158,7 @@ export function Home() {
             ))}
           </div>
           {hasMoreSpaces && (
-            <Link to="/spaces" className="block text-center text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors">
+            <Link to="/chats" className="block text-center text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors">
               {t.spaces.title} ({sharedSpaces.length}) →
             </Link>
           )}

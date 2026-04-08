@@ -35,7 +35,7 @@ export const de = {
     contacts: 'Kontakte',
     verify: 'Verbinden',
     attestations: 'Bestätigungen',
-    spaces: 'Spaces',
+    chats: 'Chats',
     network: 'Netzwerk',
     more: 'Mehr',
   },
@@ -407,7 +407,7 @@ export const de = {
   },
 
   spaces: {
-    title: 'Spaces',
+    title: 'Chats',
     createButton: 'Erstellen',
     createTitle: 'Neuen Space erstellen',
     editTitle: 'Space bearbeiten',
