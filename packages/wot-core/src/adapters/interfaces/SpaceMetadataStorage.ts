@@ -35,6 +35,10 @@ export interface PersistedGroupKey {
  * Implemented by platform-specific backends (IndexedDB, Evolu, in-memory for tests).
  * Used by AutomergeReplicationAdapter to restore space state across restarts.
  */
+export function groupKeyId(spaceId: string, generation: number): string {
+  return `${spaceId}:${generation}`
+}
+
 export interface SpaceMetadataStorage {
   // Space metadata
   saveSpaceMetadata(meta: PersistedSpaceMetadata): Promise<void>

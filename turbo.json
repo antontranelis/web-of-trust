@@ -17,6 +17,10 @@
     },
     "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "bench": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   }
 }

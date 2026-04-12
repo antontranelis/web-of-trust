@@ -182,6 +182,7 @@ export class WebSocketMessagingAdapter implements MessagingAdapter {
     this.stopHeartbeat()
     this.connectedDid = null
     this.earlyMessageBuffer.length = 0
+    this.pendingReceipts.clear()
     if (this.ws) {
       this.ws.close()
       this.ws = null

@@ -184,7 +184,12 @@ export class TraceLog {
 
   private startFlushTimer(): void {
     if (this.flushTimer) return
-    this.flushTimer = setInterval(() => this.flushToDb(), FLUSH_INTERVAL_MS)
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null
+      this.flushToDb().finally(() => {
+        if (this.pendingWrites.length > 0) this.startFlushTimer()
+      })
+    }, FLUSH_INTERVAL_MS)
   }
 
   private async flushToDb(): Promise<void> {

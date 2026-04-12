@@ -291,6 +291,28 @@ export class WebCryptoAdapter implements CryptoAdapter {
     return new WebCryptoEncryptionKeyPair({ privateKey, publicKey })
   }
 
+  private async deriveEciesKey(sharedBits: ArrayBuffer, usage: 'encrypt' | 'decrypt'): Promise<CryptoKey> {
+    const hkdfKey = await crypto.subtle.importKey(
+      'raw',
+      sharedBits,
+      { name: 'HKDF' },
+      false,
+      ['deriveKey'],
+    )
+    return crypto.subtle.deriveKey(
+      {
+        name: 'HKDF',
+        hash: 'SHA-256',
+        salt: new Uint8Array(32),
+        info: new TextEncoder().encode('wot-ecies-v1'),
+      },
+      hkdfKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      [usage],
+    )
+  }
+
   async exportEncryptionPublicKey(keyPair: EncryptionKeyPair): Promise<Uint8Array> {
     const handle = keyPair as WebCryptoEncryptionKeyPair
     const raw = await crypto.subtle.exportKey('raw', handle.keyPair.publicKey)
@@ -325,25 +347,7 @@ export class WebCryptoAdapter implements CryptoAdapter {
     )
 
     // 4. HKDF: shared secret → AES-GCM key
-    const hkdfKey = await crypto.subtle.importKey(
-      'raw',
-      sharedBits,
-      { name: 'HKDF' },
-      false,
-      ['deriveKey'],
-    )
-    const aesKey = await crypto.subtle.deriveKey(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(32),
-        info: new TextEncoder().encode('wot-ecies-v1'),
-      },
-      hkdfKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt'],
-    )
+    const aesKey = await this.deriveEciesKey(sharedBits, 'encrypt')
 
     // 5. AES-GCM encrypt
     const nonce = crypto.getRandomValues(new Uint8Array(12))
@@ -390,26 +394,8 @@ export class WebCryptoAdapter implements CryptoAdapter {
       256,
     )
 
-    // 3. HKDF: shared secret → AES-GCM key (same params as encrypt)
-    const hkdfKey = await crypto.subtle.importKey(
-      'raw',
-      sharedBits,
-      { name: 'HKDF' },
-      false,
-      ['deriveKey'],
-    )
-    const aesKey = await crypto.subtle.deriveKey(
-      {
-        name: 'HKDF',
-        hash: 'SHA-256',
-        salt: new Uint8Array(32),
-        info: new TextEncoder().encode('wot-ecies-v1'),
-      },
-      hkdfKey,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['decrypt'],
-    )
+    // 3. HKDF: shared secret → AES-GCM key
+    const aesKey = await this.deriveEciesKey(sharedBits, 'decrypt')
 
     // 4. AES-GCM decrypt
     const decrypted = await crypto.subtle.decrypt(

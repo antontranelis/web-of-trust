@@ -10,7 +10,7 @@
 
 import type { MessageEnvelope } from '../types/messaging'
 import { didToPublicKeyBytes } from './did'
-import { decodeBase64Url } from './encoding'
+import { decodeBase64Url, toBuffer } from './encoding'
 
 /**
  * Create the canonical string to sign for a MessageEnvelope.
@@ -68,10 +68,7 @@ async function webCryptoVerify(data: string, signature: string, signerDid: strin
   return crypto.subtle.verify(
     'Ed25519',
     publicKey,
-    signatureBytes.buffer.slice(
-      signatureBytes.byteOffset,
-      signatureBytes.byteOffset + signatureBytes.byteLength,
-    ),
+    toBuffer(signatureBytes),
     inputBytes,
   )
 }

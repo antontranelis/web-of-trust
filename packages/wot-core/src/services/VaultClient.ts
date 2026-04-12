@@ -10,6 +10,7 @@ import { createCapability } from '../crypto/capabilities'
 import { createResourceRef } from '../types/resource-ref'
 import type { WotIdentity } from '../identity/WotIdentity'
 import { getTraceLog } from '../storage/TraceLog'
+import { encodeBase64 } from '../crypto/encoding'
 
 export interface VaultChange {
   seq: number
@@ -38,8 +39,8 @@ export interface VaultChangesResponse {
 export class VaultClient {
   private vaultUrl: string
   private identity: WotIdentity
-  /** Cache capabilities per docId (valid for 1 hour) */
   private capabilityCache = new Map<string, { jws: string; expiresAt: number }>()
+  private bearerToken: { jws: string; expiresAt: number } | null = null
 
   constructor(vaultUrl: string, identity: WotIdentity) {
     this.vaultUrl = vaultUrl.replace(/\/$/, '')
@@ -120,7 +121,7 @@ export class VaultClient {
         method: 'PUT',
         headers,
         body: JSON.stringify({
-          data: uint8ToBase64(packed),
+          data: encodeBase64(packed),
           upToSeq,
         }),
       })
@@ -187,17 +188,25 @@ export class VaultClient {
   // --- Auth ---
 
   private async authHeaders(docId: string, permissions: string[]): Promise<Record<string, string>> {
-    const token = await this.identity.signJws({
-      did: this.identity.getDid(),
-      iat: Math.floor(Date.now() / 1000),
-    })
-
+    const token = await this.getOrCreateBearerToken()
     const capability = await this.getOrCreateCapability(docId, permissions)
 
     return {
       'Authorization': `Bearer ${token}`,
       'X-Capability': capability,
     }
+  }
+
+  private async getOrCreateBearerToken(): Promise<string> {
+    if (this.bearerToken && this.bearerToken.expiresAt > Date.now()) {
+      return this.bearerToken.jws
+    }
+    const jws = await this.identity.signJws({
+      did: this.identity.getDid(),
+      iat: Math.floor(Date.now() / 1000),
+    })
+    this.bearerToken = { jws, expiresAt: Date.now() + 4 * 60 * 1000 } // 4 min TTL
+    return jws
   }
 
   private async getOrCreateCapability(docId: string, permissions: string[]): Promise<string> {
@@ -219,30 +228,22 @@ export class VaultClient {
       (payload) => this.identity.signJws(payload),
     )
 
+    // Evict expired entries to prevent unbounded growth
+    if (this.capabilityCache.size > 50) {
+      const now = Date.now()
+      for (const [k, v] of this.capabilityCache) {
+        if (v.expiresAt <= now) this.capabilityCache.delete(k)
+      }
+    }
+
     this.capabilityCache.set(cacheKey, {
       jws: capability,
-      expiresAt: Date.now() + 55 * 60 * 1000, // Refresh 5 min before expiry
+      expiresAt: Date.now() + 55 * 60 * 1000,
     })
 
     return capability
   }
 }
 
-// --- Helpers ---
-
-function uint8ToBase64(data: Uint8Array): string {
-  let binary = ''
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i])
-  }
-  return btoa(binary)
-}
-
-export function base64ToUint8(b64: string): Uint8Array {
-  const binary = atob(b64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return bytes
-}
+// Re-export for backward compatibility
+export { decodeBase64 as base64ToUint8 } from '../crypto/encoding'

@@ -3,6 +3,7 @@ import { createIdentity, recoverIdentity } from './helpers/identity'
 import { createFreshContext, waitForRelayConnected, navigateTo } from './helpers/common'
 import { performMutualVerification } from './helpers/verification'
 import { goOffline, goOnline, waitForReconnect } from './helpers/offline'
+import { createSpace, inviteMember, acceptSpaceInvite, sendMessage, expectMessage, expectMemberCount, removeMember } from './helpers/spaces'
 
 test.describe('Key Rotation Multi-Device', () => {
   test('admin removes member on Device 1, Device 2 can still write and read after key rotation', async ({ browser }) => {
@@ -40,66 +41,53 @@ test.describe('Key Rotation Multi-Device', () => {
 
       // --- Alice Device 1: create space and invite Bob ---
 
-      await navigateTo(alice1Page, '/spaces')
-      await alice1Page.getByText('Erstellen', { exact: true }).click()
-      await alice1Page.getByPlaceholder('z.B. Gartengruppe, Familie...').fill('Rotations-Test')
-      await alice1Page.locator('form button[type="submit"], form button:has-text("Erstellen")').last().click()
-
-      await expect(alice1Page.getByText('Rotations-Test').first()).toBeVisible({ timeout: 10_000 })
+      await createSpace(alice1Page, 'Rotations-Test')
 
       // Invite Bob
-      await alice1Page.getByText('Einladen').click()
-      await alice1Page.getByText('Bob').click()
-      await alice1Page.getByText('1 einladen').click()
-      await expect(alice1Page.getByText('Mitglieder (2)')).toBeVisible({ timeout: 15_000 })
+      await inviteMember(alice1Page, 'Bob')
+      await expectMemberCount(alice1Page, 2)
 
       // Bob accepts
-      await bobPage.getByText('eingeladen').waitFor({ timeout: 30_000 })
-      await bobPage.getByText('Space öffnen').click()
+      await acceptSpaceInvite(bobPage)
       await expect(bobPage.getByText('Rotations-Test').first()).toBeVisible({ timeout: 10_000 })
 
       // --- Alice Device 1: write something before rotation ---
 
-      const alice1Notes = alice1Page.locator('textarea').last()
-      await alice1Notes.fill('Vor der Rotation')
+      await sendMessage(alice1Page, 'Vor der Rotation')
 
       // Bob sees it
-      const bobNotes = bobPage.locator('textarea').last()
-      await expect(bobNotes).toHaveValue(/Vor der Rotation/, { timeout: 30_000 })
+      await expectMessage(bobPage, 'Vor der Rotation')
 
       // Device 2 sees the space
-      await navigateTo(alice2Page, '/spaces')
+      await navigateTo(alice2Page, '/chats')
       await expect(alice2Page.getByText('Rotations-Test')).toBeVisible({ timeout: 30_000 })
       await alice2Page.getByText('Rotations-Test').click()
 
-      // Device 2 sees the notes via state exchange
-      // (State exchange sends full Y.Doc state at connect time)
-      const alice2Notes = alice2Page.locator('textarea').last()
-      await expect(alice2Notes).toHaveValue(/Vor der Rotation/, { timeout: 60_000 })
+      // Device 2 sees the message
+      await expectMessage(alice2Page, 'Vor der Rotation', 60_000)
 
       // --- KEY ROTATION: Alice Device 1 removes Bob ---
 
-      await alice1Page.getByLabel('Mitglied entfernen').click()
-      await expect(alice1Page.getByText('Mitglieder (1)')).toBeVisible({ timeout: 10_000 })
+      await removeMember(alice1Page)
+      await expectMemberCount(alice1Page, 1)
 
       // Wait for key rotation to propagate
       await alice1Page.waitForTimeout(3_000)
 
       // --- After rotation: Alice Device 1 writes with new key ---
 
-      await alice1Notes.fill('Nach der Rotation — neuer Key')
+      await sendMessage(alice1Page, 'Nach der Rotation — neuer Key')
 
       // --- Device 2 should still be able to read (has new key via relay) ---
 
-      await expect(alice2Notes).toHaveValue(/Nach der Rotation/, { timeout: 30_000 })
+      await expectMessage(alice2Page, 'Nach der Rotation', 30_000)
 
       // --- Device 2 writes with new key ---
 
-      const currentValue = await alice2Notes.inputValue()
-      await alice2Notes.fill(currentValue + ' — Device 2 schreibt')
+      await sendMessage(alice2Page, 'Device 2 schreibt')
 
       // Device 1 receives Device 2's write (both using new key)
-      await expect(alice1Notes).toHaveValue(/Device 2 schreibt/, { timeout: 30_000 })
+      await expectMessage(alice1Page, 'Device 2 schreibt')
 
     } finally {
       await alice1Ctx.close()
@@ -112,8 +100,6 @@ test.describe('Key Rotation Multi-Device', () => {
     const { context: alice1Ctx, page: alice1Page } = await createFreshContext(browser)
     const { context: alice2Ctx, page: alice2Page } = await createFreshContext(browser)
     const { context: bobCtx, page: bobPage } = await createFreshContext(browser)
-
-
 
     try {
       // Setup: Alice (2 devices) + Bob, verified, in a shared space
@@ -136,70 +122,54 @@ test.describe('Key Rotation Multi-Device', () => {
       await expect(alice2Page.getByText('Bob')).toBeVisible({ timeout: 60_000 })
 
       // Create space + invite Bob + write initial content
-      await navigateTo(alice1Page, '/spaces')
-      await alice1Page.getByText('Erstellen', { exact: true }).click()
-      await alice1Page.getByPlaceholder('z.B. Gartengruppe, Familie...').fill('Offline-Rotation')
-      await alice1Page.locator('form button[type="submit"], form button:has-text("Erstellen")').last().click()
-      await expect(alice1Page.getByText('Offline-Rotation').first()).toBeVisible({ timeout: 10_000 })
+      await createSpace(alice1Page, 'Offline-Rotation')
 
       // Write initial content BEFORE inviting Bob
-      const alice1Notes = alice1Page.locator('textarea').last()
-      await alice1Notes.fill('Initialer Content')
+      await sendMessage(alice1Page, 'Initialer Content')
 
-      await alice1Page.getByText('Einladen').click()
-      await alice1Page.getByText('Bob').click()
-      await alice1Page.getByText('1 einladen').click()
-      await expect(alice1Page.getByText('Mitglieder (2)')).toBeVisible({ timeout: 15_000 })
+      await inviteMember(alice1Page, 'Bob')
+      await expectMemberCount(alice1Page, 2)
 
       // Bob accepts
-      await bobPage.getByText('eingeladen').waitFor({ timeout: 30_000 })
-      await bobPage.getByText('Space öffnen').click()
+      await acceptSpaceInvite(bobPage)
 
       // Bob sees the content
-      const bobNotes = bobPage.locator('textarea').last()
-      await expect(bobNotes).toHaveValue(/Initialer Content/, { timeout: 30_000 })
+      await expectMessage(bobPage, 'Initialer Content')
 
-      // Device 2 sees the space and content (sync-request + state exchange)
-      await navigateTo(alice2Page, '/spaces')
+      // Device 2 sees the space and content
+      await navigateTo(alice2Page, '/chats')
       await expect(alice2Page.getByText('Offline-Rotation')).toBeVisible({ timeout: 60_000 })
       await alice2Page.getByText('Offline-Rotation').click()
-      const alice2Notes = alice2Page.locator('textarea').last()
-      await expect(alice2Notes).toHaveValue(/Initialer Content/, { timeout: 60_000 })
+      await expectMessage(alice2Page, 'Initialer Content', 60_000)
 
-      // --- Device 2 goes OFFLINE (has the space and content, will miss key rotation) ---
+      // --- Device 2 goes OFFLINE ---
       await goOffline(alice2Ctx)
 
       // --- Device 1 removes Bob (key rotation while Device 2 offline) ---
-      await alice1Page.getByLabel('Mitglied entfernen').click()
-      await expect(alice1Page.getByText('Mitglieder (1)')).toBeVisible({ timeout: 10_000 })
-      await alice1Page.waitForTimeout(2_000)
+      await removeMember(alice1Page)
+      await expectMemberCount(alice1Page, 1)
 
       // Device 1 writes with the NEW key (gen 1)
-      await alice1Notes.fill('Geschrieben mit neuem Key')
+      await sendMessage(alice1Page, 'Geschrieben mit neuem Key')
 
-      // Wait for Vault pushes to complete:
-      // - PersonalDoc with Gen 1 key (flushPersonalDoc in removeMember)
-      // - Space snapshot re-encrypted with Gen 1 (_scheduleVaultImmediate)
+      // Wait for Vault pushes to complete
       await alice1Page.waitForTimeout(8_000)
 
       // --- Device 2 comes back ONLINE ---
       await goOnline(alice2Ctx)
-      // Navigate to trigger reconnect (same pattern as offline-multi-device.spec.ts)
       await navigateTo(alice2Page, '/')
       await waitForReconnect(alice2Page)
 
       // Navigate back to space
-      await navigateTo(alice2Page, '/spaces')
+      await navigateTo(alice2Page, '/chats')
       await alice2Page.getByText('Offline-Rotation').click()
 
       // Device 2 receives queued messages: key-rotation + content update
-      const alice2NotesAfter = alice2Page.locator('textarea').last()
-      await expect(alice2NotesAfter).toHaveValue(/Geschrieben mit neuem Key/, { timeout: 60_000 })
+      await expectMessage(alice2Page, 'Geschrieben mit neuem Key', 60_000)
 
       // Device 2 can WRITE with the new key
-      const currentValue = await alice2NotesAfter.inputValue()
-      await alice2NotesAfter.fill(currentValue + ' — D2 nach Reconnect')
-      await expect(alice1Notes).toHaveValue(/D2 nach Reconnect/, { timeout: 30_000 })
+      await sendMessage(alice2Page, 'D2 nach Reconnect')
+      await expectMessage(alice1Page, 'D2 nach Reconnect')
 
     } finally {
       await alice1Ctx.close()

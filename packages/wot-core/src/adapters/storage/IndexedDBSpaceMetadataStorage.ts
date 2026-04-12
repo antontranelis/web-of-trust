@@ -1,8 +1,9 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type {
-  SpaceMetadataStorage,
-  PersistedSpaceMetadata,
-  PersistedGroupKey,
+import {
+  groupKeyId,
+  type SpaceMetadataStorage,
+  type PersistedSpaceMetadata,
+  type PersistedGroupKey,
 } from '../interfaces/SpaceMetadataStorage'
 
 const DB_NAME = 'wot-space-metadata'
@@ -26,9 +27,6 @@ interface StoredGroupKey {
   key: number[]
 }
 
-function groupKeyId(spaceId: string, generation: number): string {
-  return `${spaceId}:${generation}`
-}
 
 export class IndexedDBSpaceMetadataStorage implements SpaceMetadataStorage {
   private dbPromise: Promise<IDBPDatabase>

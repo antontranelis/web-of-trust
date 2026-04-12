@@ -4,19 +4,16 @@
  * CRDT-agnostic — works with any PersonalDoc implementation (Automerge, Yjs)
  * via injected doc functions.
  */
-import type {
-  SpaceMetadataStorage,
-  PersistedSpaceMetadata,
-  PersistedGroupKey,
+import {
+  groupKeyId,
+  type SpaceMetadataStorage,
+  type PersistedSpaceMetadata,
+  type PersistedGroupKey,
 } from '../interfaces/SpaceMetadataStorage'
 
 export interface SpaceMetadataDocFunctions {
   getPersonalDoc: () => any
   changePersonalDoc: (fn: (doc: any) => void, options?: { background?: boolean }) => any
-}
-
-function groupKeyId(spaceId: string, generation: number): string {
-  return `${spaceId}:${generation}`
 }
 
 export class PersonalDocSpaceMetadataStorage implements SpaceMetadataStorage {

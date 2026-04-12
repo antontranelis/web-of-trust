@@ -28,6 +28,7 @@ import {
   base64ToUint8,
   signEnvelope,
   verifyEnvelope,
+  traceAsync,
 } from '@web_of_trust/core'
 import type { SpaceMetadataStorage } from '@web_of_trust/core'
 
@@ -346,12 +347,24 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     await this._pullAllFromVault()
     console.debug(`[YjsReplication] after _pullAllFromVault: ${this.spaces.size} spaces`)
 
-    // On reconnect: re-send full state + vault pull (without duplicate restoreSpacesFromMetadata)
+    // On reconnect: re-send full state + vault pull (without duplicate restoreSpacesFromMetadata).
+    // Debounce: rapid reconnect cycles (connected→disconnected→connected) should
+    // only trigger one sync, not one per state change.
     if ('onStateChange' in this.messaging && typeof (this.messaging as any).onStateChange === 'function') {
+      let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+      let reconnectSyncing = false
       this.unsubStateChange = (this.messaging as any).onStateChange((state: string) => {
         if (state === 'connected' && this.started) {
-          void this._sendFullStateAllSpaces().catch(() => {})
-          void this._pullAllFromVault().catch(() => {})
+          if (reconnectTimer) clearTimeout(reconnectTimer)
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null
+            if (reconnectSyncing) return
+            reconnectSyncing = true
+            Promise.all([
+              this._sendFullStateAllSpaces().catch(() => {}),
+              this._pullAllFromVault().catch(() => {}),
+            ]).finally(() => { reconnectSyncing = false })
+          }, 2000)
         }
       })
     }
@@ -836,12 +849,18 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
     const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
     try {
-      const decrypted = await EncryptedSyncService.decryptChange({
-        ciphertext, nonce, spaceId: state.info.id, generation,
-        fromDid: this.identity.getDid(),
-      }, groupKey)
+      const decrypted = await traceAsync('crypto', 'read', `decrypt vault ${state.info.id.slice(0, 8)}`, () =>
+        EncryptedSyncService.decryptChange({
+          ciphertext, nonce, spaceId: state.info.id, generation,
+          fromDid: this.identity.getDid(),
+        }, groupKey),
+        { spaceId: state.info.id },
+      )
 
-      Y.applyUpdate(state.doc, decrypted, 'remote')
+      await traceAsync('crdt', 'sync', `apply vault snapshot ${state.info.id.slice(0, 8)}`, async () => {
+        Y.applyUpdate(state.doc, decrypted, 'remote')
+        return decrypted
+      }, { spaceId: state.info.id, sizeBytes: decrypted.byteLength })
       this.vaultSeqs.set(state.info.id, response.snapshot.upToSeq)
     } catch (err) {
       // Decryption failed — key may be outdated (rotation happened while offline)
@@ -885,8 +904,9 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       // Don't broadcast empty docs
       if (fullState.length <= 2) continue
       const generation = this.groupKeyService.getCurrentGeneration(spaceId)
-      const encrypted = await EncryptedSyncService.encryptChange(
-        fullState, groupKey, spaceId, generation, myDid,
+      const encrypted = await traceAsync('crypto', 'write', `encrypt fullstate ${spaceId.slice(0, 8)}`, () =>
+        EncryptedSyncService.encryptChange(fullState, groupKey, spaceId, generation, myDid),
+        { spaceId, sizeBytes: fullState.byteLength },
       )
 
       const payload = {
@@ -976,7 +996,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       // Create Y.Doc
       const doc = new Y.Doc()
       if (binary) {
-        Y.applyUpdate(doc, binary)
+        await traceAsync('crdt', 'read', `load space ${meta.info.id.slice(0, 8)}`, async () => {
+          Y.applyUpdate(doc, binary!)
+          return binary!
+        }, { spaceId: meta.info.id, sizeBytes: binary.byteLength })
       }
 
       // Read _meta from Y.Doc (overrides PersonalDoc values)
@@ -1087,7 +1110,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     const generation = this.groupKeyService.getCurrentGeneration(spaceId)
     const myDid = this.identity.getDid()
 
-    const encrypted = await EncryptedSyncService.encryptChange(update, groupKey, spaceId, generation, myDid)
+    const encrypted = await traceAsync('crypto', 'write', `encrypt update ${spaceId.slice(0, 8)}`, () =>
+      EncryptedSyncService.encryptChange(update, groupKey, spaceId, generation, myDid),
+      { spaceId, sizeBytes: update.byteLength },
+    )
 
     const payload = {
       spaceId,
@@ -1140,15 +1166,21 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         return
       }
 
-      const decrypted = await EncryptedSyncService.decryptChange({
-        ciphertext: new Uint8Array(payload.ciphertext),
-        nonce: new Uint8Array(payload.nonce),
-        spaceId,
-        generation: payload.generation,
-        fromDid: envelope.fromDid,
-      }, groupKey)
+      const decrypted = await traceAsync('crypto', 'read', `decrypt content ${spaceId.slice(0, 8)}`, () =>
+        EncryptedSyncService.decryptChange({
+          ciphertext: new Uint8Array(payload.ciphertext),
+          nonce: new Uint8Array(payload.nonce),
+          spaceId,
+          generation: payload.generation,
+          fromDid: envelope.fromDid,
+        }, groupKey),
+        { spaceId, fromDid: envelope.fromDid },
+      )
 
-      Y.applyUpdate(state.doc, decrypted, 'remote')
+      await traceAsync('crdt', 'write', `applyUpdate ${spaceId.slice(0, 8)}`, async () => {
+        Y.applyUpdate(state.doc, decrypted, 'remote')
+        return decrypted
+      }, { spaceId, sizeBytes: decrypted.byteLength })
 
 
       // Persist
@@ -1426,11 +1458,14 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
   async _saveToCompactStore(state: YjsSpaceState): Promise<void> {
     if (!this.compactStore) return
-    const binary = Y.encodeStateAsUpdate(state.doc)
-    // Don't persist empty Y.Docs — they create ghost spaces that pollute
-    // CompactStore and trigger repeated vault 404s on every restart
-    if (binary.length <= 2) return
-    await this.compactStore.save(state.info.id, binary)
+    await traceAsync('crdt', 'write', `save compact ${state.info.id.slice(0, 8)}`, async () => {
+      const binary = Y.encodeStateAsUpdate(state.doc)
+      // Don't persist empty Y.Docs — they create ghost spaces that pollute
+      // CompactStore and trigger repeated vault 404s on every restart
+      if (binary.length <= 2) return binary
+      await this.compactStore!.save(state.info.id, binary)
+      return binary
+    }, { spaceId: state.info.id })
   }
 
   async _pushSnapshotToVault(state: YjsSpaceState): Promise<void> {
@@ -1438,20 +1473,23 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     const groupKey = this.groupKeyService.getCurrentKey(state.info.id)
     if (!groupKey) return
 
-    const docBinary = Y.encodeStateAsUpdate(state.doc)
-    // Don't push empty docs to Vault
-    if (docBinary.length <= 2) return
-    const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
-    const encrypted = await EncryptedSyncService.encryptChange(
-      docBinary, groupKey, state.info.id, generation, this.identity.getDid(),
-    )
+    await traceAsync('vault', 'write', `push snapshot ${state.info.id.slice(0, 8)}`, async () => {
+      const docBinary = Y.encodeStateAsUpdate(state.doc)
+      // Don't push empty docs to Vault
+      if (docBinary.length <= 2) return docBinary
+      const generation = this.groupKeyService.getCurrentGeneration(state.info.id)
+      const encrypted = await EncryptedSyncService.encryptChange(
+        docBinary, groupKey, state.info.id, generation, this.identity.getDid(),
+      )
 
-    const currentSeq = this.vaultSeqs.get(state.info.id) ?? 0
-    const nextSeq = currentSeq + 1
-    await this.vault.putSnapshot(state.info.id, encrypted.ciphertext, encrypted.nonce, nextSeq)
-    this.vaultSeqs.set(state.info.id, nextSeq)
-    // Doc now exists in Vault — clear any cached 404
-    this.vault404Cache.delete(state.info.id)
+      const currentSeq = this.vaultSeqs.get(state.info.id) ?? 0
+      const nextSeq = currentSeq + 1
+      await this.vault!.putSnapshot(state.info.id, encrypted.ciphertext, encrypted.nonce, nextSeq)
+      this.vaultSeqs.set(state.info.id, nextSeq)
+      // Doc now exists in Vault — clear any cached 404
+      this.vault404Cache.delete(state.info.id)
+      return docBinary
+    }, { spaceId: state.info.id })
   }
 
   private ensureSchedulers(state: YjsSpaceState): void {
@@ -1556,8 +1594,25 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     }
   }
 
+  /** Cache of last-written metadata JSON per space — skip writes if unchanged */
+  private lastSavedMetadata = new Map<string, string>()
+
   private async saveSpaceMetadata(state: YjsSpaceState): Promise<void> {
     if (!this.metadataStorage) return
+
+    // Dirty-check: only write if metadata actually changed.
+    // Without this, every requestSync → restoreSpaces → saveSpaceMetadata cycle
+    // mutates PersonalDoc, which triggers Y.Doc update → personal-sync message → loop.
+    const fingerprint = JSON.stringify({
+      members: state.info.members,
+      name: state.info.name,
+      description: state.info.description,
+      type: state.info.type,
+      encKeys: Array.from(state.memberEncryptionKeys.keys()).sort(),
+    })
+    if (this.lastSavedMetadata.get(state.info.id) === fingerprint) return
+    this.lastSavedMetadata.set(state.info.id, fingerprint)
+
     await this.metadataStorage.saveSpaceMetadata({
       info: state.info,
       documentId: state.info.id,

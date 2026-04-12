@@ -70,6 +70,21 @@ export function decodeBase64Url(str: string): Uint8Array {
   return Uint8Array.from(binary, (c) => c.charCodeAt(0))
 }
 
+/** Standard Base64 encode (not URL-safe, with padding). Used for HTTP APIs. */
+export function encodeBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+/** Standard Base64 decode (not URL-safe). */
+export function decodeBase64(str: string): Uint8Array {
+  const binary = atob(str)
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0))
+}
+
 /** Convert Uint8Array to ArrayBuffer slice (workaround for TypeScript strict mode with Web Crypto). */
 export function toBuffer(arr: Uint8Array): ArrayBuffer {
   return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength) as ArrayBuffer

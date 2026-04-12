@@ -3,6 +3,7 @@ import { createIdentity } from './helpers/identity'
 import { createFreshContext, waitForRelayConnected, navigateTo } from './helpers/common'
 import { performMutualVerification } from './helpers/verification'
 import { goOffline, goOnline, waitForReconnect } from './helpers/offline'
+import { createSpace, inviteMember, acceptSpaceInvite, expectMemberCount } from './helpers/spaces'
 
 test.describe('Offline Spaces', () => {
   test('create space offline → visible locally, invite while offline → appears on reconnect', async ({ browser }) => {
@@ -23,13 +24,7 @@ test.describe('Offline Spaces', () => {
       await goOffline(aliceCtx)
       await alicePage.waitForTimeout(2_000)
 
-      await navigateTo(alicePage, '/spaces')
-      await alicePage.getByText('Erstellen', { exact: true }).click()
-      await alicePage.getByPlaceholder('z.B. Gartengruppe, Familie...').fill('Offline-Space')
-      await alicePage.locator('form button[type="submit"], form button:has-text("Erstellen")').last().click()
-
-      // Space should be visible locally
-      await expect(alicePage.getByText('Offline-Space').first()).toBeVisible({ timeout: 10_000 })
+      await createSpace(alicePage, 'Offline-Space')
 
       // Go back online
       await goOnline(aliceCtx)
@@ -37,7 +32,7 @@ test.describe('Offline Spaces', () => {
       await waitForReconnect(alicePage)
 
       // Space should still be visible after reconnect
-      await navigateTo(alicePage, '/spaces')
+      await navigateTo(alicePage, '/chats')
       await expect(alicePage.getByText('Offline-Space').first()).toBeVisible({ timeout: 10_000 })
 
       // --- Part 2: Bob goes offline, Alice invites Bob ---
@@ -46,13 +41,9 @@ test.describe('Offline Spaces', () => {
 
       // Alice opens the space and invites Bob
       await alicePage.getByText('Offline-Space').first().click()
-      await expect(alicePage.getByText('Mitglieder (1)')).toBeVisible({ timeout: 10_000 })
-      await alicePage.getByText('Einladen').click()
-      await alicePage.getByText('Bob').click()
-      await alicePage.getByText('1 einladen').click()
-
-      // Wait for invite to be sent (relay queues it since Bob is offline)
-      await expect(alicePage.getByText('Mitglieder (2)')).toBeVisible({ timeout: 10_000 })
+      await expectMemberCount(alicePage, 1)
+      await inviteMember(alicePage, 'Bob')
+      await expectMemberCount(alicePage, 2)
 
       // --- Bob comes back online → Space invite should appear ---
       await goOnline(bobCtx)
@@ -60,11 +51,10 @@ test.describe('Offline Spaces', () => {
       await waitForReconnect(bobPage)
 
       // Bob should receive the space invite
-      await bobPage.getByText('Einladung zu Space').waitFor({ timeout: 30_000 })
-      await bobPage.getByText('Space öffnen').click()
+      await acceptSpaceInvite(bobPage)
 
       // Bob should see the space
-      await navigateTo(bobPage, '/spaces')
+      await navigateTo(bobPage, '/chats')
       await expect(bobPage.getByText('Offline-Space').first()).toBeVisible({ timeout: 10_000 })
     } finally {
       await aliceCtx.close()

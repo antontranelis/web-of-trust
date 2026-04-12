@@ -11,6 +11,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "bench": "turbo bench",
     "dev:demo": "pnpm --filter demo dev",
     "dev:demo:yjs": "VITE_CRDT=yjs pnpm --filter demo dev",
     "dev:landing": "pnpm --filter landing dev",

@@ -143,7 +143,10 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async getReceivedVerifications(): Promise<Verification[]> {
     const db = this.ensureDb()
-    return db.getAll('verifications')
+    const identity = await this.getIdentity()
+    if (!identity) return []
+    const all = await db.getAll('verifications')
+    return all.filter(v => v.to === identity.did)
   }
 
   async getAllVerifications(): Promise<Verification[]> {

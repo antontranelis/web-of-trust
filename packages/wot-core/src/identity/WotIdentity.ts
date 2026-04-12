@@ -24,6 +24,7 @@ export class WotIdentity {
   private masterKey: MasterKeyHandle | null = null
   private identityKeyPair: { publicKey: CryptoKey; privateKey: CryptoKey } | null = null
   private encKeyPair: EncryptionKeyPair | null = null
+  private encKeyPairPromise: Promise<EncryptionKeyPair> | null = null
   private did: string | null = null
   private storage: SeedStorageAdapter
   private crypto: CryptoAdapter
@@ -150,118 +151,71 @@ export class WotIdentity {
     await this.storage.clearSessionKey()
   }
 
-  /**
-   * Get DID (Decentralized Identifier)
-   */
+  private ensureUnlocked() {
+    if (!this.did || !this.masterKey || !this.identityKeyPair) {
+      throw new Error('Identity not unlocked')
+    }
+    return { did: this.did, masterKey: this.masterKey, keyPair: this.identityKeyPair }
+  }
+
   getDid(): string {
-    if (!this.did) {
-      throw new Error('Identity not unlocked')
-    }
-    return this.did
+    return this.ensureUnlocked().did
   }
 
-  /**
-   * Sign a payload as JWS (JSON Web Signature) compact serialization
-   *
-   * @param payload - Data to sign (will be JSON-serialized)
-   * @returns JWS compact serialization (header.payload.signature)
-   */
   async signJws(payload: unknown): Promise<string> {
-    if (!this.identityKeyPair) {
-      throw new Error('Identity not unlocked')
-    }
-    return signJwsUtil(payload, this.identityKeyPair.privateKey)
+    return signJwsUtil(payload, this.ensureUnlocked().keyPair.privateKey)
   }
 
-  /**
-   * Sign data with identity private key
-   *
-   * @param data - Data to sign
-   * @returns Signature as base64url string
-   */
   async sign(data: string): Promise<string> {
-    if (!this.identityKeyPair) {
-      throw new Error('Identity not unlocked')
-    }
-    return this.crypto.signString(data, this.identityKeyPair.privateKey)
+    return this.crypto.signString(data, this.ensureUnlocked().keyPair.privateKey)
   }
 
-  /**
-   * Derive framework-specific keys (extractable for Evolu, etc.)
-   *
-   * @param info - Context string (e.g., 'evolu-storage-v1')
-   * @returns Derived key bytes
-   */
   async deriveFrameworkKey(info: string): Promise<Uint8Array> {
-    if (!this.masterKey) {
-      throw new Error('Identity not unlocked')
-    }
-    return this.crypto.deriveBits(this.masterKey, info, 256)
+    return this.crypto.deriveBits(this.ensureUnlocked().masterKey, info, 256)
   }
 
-  /**
-   * Get public key (for DID Document, etc.)
-   */
   async getPublicKey(): Promise<CryptoKey> {
-    if (!this.identityKeyPair) {
-      throw new Error('Identity not unlocked')
-    }
-    return this.identityKeyPair.publicKey
+    return this.ensureUnlocked().keyPair.publicKey
   }
 
-  /**
-   * Export public key as JWK
-   */
   async exportPublicKeyJwk(): Promise<JsonWebKey> {
-    const publicKey = await this.getPublicKey()
-    return crypto.subtle.exportKey('jwk', publicKey)
+    return crypto.subtle.exportKey('jwk', this.ensureUnlocked().keyPair.publicKey)
   }
 
-  /**
-   * Get public key as multibase encoded string (same format as in DID)
-   */
   async getPublicKeyMultibase(): Promise<string> {
-    if (!this.identityKeyPair) {
-      throw new Error('Identity not unlocked')
-    }
-    // DID format is did:key:z<multibase>, extract z... part
-    const did = this.getDid()
-    return did.replace('did:key:', '')
+    return this.ensureUnlocked().did.replace('did:key:', '')
   }
 
   // --- Encryption (X25519 ECDH + AES-GCM) ---
 
+  private ensureEncKeyPair(): Promise<EncryptionKeyPair> {
+    this.ensureUnlocked()
+    if (this.encKeyPair) return Promise.resolve(this.encKeyPair)
+    if (!this.encKeyPairPromise) {
+      this.encKeyPairPromise = (async () => {
+        const encSeed = await this.crypto.deriveBits(this.masterKey!, 'wot-encryption-v1', 256)
+        this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
+        return this.encKeyPair
+      })()
+    }
+    return this.encKeyPairPromise
+  }
+
   /**
    * Get the X25519 encryption key pair (derived via separate HKDF path).
-   * Lazily derived on first call, then cached.
    */
   async getEncryptionKeyPair(): Promise<CryptoKeyPair> {
-    if (!this.masterKey) {
-      throw new Error('Identity not unlocked')
-    }
-    if (!this.encKeyPair) {
-      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
-      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
-    }
-    // For backward compatibility, return the internal CryptoKeyPair
-    // This is a Web Crypto specific detail that will change when CryptoKey becomes opaque
-    const handle = this.encKeyPair as unknown as { keyPair: CryptoKeyPair }
-    return handle.keyPair
+    const handle = await this.ensureEncKeyPair()
+    // Web Crypto specific — will change when CryptoKey becomes opaque
+    return (handle as unknown as { keyPair: CryptoKeyPair }).keyPair
   }
 
   /**
    * Get X25519 public key as raw bytes (32 bytes).
-   * This is what others need to encrypt messages for this identity.
    */
   async getEncryptionPublicKeyBytes(): Promise<Uint8Array> {
-    if (!this.masterKey) {
-      throw new Error('Identity not unlocked')
-    }
-    if (!this.encKeyPair) {
-      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
-      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
-    }
-    return this.crypto.exportEncryptionPublicKey(this.encKeyPair)
+    const encKeyPair = await this.ensureEncKeyPair()
+    return this.crypto.exportEncryptionPublicKey(encKeyPair)
   }
 
   /**
@@ -272,28 +226,17 @@ export class WotIdentity {
     plaintext: Uint8Array,
     recipientPublicKeyBytes: Uint8Array,
   ): Promise<EncryptedPayload> {
-    if (!this.masterKey) {
-      throw new Error('Identity not unlocked')
-    }
+    this.ensureUnlocked()
     return this.crypto.encryptAsymmetric(plaintext, recipientPublicKeyBytes)
   }
 
   /**
    * Decrypt data encrypted for this identity.
-   * Uses own X25519 private key + ephemeral public key from sender.
    */
   async decryptForMe(payload: EncryptedPayload): Promise<Uint8Array> {
-    if (!this.masterKey) {
-      throw new Error('Identity not unlocked')
-    }
-    if (!payload.ephemeralPublicKey) {
-      throw new Error('Missing ephemeral public key')
-    }
-    if (!this.encKeyPair) {
-      const encSeed = await this.crypto.deriveBits(this.masterKey, 'wot-encryption-v1', 256)
-      this.encKeyPair = await this.crypto.deriveEncryptionKeyPair(encSeed)
-    }
-    return this.crypto.decryptAsymmetric(payload, this.encKeyPair)
+    if (!payload.ephemeralPublicKey) throw new Error('Missing ephemeral public key')
+    const encKeyPair = await this.ensureEncKeyPair()
+    return this.crypto.decryptAsymmetric(payload, encKeyPair)
   }
 
   // --- Private methods ---

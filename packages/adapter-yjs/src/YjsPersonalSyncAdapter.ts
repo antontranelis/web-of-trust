@@ -42,17 +42,24 @@ export class YjsPersonalSyncAdapter {
     // missed earlier updates (e.g., Device 2 joins after Device 1 already has data)
     this.sendFullState()
 
-    // Re-send full state + request sync whenever messaging reconnects
+    // Re-send full state + request sync whenever messaging reconnects.
+    // Debounce: rapid reconnect cycles (connected→disconnected→connected) should
+    // only trigger one sync, not one per state change.
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     this.unsubStateChange = this.messaging.onStateChange((state) => {
       if (state === 'connected' && this.started) {
-        this.sendFullState()
-        this.sendSyncRequest()
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null
+          this.sendFullState()
+          this.sendSyncRequest()
+        }, 1000)
       }
     })
 
     // Listen for local Y.Doc changes → encrypt and send to other devices
     const updateHandler = (update: Uint8Array, origin: any) => {
-      // Only send local changes (not changes received from remote)
+      // Only skip changes received from remote devices (prevents echo loop)
       if (origin === 'remote') return
       void this.sendUpdate(update)
     }

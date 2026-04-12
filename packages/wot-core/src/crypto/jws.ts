@@ -1,4 +1,4 @@
-import { encodeBase64Url, decodeBase64Url } from './encoding'
+import { encodeBase64Url, decodeBase64Url, toBuffer } from './encoding'
 
 /**
  * JWS (JSON Web Signature) utilities for signing and verifying data
@@ -13,11 +13,6 @@ import { encodeBase64Url, decodeBase64Url } from './encoding'
 interface JwsHeader {
   alg: 'EdDSA'
   typ: 'JWT'
-}
-
-// Helper to convert Uint8Array to ArrayBuffer (for Web Crypto API compatibility)
-function toArrayBuffer(arr: Uint8Array): ArrayBuffer {
-  return arr.buffer.slice(arr.byteOffset, arr.byteOffset + arr.byteLength) as ArrayBuffer
 }
 
 /**
@@ -108,7 +103,7 @@ export async function verifyJws(
     const valid = await crypto.subtle.verify(
       'Ed25519',
       publicKey,
-      toArrayBuffer(signature),
+      toBuffer(signature),
       signingInputBytes
     )
 
