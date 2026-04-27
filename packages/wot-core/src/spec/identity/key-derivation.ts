@@ -1,16 +1,10 @@
 import * as ed25519 from '@noble/ed25519'
+import { hexToBytes } from '../crypto/hex'
 import type { SpecCryptoAdapter } from '../crypto/ports'
 import { publicKeyToDidKey } from './did-key'
 
 const IDENTITY_INFO = 'wot/identity/ed25519/v1'
 const ENCRYPTION_INFO = 'wot/encryption/x25519/v1'
-
-function hexToBytes(hex: string): Uint8Array {
-  if (hex.length % 2 !== 0) throw new Error('Invalid hex string')
-  const bytes = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < bytes.length; i++) bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-  return bytes
-}
 
 export interface SpecIdentityMaterial {
   ed25519Seed: Uint8Array

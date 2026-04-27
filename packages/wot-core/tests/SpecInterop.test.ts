@@ -6,21 +6,27 @@ import {
   createDelegatedAttestationBundle,
   createDeviceKeyBindingJws,
   createLogEntryJws,
+  createSdJwtVcCompact,
   createSpaceCapabilityJws,
   decodeBase64Url,
   decryptEcies,
   decryptLogPayload,
+  derivePersonalDocFromSeedHex,
   deriveEciesMaterial,
   deriveLogPayloadNonce,
+  deriveSpaceAdminKeyFromSeedHex,
   deriveSpecIdentityFromSeedHex,
   ed25519PublicKeyToMultibase,
   ed25519MultibaseToPublicKeyBytes,
   encryptEcies,
   encryptLogPayload,
+  encodeSdJwtDisclosure,
+  digestSdJwtDisclosure,
   verifyAttestationVcJws,
   verifyDelegatedAttestationBundle,
   verifyDeviceKeyBindingJws,
   verifyLogEntryJws,
+  verifySdJwtVc,
   verifySpaceCapabilityJws,
   x25519PublicKeyToMultibase,
 } from '../src/spec'
@@ -177,6 +183,38 @@ describe('WoT spec interop vectors', () => {
       blob: decodeBase64Url(phase1.log_payload_encryption.blob_b64),
     })
     expect(bytesToText(decryptedLogPayload)).toBe(phase1.log_payload_encryption.plaintext)
+  })
+
+  it('derives admin, personal-doc, and SD-JWT VC vectors', async () => {
+    const adminKey = await deriveSpaceAdminKeyFromSeedHex(
+      phase1.identity.bip39_seed_hex,
+      phase1.admin_key_derivation.space_id,
+      cryptoAdapter,
+    )
+    expect(adminKey.hkdfInfo).toBe(phase1.admin_key_derivation.hkdf_info)
+    expect(bytesToHex(adminKey.ed25519Seed)).toBe(phase1.admin_key_derivation.ed25519_seed_hex)
+    expect(bytesToHex(adminKey.ed25519PublicKey)).toBe(phase1.admin_key_derivation.ed25519_public_hex)
+    expect(adminKey.did).toBe(phase1.admin_key_derivation.did)
+
+    const personalDoc = await derivePersonalDocFromSeedHex(phase1.identity.bip39_seed_hex, cryptoAdapter)
+    expect(personalDoc.hkdfInfo).toBe(phase1.personal_doc.hkdf_info)
+    expect(bytesToHex(personalDoc.key)).toBe(phase1.personal_doc.key_hex)
+    expect(personalDoc.docId).toBe(phase1.personal_doc.doc_id)
+
+    const encodedDisclosure = encodeSdJwtDisclosure(phase1.sd_jwt_vc_trust_list.disclosure as JsonValue)
+    const disclosureDigest = await digestSdJwtDisclosure(encodedDisclosure, cryptoAdapter)
+    expect(disclosureDigest).toBe(phase1.sd_jwt_vc_trust_list.disclosure_digest)
+    expect(
+      createSdJwtVcCompact(phase1.sd_jwt_vc_trust_list.issuer_signed_jwt, [
+        phase1.sd_jwt_vc_trust_list.disclosure as JsonValue,
+      ]),
+    ).toBe(phase1.sd_jwt_vc_trust_list.sd_jwt_compact)
+
+    const verifiedSdJwt = await verifySdJwtVc(phase1.sd_jwt_vc_trust_list.sd_jwt_compact, {
+      crypto: cryptoAdapter,
+    })
+    expect(verifiedSdJwt.disclosures).toEqual([phase1.sd_jwt_vc_trust_list.disclosure])
+    expect(verifiedSdJwt.disclosureDigests).toEqual([phase1.sd_jwt_vc_trust_list.disclosure_digest])
   })
 
   it('verifies the DeviceKeyBinding-JWS vector', async () => {
