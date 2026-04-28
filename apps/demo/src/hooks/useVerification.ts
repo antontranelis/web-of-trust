@@ -17,7 +17,7 @@ type VerificationStep =
   | 'error'
 
 /**
- * Hook for in-person verification flow using WotIdentity.
+ * Hook for in-person verification flow using an unlocked identity session.
  *
  * Simplified flow (no session state):
  * 1. createChallenge() → show QR code

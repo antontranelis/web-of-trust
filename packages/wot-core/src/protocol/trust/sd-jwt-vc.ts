@@ -1,7 +1,7 @@
 import { decodeBase64Url, encodeBase64Url } from '../crypto/encoding'
 import type { JsonValue } from '../crypto/jcs'
 import { canonicalizeToBytes } from '../crypto/jcs'
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { decodeJws, verifyJwsWithPublicKey } from '../crypto/jws'
 import { didKeyToPublicKeyBytes } from '../identity/did-key'
 
@@ -12,7 +12,7 @@ export interface VerifiedSdJwtVc {
 }
 
 export interface VerifySdJwtVcOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
 }
 
 export function encodeSdJwtDisclosure(disclosure: JsonValue): string {
@@ -21,7 +21,7 @@ export function encodeSdJwtDisclosure(disclosure: JsonValue): string {
 
 export async function digestSdJwtDisclosure(
   encodedDisclosure: string,
-  cryptoAdapter: SpecCryptoAdapter,
+  cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<string> {
   return encodeBase64Url(await cryptoAdapter.sha256(new TextEncoder().encode(encodedDisclosure)))
 }

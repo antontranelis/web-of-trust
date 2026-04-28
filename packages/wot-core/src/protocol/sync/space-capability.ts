@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import type { JsonValue } from '../crypto/jcs'
 import { createJcsEd25519Jws, decodeJws, verifyJwsWithPublicKey } from '../crypto/jws'
 
@@ -20,7 +20,7 @@ export interface CreateSpaceCapabilityJwsOptions {
 }
 
 export interface VerifySpaceCapabilityJwsOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   publicKey: Uint8Array
   expectedSpaceId?: string
   expectedAudience?: string

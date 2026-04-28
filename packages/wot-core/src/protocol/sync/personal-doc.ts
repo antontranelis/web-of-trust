@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { hexToBytes } from '../crypto/hex'
 
 const PERSONAL_DOC_INFO = 'wot/personal-doc/v1'
@@ -11,7 +11,7 @@ export interface PersonalDocMaterial {
 
 export async function derivePersonalDocFromSeedHex(
   bip39SeedHex: string,
-  cryptoAdapter: SpecCryptoAdapter,
+  cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<PersonalDocMaterial> {
   const seed = hexToBytes(bip39SeedHex)
   const key = await cryptoAdapter.hkdfSha256(seed, PERSONAL_DOC_INFO, 32)

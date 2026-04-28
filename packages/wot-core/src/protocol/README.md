@@ -1,10 +1,10 @@
-# WoT Spec Core
+# WoT Protocol Core
 
 This directory is the protocol-level TypeScript implementation of the WoT specification. It is intentionally separate from the legacy application/core services.
 
 ## Boundary
 
-`src/spec` contains deterministic protocol rules and small ports only:
+`src/protocol` contains deterministic protocol rules and small ports only:
 
 - canonical JSON and JWS encoding
 - DID/key encoding helpers
@@ -12,7 +12,7 @@ This directory is the protocol-level TypeScript implementation of the WoT specif
 - trust artifacts such as attestations and SD-JWT vectors
 - sync artifacts such as ECIES, encrypted log payloads, log-entry JWS, and capabilities
 
-`src/spec` must not import from:
+`src/protocol` must not import from:
 
 - `src/identity/WotIdentity`
 - app services
@@ -21,24 +21,24 @@ This directory is the protocol-level TypeScript implementation of the WoT specif
 - CRDT adapters
 - UI code
 
-DIDComm-compatible plaintext envelopes are transport framing, not spec-core logic. They stay outside `src/spec` and are validated by the `wot-spec` conformance tooling with DIDComm libraries.
+DIDComm-compatible plaintext envelopes are transport framing, not protocol-core logic. They stay outside `src/protocol` and are validated by the `wot-spec` conformance tooling with DIDComm libraries.
 
 Concrete platform integrations live outside the core boundary:
 
-- `src/spec-adapters/web-crypto.ts` implements the crypto port with Web Crypto.
+- `src/protocol-adapters/web-crypto.ts` implements the crypto port with Web Crypto.
 
 The dependency direction is:
 
 ```txt
-spec-adapters -> spec
-spec -/-> spec-adapters
-spec -/-> legacy app/core services
+protocol-adapters -> protocol
+protocol -/-> protocol-adapters
+protocol -/-> legacy app/core services
 ```
 
 ## Layout
 
 ```txt
-src/spec/
+src/protocol/
   crypto/
     encoding.ts       Base58/Base64URL helpers
     hex.ts            Hex helpers
@@ -70,13 +70,13 @@ src/spec/
 From package consumers, use the namespace exports:
 
 ```ts
-import { spec, specAdapters } from '@web_of_trust/core'
+import { protocol, protocolAdapters } from '@web_of_trust/core'
 
-const crypto = new specAdapters.WebCryptoSpecCryptoAdapter()
-const identity = await spec.deriveSpecIdentityFromSeedHex(seedHex, crypto)
+const crypto = new protocolAdapters.WebCryptoProtocolCryptoAdapter()
+const identity = await protocol.deriveProtocolIdentityFromSeedHex(seedHex, crypto)
 ```
 
-Within package tests, imports use `../src/spec` and `../src/spec-adapters`.
+Within package tests, imports use `../src/protocol` and `../src/protocol-adapters`.
 
 ## Test Vectors
 
@@ -97,7 +97,7 @@ wot-spec/test-vectors/device-delegation.json
 The main TypeScript interop test is:
 
 ```txt
-packages/wot-core/tests/SpecInterop.test.ts
+packages/wot-core/tests/ProtocolInterop.test.ts
 ```
 
 ## Validation

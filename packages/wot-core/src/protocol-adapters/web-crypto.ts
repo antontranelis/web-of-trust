@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../spec/crypto/ports'
+import type { ProtocolCryptoAdapter } from '../protocol/crypto/ports'
 
 function toBuffer(bytes: Uint8Array): ArrayBuffer {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
@@ -14,7 +14,7 @@ function wrapX25519PrivateKey(rawKey: Uint8Array): Uint8Array {
   return pkcs8
 }
 
-export class WebCryptoSpecCryptoAdapter implements SpecCryptoAdapter {
+export class WebCryptoProtocolCryptoAdapter implements ProtocolCryptoAdapter {
   async verifyEd25519(input: Uint8Array, signature: Uint8Array, publicKey: Uint8Array): Promise<boolean> {
     const key = await crypto.subtle.importKey('raw', toBuffer(publicKey), { name: 'Ed25519' }, false, ['verify'])
     return crypto.subtle.verify('Ed25519', key, toBuffer(signature), toBuffer(input))

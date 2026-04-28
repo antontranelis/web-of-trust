@@ -15,7 +15,7 @@ import {
   deriveEciesMaterial,
   deriveLogPayloadNonce,
   deriveSpaceAdminKeyFromSeedHex,
-  deriveSpecIdentityFromSeedHex,
+  deriveProtocolIdentityFromSeedHex,
   ed25519PublicKeyToMultibase,
   ed25519MultibaseToPublicKeyBytes,
   encryptEcies,
@@ -30,13 +30,13 @@ import {
   verifySpaceCapabilityJws,
   resolveDidKey,
   x25519PublicKeyToMultibase,
-} from '../src/spec'
-import { WebCryptoSpecCryptoAdapter } from '../src/spec-adapters'
-import type { JsonValue } from '../src/spec'
+} from '../src/protocol'
+import { WebCryptoProtocolCryptoAdapter } from '../src/protocol-adapters'
+import type { JsonValue } from '../src/protocol'
 
 const phase1 = loadSpecVector('./fixtures/wot-spec/phase-1-interop.json')
 const deviceDelegation = loadSpecVector('./fixtures/wot-spec/device-delegation.json')
-const cryptoAdapter = new WebCryptoSpecCryptoAdapter()
+const cryptoAdapter = new WebCryptoProtocolCryptoAdapter()
 
 function loadSpecVector(relativePath: string): any {
   return JSON.parse(readFileSync(new URL(relativePath, import.meta.url), 'utf8'))
@@ -57,9 +57,9 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
-describe('WoT spec interop vectors', () => {
+describe('WoT protocol interop vectors', () => {
   it('derives identity material from the phase-1 vector', async () => {
-    const identity = await deriveSpecIdentityFromSeedHex(phase1.identity.bip39_seed_hex, cryptoAdapter)
+    const identity = await deriveProtocolIdentityFromSeedHex(phase1.identity.bip39_seed_hex, cryptoAdapter)
 
     expect(bytesToHex(identity.ed25519Seed)).toBe(phase1.identity.ed25519_seed_hex)
     expect(bytesToHex(identity.ed25519PublicKey)).toBe(phase1.identity.ed25519_public_hex)

@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { didKeyToPublicKeyBytes, didOrKidToDid } from '../identity/did-key'
 import type { JcsEd25519SignFn } from '../crypto/jws'
 import { createJcsEd25519Jws, createJcsEd25519JwsWithSigner, verifyJwsWithPublicKey } from '../crypto/jws'
@@ -32,7 +32,7 @@ export interface CreateAttestationVcJwsWithSignerOptions {
 }
 
 export interface VerifyAttestationVcJwsOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
 }
 
 export async function createAttestationVcJws(options: CreateAttestationVcJwsOptions): Promise<string> {

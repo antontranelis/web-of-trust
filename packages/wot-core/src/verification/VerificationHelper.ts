@@ -1,4 +1,4 @@
-import type { WotIdentity } from '../identity/WotIdentity'
+import type { IdentitySession } from '../application'
 import type {
   VerificationChallenge,
   VerificationResponse,
@@ -15,11 +15,11 @@ export class VerificationHelper {
   /**
    * Create a verification challenge
    *
-   * @param identity - WotIdentity of challenger
+   * @param identity - identity session of challenger
    * @param name - Display name of challenger
    * @returns Base64-encoded challenge string
    */
-  static async createChallenge(identity: WotIdentity, name: string): Promise<string> {
+  static async createChallenge(identity: IdentitySession, name: string): Promise<string> {
     const challenge: VerificationChallenge = {
       nonce: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
@@ -35,13 +35,13 @@ export class VerificationHelper {
    * Respond to a verification challenge
    *
    * @param challengeCode - Base64-encoded challenge
-   * @param identity - WotIdentity of responder
+   * @param identity - identity session of responder
    * @param name - Display name of responder
    * @returns Base64-encoded response string
    */
   static async respondToChallenge(
     challengeCode: string,
-    identity: WotIdentity,
+    identity: IdentitySession,
     name: string
   ): Promise<string> {
     const challenge: VerificationChallenge = JSON.parse(atob(challengeCode))
@@ -66,14 +66,14 @@ export class VerificationHelper {
    * Complete verification by creating signed verification object
    *
    * @param responseCode - Base64-encoded response
-   * @param identity - WotIdentity of initiator (signer)
+   * @param identity - identity session of initiator (signer)
    * @param expectedNonce - Nonce from original challenge
    * @returns Signed Verification object
    * @throws Error if nonce mismatch
    */
   static async completeVerification(
     responseCode: string,
-    identity: WotIdentity,
+    identity: IdentitySession,
     expectedNonce: string
   ): Promise<Verification> {
     const response: VerificationResponse = JSON.parse(atob(responseCode))
@@ -114,13 +114,13 @@ export class VerificationHelper {
    * Create a verification for a specific DID (Empfänger-Prinzip).
    * Used when Bob verifies Alice: from=Bob, to=Alice.
    *
-   * @param identity - WotIdentity of the signer (from)
+   * @param identity - identity session of the signer (from)
    * @param toDid - DID of the person being verified (to/recipient)
    * @param nonce - Nonce from the challenge for deterministic ID
    * @returns Signed Verification object
    */
   static async createVerificationFor(
-    identity: WotIdentity,
+    identity: IdentitySession,
     toDid: string,
     nonce: string
   ): Promise<Verification> {

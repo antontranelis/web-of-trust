@@ -1,6 +1,6 @@
 import * as ed25519 from '@noble/ed25519'
 import { decodeBase64Url, encodeBase64Url } from './encoding'
-import type { SpecCryptoAdapter } from './ports'
+import type { ProtocolCryptoAdapter } from './ports'
 import type { JsonValue } from './jcs'
 import { canonicalizeToBytes } from './jcs'
 
@@ -15,7 +15,7 @@ export type JcsEd25519SignFn = (signingInput: Uint8Array) => Promise<Uint8Array>
 
 export interface VerifyJwsWithPublicKeyOptions {
   publicKey: Uint8Array
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
 }
 
 export function decodeJws<Header = Record<string, unknown>, Payload = Record<string, unknown>>(jws: string): DecodedJws<Header, Payload> {

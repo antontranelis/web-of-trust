@@ -14,7 +14,7 @@ import {
   type CryptoAdapter,
   type MessagingAdapter,
   type MessagingState,
-  type WotIdentity,
+  type IdentitySession,
   type PublicProfile,
   type PublicVerificationsData,
   type PublicAttestationsData,
@@ -66,7 +66,7 @@ const AdapterContext = createContext<AdapterContextValue | null>(null)
 
 interface AdapterProviderProps {
   children: ReactNode
-  identity: WotIdentity
+  identity: IdentitySession
 }
 
 /**

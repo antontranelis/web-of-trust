@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import type { AttestationVcPayload } from './attestation-vc-jws'
 import type { DeviceCapability, DeviceKeyBindingPayload } from '../identity/device-key-binding'
 import { verifyDeviceKeyBindingJws } from '../identity/device-key-binding'
@@ -28,7 +28,7 @@ export interface CreateDelegatedAttestationBundleWithSignerOptions {
 }
 
 export interface VerifyDelegatedAttestationBundleOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   requiredCapability?: DeviceCapability
 }
 

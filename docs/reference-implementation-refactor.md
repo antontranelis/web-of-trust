@@ -26,7 +26,7 @@ Rationale:
 - `protocol` describes the deterministic implementation of those rules.
 - The library API should feel like production code, not a test-vector harness.
 
-The current `src/spec` package is the starting point and should be renamed to `src/protocol` on this branch.
+The former protocol implementation package has been renamed to `src/protocol` on this branch.
 
 ## Architecture
 
@@ -230,14 +230,18 @@ Avoid a big-bang rewrite. Refactor in vertical slices.
 
 ### 1. Protocol Rename
 
+Status: implemented on the `demo-spec-reference` branch.
+
 Acceptance criteria:
 
-- `src/spec` becomes `src/protocol`.
-- `src/spec-adapters` becomes an adapter/platform name that fits the new architecture.
+- Protocol implementation code lives in `src/protocol`.
+- Protocol platform crypto code lives in `src/protocol-adapters`.
 - Public exports use `protocol`, not `spec`.
 - Existing protocol vector tests pass.
 
 ### 2. Identity
+
+Status: implemented for the core application workflow and demo onboarding/recovery/unlock flow on the `demo-spec-reference` branch. The legacy `WotIdentity` surface still exists for legacy tests and callers, but the new demo identity flow no longer constructs it.
 
 Acceptance criteria:
 

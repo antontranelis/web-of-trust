@@ -1,5 +1,5 @@
 import * as ed25519 from '@noble/ed25519'
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { hexToBytes } from '../crypto/hex'
 import { publicKeyToDidKey } from '../identity/did-key'
 
@@ -13,7 +13,7 @@ export interface SpaceAdminKeyMaterial {
 export async function deriveSpaceAdminKeyFromSeedHex(
   bip39SeedHex: string,
   spaceId: string,
-  cryptoAdapter: SpecCryptoAdapter,
+  cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<SpaceAdminKeyMaterial> {
   if (!spaceId) throw new Error('Missing spaceId')
   const seed = hexToBytes(bip39SeedHex)

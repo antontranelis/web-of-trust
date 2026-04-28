@@ -1,5 +1,5 @@
 import { decodeBase64Url, encodeBase64Url } from '../crypto/encoding'
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 
 const ECIES_INFO = 'wot/ecies/v1'
 const NONCE_LENGTH = 12
@@ -17,7 +17,7 @@ export interface EciesMaterial {
 }
 
 export interface DeriveEciesMaterialOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   ephemeralPrivateSeed: Uint8Array
   recipientPublicKey: Uint8Array
 }
@@ -28,13 +28,13 @@ export interface EncryptEciesOptions extends DeriveEciesMaterialOptions {
 }
 
 export interface DecryptEciesOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   recipientPrivateSeed: Uint8Array
   message: EciesMessage
 }
 
 export interface EncryptLogPayloadOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   spaceContentKey: Uint8Array
   deviceId: string
   seq: number
@@ -49,7 +49,7 @@ export interface LogPayloadEncryptionResult {
 }
 
 export interface DecryptLogPayloadOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
   spaceContentKey: Uint8Array
   blob: Uint8Array
 }
@@ -83,7 +83,7 @@ export async function decryptEcies(options: DecryptEciesOptions): Promise<Uint8A
 }
 
 export async function deriveLogPayloadNonce(
-  cryptoAdapter: SpecCryptoAdapter,
+  cryptoAdapter: ProtocolCryptoAdapter,
   deviceId: string,
   seq: number,
 ): Promise<Uint8Array> {

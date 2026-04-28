@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import type { JcsEd25519SignFn } from '../crypto/jws'
 import { createJcsEd25519Jws, createJcsEd25519JwsWithSigner, decodeJws, verifyJwsWithPublicKey } from '../crypto/jws'
 import type { JsonValue } from '../crypto/jcs'
@@ -32,7 +32,7 @@ export interface CreateDeviceKeyBindingJwsWithSignerOptions {
 }
 
 export interface VerifyDeviceKeyBindingJwsOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
 }
 
 export async function createDeviceKeyBindingJws(options: CreateDeviceKeyBindingJwsOptions): Promise<string> {

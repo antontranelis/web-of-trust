@@ -1,4 +1,4 @@
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import type { JsonValue } from '../crypto/jcs'
 import { createJcsEd25519Jws, decodeJws, verifyJwsWithPublicKey } from '../crypto/jws'
 import { didKeyToPublicKeyBytes } from '../identity/did-key'
@@ -19,7 +19,7 @@ export interface CreateLogEntryJwsOptions {
 }
 
 export interface VerifyLogEntryJwsOptions {
-  crypto: SpecCryptoAdapter
+  crypto: ProtocolCryptoAdapter
 }
 
 export async function createLogEntryJws(options: CreateLogEntryJwsOptions): Promise<string> {

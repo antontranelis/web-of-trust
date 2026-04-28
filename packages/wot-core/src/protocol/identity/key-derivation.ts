@@ -1,12 +1,12 @@
 import * as ed25519 from '@noble/ed25519'
 import { hexToBytes } from '../crypto/hex'
-import type { SpecCryptoAdapter } from '../crypto/ports'
+import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { publicKeyToDidKey } from './did-key'
 
 const IDENTITY_INFO = 'wot/identity/ed25519/v1'
 const ENCRYPTION_INFO = 'wot/encryption/x25519/v1'
 
-export interface SpecIdentityMaterial {
+export interface ProtocolIdentityMaterial {
   ed25519Seed: Uint8Array
   ed25519PublicKey: Uint8Array
   x25519Seed: Uint8Array
@@ -15,10 +15,10 @@ export interface SpecIdentityMaterial {
   kid: string
 }
 
-export async function deriveSpecIdentityFromSeedHex(
+export async function deriveProtocolIdentityFromSeedHex(
   bip39SeedHex: string,
-  cryptoAdapter: SpecCryptoAdapter,
-): Promise<SpecIdentityMaterial> {
+  cryptoAdapter: ProtocolCryptoAdapter,
+): Promise<ProtocolIdentityMaterial> {
   const seed = hexToBytes(bip39SeedHex)
   const ed25519Seed = await cryptoAdapter.hkdfSha256(seed, IDENTITY_INFO, 32)
   const ed25519PublicKey = new Uint8Array(await ed25519.getPublicKeyAsync(ed25519Seed))
