@@ -39,8 +39,19 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
         const hasStored = await workflow.hasStoredIdentity()
 
         if (hasStored) {
-          // Check biometric enrollment status
-          refreshBiometricStatus()
+          await refreshBiometricStatus()
+
+          if (await workflow.hasActiveSession()) {
+            try {
+              const { identity } = await workflow.unlockStoredIdentity()
+              setIdentityState(identity)
+              setDid(identity.getDid())
+              setHasStoredIdentity(true)
+              return
+            } catch (error) {
+              console.warn('Session auto-unlock failed:', error)
+            }
+          }
         }
 
         setHasStoredIdentity(hasStored)

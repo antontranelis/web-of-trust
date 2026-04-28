@@ -3,9 +3,10 @@
  *
  * The listener:
  * 1. Receives a verification message
- * 2. Verifies the signature
- * 3. Saves it to storage
- * 4. If I'm the recipient, haven't verified the sender yet,
+ * 2. Requires the local DID as recipient
+ * 3. Verifies the signature
+ * 4. Saves it to storage
+ * 5. If I haven't verified the sender yet,
  *    AND the verification contains my active challenge nonce →
  *    set pendingIncoming for user confirmation
  *
@@ -59,7 +60,7 @@ function makeVerificationEnvelope(fromDid: string, toDid: string, verification: 
 /**
  * Simulates the verification listener logic from App.tsx.
  *
- * Receive → verify signature → save → if nonce matches → setPendingIncoming.
+ * Receive → require local recipient → verify signature → save → if nonce matches → setPendingIncoming.
  * No auto counter-verification — that requires user confirmation.
  */
 function createVerificationListener(deps: {
@@ -82,6 +83,7 @@ function createVerificationListener(deps: {
     }
 
     if (!verification.id || !verification.from || !verification.to || !verification.proof) return
+    if (verification.to !== deps.myDid) return
 
     try {
       const isValid = await deps.verifySignature(verification)
@@ -92,15 +94,13 @@ function createVerificationListener(deps: {
       return
     }
 
-    if (verification.to === deps.myDid) {
-      const alreadyVerified = deps.existingVerifications.some(
-        v => v.from === deps.myDid && v.to === verification.from
-      )
+    const alreadyVerified = deps.existingVerifications.some(
+      v => v.from === deps.myDid && v.to === verification.from
+    )
 
-      if (!alreadyVerified && deps.challengeNonce && verification.id.includes(deps.challengeNonce)) {
-        deps.setChallengeNonce(null)
-        deps.setPendingIncoming({ verification, fromDid: verification.from })
-      }
+    if (!alreadyVerified && deps.challengeNonce && verification.id.includes(deps.challengeNonce)) {
+      deps.setChallengeNonce(null)
+      deps.setPendingIncoming({ verification, fromDid: verification.from })
     }
   }
 }
@@ -211,7 +211,8 @@ describe('Verification Listener', () => {
       const aliceVerifiesBob = makeVerification(ALICE_DID, BOB_DID)
       await handler(makeVerificationEnvelope(ALICE_DID, BOB_DID, aliceVerifiesBob))
 
-      expect(saveVerification).toHaveBeenCalledTimes(1)
+      expect(verifySignature).not.toHaveBeenCalled()
+      expect(saveVerification).not.toHaveBeenCalled()
       expect(setPendingIncoming).not.toHaveBeenCalled()
     })
   })

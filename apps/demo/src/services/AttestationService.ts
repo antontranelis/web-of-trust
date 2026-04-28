@@ -237,6 +237,20 @@ export class AttestationService {
    * Throws on invalid/duplicate attestations.
    */
   async saveIncomingAttestation(attestation: Attestation): Promise<Attestation> {
+    return this.storeIncomingAttestation(attestation, false)
+  }
+
+  async importAttestation(encoded: string): Promise<Attestation> {
+    try {
+      const attestation = await this.workflow.importAttestation(encoded)
+      return this.storeIncomingAttestation(attestation, true)
+    } catch (error) {
+      if (error instanceof Error && error.message !== 'Invalid attestation format') throw error
+      throw new Error('Ungültiges Format. Bitte einen gültigen Attestation-Code einfügen.')
+    }
+  }
+
+  private async storeIncomingAttestation(attestation: Attestation, preverified: boolean): Promise<Attestation> {
     if (!attestation.id || !attestation.from || !attestation.to ||
         !attestation.claim || !attestation.proof || !attestation.createdAt) {
       throw new Error('Unvollständige Attestation. Erforderliche Felder fehlen.')
@@ -247,22 +261,14 @@ export class AttestationService {
       throw new Error('Diese Attestation existiert bereits.')
     }
 
-    const isValid = await this.verifyAttestation(attestation)
-    if (!isValid) {
-      throw new Error('Ungültige Signatur. Die Attestation konnte nicht verifiziert werden.')
+    if (!preverified) {
+      const isValid = await this.verifyAttestation(attestation)
+      if (!isValid) {
+        throw new Error('Ungültige Signatur. Die Attestation konnte nicht verifiziert werden.')
+      }
     }
 
     await this.storage.saveAttestation(attestation)
     return attestation
-  }
-
-  async importAttestation(encoded: string): Promise<Attestation> {
-    try {
-      const attestation = await this.workflow.importAttestation(encoded)
-      return this.saveIncomingAttestation(attestation)
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Invalid attestation format') throw error
-      throw new Error('Ungültiges Format. Bitte einen gültigen Attestation-Code einfügen.')
-    }
   }
 }

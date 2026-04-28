@@ -54,6 +54,7 @@ function VerificationListenerEffect() {
       }
 
       if (!verification.id || !verification.from || !verification.to || !verification.proof) return
+      if (!did || verification.to !== did) return
 
       try {
         const isValid = await verificationWorkflow.verifySignature(verification)
@@ -67,13 +68,11 @@ function VerificationListenerEffect() {
       // Counter-verification: if I'm the recipient and the verification
       // contains my active challenge nonce (proves physical QR scan)
       // → show confirmation UI. Re-verification is allowed (renewal).
-      if (did && verification.to === did) {
-        const nonce = challengeNonceRef.current
+      const nonce = challengeNonceRef.current
 
-        if (nonce && verification.id.includes(nonce)) {
-          setChallengeNonce(null) // Nonce consumed
-          setPendingIncoming({ verification, fromDid: verification.from })
-        }
+      if (nonce && verification.id.includes(nonce)) {
+        setChallengeNonce(null) // Nonce consumed
+        setPendingIncoming({ verification, fromDid: verification.from })
       }
     })
     return unsubscribe

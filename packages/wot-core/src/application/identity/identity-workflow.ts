@@ -12,6 +12,8 @@ import {
 import type { ProtocolCryptoAdapter, ProtocolIdentityMaterial } from '../../protocol'
 import type { IdentitySeedVault } from '../../ports'
 
+const BIP39_SEED_LENGTH = 64
+
 export interface IdentityEncryptedPayload {
   ciphertext: Uint8Array
   nonce: Uint8Array
@@ -57,7 +59,7 @@ export interface RecoverIdentityInput {
 }
 
 export interface UnlockStoredIdentityInput {
-  passphrase: string
+  passphrase?: string
 }
 
 export interface CreateIdentityResult {
@@ -197,9 +199,12 @@ export class IdentityWorkflow {
     return { identity }
   }
 
-  async unlockStoredIdentity(input: UnlockStoredIdentityInput): Promise<IdentityResult> {
-    const seed = await this.requireVault().loadSeed(input.passphrase)
-    if (!seed) throw new Error('No identity found in storage')
+  async unlockStoredIdentity(input: UnlockStoredIdentityInput = {}): Promise<IdentityResult> {
+    const vault = this.requireVault()
+    const seed = input.passphrase !== undefined
+      ? await vault.loadSeed(input.passphrase)
+      : await this.loadSeedWithSessionKey(vault)
+    if (!seed) throw new Error(input.passphrase !== undefined ? 'No identity found in storage' : 'Session expired')
 
     const identity = await this.identityFromSeed(seed)
     this.currentIdentity = identity
@@ -208,6 +213,10 @@ export class IdentityWorkflow {
 
   async hasStoredIdentity(): Promise<boolean> {
     return this.requireVault().hasSeed()
+  }
+
+  async hasActiveSession(): Promise<boolean> {
+    return this.requireVault().hasActiveSession?.() ?? false
   }
 
   async deleteStoredIdentity(): Promise<void> {
@@ -229,8 +238,14 @@ export class IdentityWorkflow {
   }
 
   private async identityFromSeed(seed: Uint8Array): Promise<PublicIdentitySession> {
+    if (seed.length !== BIP39_SEED_LENGTH) throw new Error('Invalid identity seed format')
     const material = await deriveProtocolIdentityFromSeedHex(bytesToHex(seed), this.crypto)
     return new ProtocolIdentitySession(material, seed, this.crypto, () => this.deleteStoredIdentity())
+  }
+
+  private async loadSeedWithSessionKey(vault: IdentitySeedVault): Promise<Uint8Array | null> {
+    if (!vault.loadSeedWithSessionKey) throw new Error('Session unlock is not supported')
+    return vault.loadSeedWithSessionKey()
   }
 
   private seedFromMnemonic(mnemonic: string): Uint8Array {

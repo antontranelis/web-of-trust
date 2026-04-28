@@ -6,6 +6,7 @@ import { WebCryptoProtocolCryptoAdapter } from '../src/protocol-adapters'
 class MemoryIdentitySeedVault implements IdentitySeedVault {
   private seed: Uint8Array | null = null
   private passphrase: string | null = null
+  private activeSession = false
   saves = 0
 
   async saveSeed(seed: Uint8Array, passphrase: string): Promise<void> {
@@ -17,16 +18,27 @@ class MemoryIdentitySeedVault implements IdentitySeedVault {
   async loadSeed(passphrase: string): Promise<Uint8Array | null> {
     if (!this.seed) return null
     if (passphrase !== this.passphrase) throw new Error('Invalid passphrase')
+    this.activeSession = true
+    return new Uint8Array(this.seed)
+  }
+
+  async loadSeedWithSessionKey(): Promise<Uint8Array | null> {
+    if (!this.activeSession || !this.seed) return null
     return new Uint8Array(this.seed)
   }
 
   async deleteSeed(): Promise<void> {
     this.seed = null
     this.passphrase = null
+    this.activeSession = false
   }
 
   async hasSeed(): Promise<boolean> {
     return this.seed !== null
+  }
+
+  async hasActiveSession(): Promise<boolean> {
+    return this.activeSession
   }
 }
 
@@ -85,6 +97,27 @@ describe('IdentityWorkflow', () => {
 
     expect(unlocked.identity).toEqual(created.identity)
     await expect(workflow.unlockStoredIdentity({ passphrase: 'wrong passphrase' })).rejects.toThrow('Invalid passphrase')
+  })
+
+  it('auto-unlocks from an active session key after a password unlock', async () => {
+    const vault = new MemoryIdentitySeedVault()
+    const created = await new IdentityWorkflow({ crypto: cryptoAdapter, vault }).createIdentity({ passphrase: 'local passphrase' })
+    const passwordWorkflow = new IdentityWorkflow({ crypto: cryptoAdapter, vault })
+    await passwordWorkflow.unlockStoredIdentity({ passphrase: 'local passphrase' })
+    expect(await passwordWorkflow.hasActiveSession()).toBe(true)
+
+    const sessionWorkflow = new IdentityWorkflow({ crypto: cryptoAdapter, vault })
+    const unlocked = await sessionWorkflow.unlockStoredIdentity()
+
+    expect(unlocked.identity).toEqual(created.identity)
+  })
+
+  it('rejects legacy 32-byte stored seeds instead of deriving a different DID', async () => {
+    const vault = new MemoryIdentitySeedVault()
+    await vault.saveSeed(new Uint8Array(32), 'local passphrase')
+    const workflow = new IdentityWorkflow({ crypto: cryptoAdapter, vault })
+
+    await expect(workflow.unlockStoredIdentity({ passphrase: 'local passphrase' })).rejects.toThrow('Invalid identity seed format')
   })
 
   it('deletes the stored identity and clears the current identity', async () => {

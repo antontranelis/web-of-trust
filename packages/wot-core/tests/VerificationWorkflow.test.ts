@@ -1,31 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { IdentityWorkflow, VerificationWorkflow, type IdentitySeedVault } from '../src/application'
+import { IdentityWorkflow, VerificationWorkflow } from '../src/application'
 import { WebCryptoProtocolCryptoAdapter } from '../src/protocol-adapters'
-
-class MemoryIdentitySeedVault implements IdentitySeedVault {
-  private seed: Uint8Array | null = null
-
-  async saveSeed(seed: Uint8Array): Promise<void> {
-    this.seed = new Uint8Array(seed)
-  }
-
-  async loadSeed(): Promise<Uint8Array | null> {
-    return this.seed ? new Uint8Array(this.seed) : null
-  }
-
-  async deleteSeed(): Promise<void> {
-    this.seed = null
-  }
-
-  async hasSeed(): Promise<boolean> {
-    return this.seed !== null
-  }
-}
 
 const cryptoAdapter = new WebCryptoProtocolCryptoAdapter()
 
 async function createTestIdentity(passphrase: string) {
-  const workflow = new IdentityWorkflow({ crypto: cryptoAdapter, vault: new MemoryIdentitySeedVault() })
+  const workflow = new IdentityWorkflow({ crypto: cryptoAdapter })
   return (await workflow.createIdentity({ passphrase, storeSeed: false })).identity
 }
 

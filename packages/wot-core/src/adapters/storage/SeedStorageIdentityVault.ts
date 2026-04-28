@@ -12,11 +12,23 @@ export class SeedStorageIdentityVault implements IdentitySeedVault {
     return this.storage.loadSeed(passphrase)
   }
 
+  loadSeedWithSessionKey(): Promise<Uint8Array | null> {
+    return this.storage.loadSeedWithSessionKey()
+  }
+
   deleteSeed(): Promise<void> {
     return this.storage.deleteSeed()
   }
 
   hasSeed(): Promise<boolean> {
     return this.storage.hasSeed()
+  }
+
+  hasActiveSession(): Promise<boolean> {
+    return this.storage.hasActiveSession()
+  }
+
+  clearSessionKey(): Promise<void> {
+    return this.storage.clearSessionKey()
   }
 }
