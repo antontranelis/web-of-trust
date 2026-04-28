@@ -8,10 +8,10 @@ import { X, Award, Users } from 'lucide-react'
 import { Home, Identity, Contacts, Verify, Attestations, PublicProfile, Spaces, Network } from './pages'
 import { useProfileSync, useMessaging, useContacts, useVerification, useLocalIdentity } from './hooks'
 import { useVerificationStatus, getVerificationStatus } from './hooks/useVerificationStatus'
-import { VerificationHelper } from '@web_of_trust/core'
 import type { Attestation, Verification, PublicProfile as PublicProfileType } from '@web_of_trust/core'
 import { LanguageProvider, useLanguage } from './i18n'
 import { DebugPanel } from './components/debug/DebugPanel'
+import { verificationWorkflow } from './services/verificationWorkflow'
 
 /**
  * Mounts useProfileSync globally so profile-update listeners
@@ -56,7 +56,7 @@ function VerificationListenerEffect() {
       if (!verification.id || !verification.from || !verification.to || !verification.proof) return
 
       try {
-        const isValid = await VerificationHelper.verifySignature(verification)
+        const isValid = await verificationWorkflow.verifySignature(verification)
         if (!isValid) return
 
         await verificationService.saveVerification(verification)

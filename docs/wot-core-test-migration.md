@@ -39,3 +39,9 @@ Status: the first Identity slice now has a framework-free `IdentityWorkflow`, an
 4. `AsymmetricCrypto.test.ts` should follow once the identity key material API is stable.
 5. `ProfileService.test.ts` is identity-adjacent and should move after signing is stable.
 6. `OnboardingFlow.test.ts` should migrate last into React/UI-flow coverage after core identity use cases exist.
+
+## Verification Slice Status
+
+The first verification slice now has a framework-free `VerificationWorkflow` and a new `VerificationWorkflow.test.ts` suite covering challenge creation, self-verification rejection, challenge responses, response completion, counter-verifications, signature verification, and DID public-key extraction.
+
+The legacy `VerificationHelper` still exists for compatibility and delegates to `VerificationWorkflow`. Demo verification code uses the new workflow directly through `apps/demo/src/services/verificationWorkflow.ts`.
