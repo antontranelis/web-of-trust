@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Lock, Eye, EyeOff, Fingerprint } from 'lucide-react'
-import { WotIdentity } from '@web_of_trust/core'
+import type { IdentitySession } from '@web_of_trust/core'
 import { useLanguage } from '../../i18n'
 import { BiometricService } from '../../services/BiometricService'
 import { useIdentity } from '../../context/IdentityContext'
 import { BiometricOptIn, shouldShowBiometricOptIn } from './BiometricOptIn'
+import { createIdentityWorkflow } from '../../services/identityWorkflow'
 
 interface UnlockFlowProps {
-  onComplete: (identity: WotIdentity, did: string) => void
+  onComplete: (identity: IdentitySession, did: string) => void
   onRecover: () => void
 }
 
@@ -20,7 +21,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [biometricLoading, setBiometricLoading] = useState(false)
   const [showBiometricOptIn, setShowBiometricOptIn] = useState(false)
-  const [pendingComplete, setPendingComplete] = useState<{ identity: WotIdentity; did: string } | null>(null)
+  const [pendingComplete, setPendingComplete] = useState<{ identity: IdentitySession; did: string } | null>(null)
   const biometricAttempted = useRef(false)
 
   // Auto-trigger biometric on mount if enrolled
@@ -38,8 +39,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
 
       const decryptedPassphrase = await BiometricService.authenticate()
 
-      const identity = new WotIdentity()
-      await identity.unlockFromStorage(decryptedPassphrase)
+      const { identity } = await createIdentityWorkflow().unlockStoredIdentity({ passphrase: decryptedPassphrase })
       const did = identity.getDid()
       onComplete(identity, did)
     } catch (e) {
@@ -69,8 +69,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
       setIsLoading(true)
       setError(null)
 
-      const identity = new WotIdentity()
-      await identity.unlockFromStorage(passphrase)
+      const { identity } = await createIdentityWorkflow().unlockStoredIdentity({ passphrase })
       const did = identity.getDid()
 
       // Check if we should offer biometric enrollment
@@ -88,7 +87,7 @@ export function UnlockFlow({ onComplete, onRecover }: UnlockFlowProps) {
       if (e instanceof Error) {
         if (e.message.includes('Invalid passphrase')) {
           setError(t.unlock.errorWrongPassword)
-        } else if (e.message.includes('No stored seed')) {
+        } else if (e.message.includes('No stored seed') || e.message.includes('No identity found in storage')) {
           setError(t.unlock.errorNoIdentity)
         } else {
           setError(e.message)
