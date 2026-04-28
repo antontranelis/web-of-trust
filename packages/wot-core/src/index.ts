@@ -101,7 +101,9 @@ export * as ports from './ports'
 export { IdentityWorkflow } from './application'
 export { VerificationWorkflow } from './application'
 export { AttestationWorkflow } from './application'
+export { SpacesWorkflow } from './application'
 export type { IdentitySession, PublicIdentityMaterial, PublicIdentitySession, IdentitySeedVault } from './application'
+export type { SpaceMemberKeyDirectory, SpaceReplicationPort } from './ports'
 export { WebCryptoProtocolCryptoAdapter } from './protocol-adapters'
 
 export {

@@ -280,11 +280,19 @@ Acceptance criteria:
 
 ### 6. Spaces And Sync
 
+Status: first application workflow implemented on the `demo-spec-reference` branch. `SpacesWorkflow` now owns framework-free space creation, metadata updates, member invites/removals, leaving, and explicit sync requests. The demo `useSpaces` hook delegates those commands to the workflow while CRDT-specific document sync remains in the Yjs/Automerge adapters.
+
 Acceptance criteria:
 
 - Spaces use protocol log entries, encrypted payloads, and capabilities.
 - Existing offline and multi-device behavior is preserved or consciously changed.
 - E2E smoke tests cover create space, invite/join, sync, and offline restore.
+
+Remaining work:
+
+- Move more sync policy out of CRDT adapters only where it is product behavior rather than adapter mechanics.
+- Decide whether current encrypted payload and capability helpers are the final protocol surface for shared spaces.
+- Add focused application tests for group-key rotation and restore behavior before changing adapter internals.
 
 ## Non-Goals
 

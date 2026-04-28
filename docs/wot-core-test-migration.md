@@ -51,3 +51,9 @@ The legacy `VerificationHelper` still exists for compatibility and delegates to 
 The first attestation slice now has a framework-free `AttestationWorkflow` and a new `AttestationWorkflow.test.ts` suite covering VC-JWS creation, legacy field signatures, tamper rejection, export/import, and incomplete import rejection.
 
 The demo `AttestationService` now creates and verifies attestations through `AttestationWorkflow`. Delivery tracking remains in the demo service because it is an app-level messaging concern.
+
+## Spaces/Sync Slice Status
+
+The first spaces/sync slice now has a framework-free `SpacesWorkflow` and a new `SpacesWorkflow.test.ts` suite covering shared space creation, configured default documents and app tags, member invite key resolution, missing-key rejection, metadata updates, member removal, leaving, and explicit sync requests.
+
+The demo `useSpaces` hook now delegates space commands to `SpacesWorkflow`. CRDT document storage, encrypted content sync, group-key rotation, vault restore, and offline/multi-device mechanics remain in the Yjs/Automerge adapters for now; those behaviors should be migrated only with focused tests that preserve the existing product semantics.
