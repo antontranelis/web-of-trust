@@ -43,7 +43,6 @@ export interface CachedGraphEntryDoc {
   name: string | null
   bio: string | null
   avatar: string | null
-  encryptionPublicKey: string | null
   verificationCount: number
   attestationCount: number
   verifierDidsJson: string | null  // JSON string[]

@@ -19,7 +19,6 @@ import {
   InMemoryGraphCacheStore,
   VerificationWorkflow,
   WebCryptoProtocolCryptoAdapter,
-  encodeBase64Url,
   signEnvelope,
   type StorageAdapter,
   type ReactiveStorageAdapter,
@@ -523,14 +522,10 @@ export class WotCliClient {
     const ident = await this.storage.getIdentity()
     if (!ident) throw new Error('No identity')
 
-    const encPubKeyBytes = await this.identity.getEncryptionPublicKeyBytes()
-    const encPubKey = encodeBase64Url(encPubKeyBytes)
-
     const profile = {
       did: this.identity.getDid(),
       name: ident.profile.name ?? 'Eli',
       bio: ident.profile.bio,
-      encryptionPublicKey: encPubKey,
       updatedAt: new Date().toISOString(),
     }
 

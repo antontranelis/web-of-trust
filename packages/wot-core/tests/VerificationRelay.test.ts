@@ -212,8 +212,8 @@ describe('Profile resolution during verification', () => {
       updatedAt: new Date().toISOString(),
     }
 
-    // Sign as JWS
-    const jws = await alice.signJws(profile)
+    // Sign as profile-service document JWS
+    const jws = await ProfileService.signProfile(profile, alice, { version: 1 })
     expect(jws).toBeDefined()
     expect(jws.split('.')).toHaveLength(3)
 
@@ -224,6 +224,8 @@ describe('Profile resolution during verification', () => {
     expect(result.profile!.name).toBe('Alice')
     expect(result.profile!.avatar).toBe(profile.avatar)
     expect(result.profile!.bio).toBe('Testing avatar')
+    expect(result.version).toBe(1)
+    expect(result.didDocument?.keyAgreement[0].id).toBe('#enc-0')
   })
 
   it('should preserve large avatar through JWS sign/verify', async () => {
@@ -236,10 +238,30 @@ describe('Profile resolution during verification', () => {
       updatedAt: new Date().toISOString(),
     }
 
-    const jws = await alice.signJws(profile)
+    const jws = await ProfileService.signProfile(profile, alice, { version: 2 })
     const result = await ProfileService.verifyProfile(jws)
 
     expect(result.valid).toBe(true)
     expect(result.profile!.avatar).toBe(profile.avatar)
+  })
+
+  it('rejects profile metadata with redundant encryptionPublicKey', async () => {
+    const document = await ProfileService.createProfileDocument({
+      did: aliceDid,
+      name: 'Alice',
+      updatedAt: new Date().toISOString(),
+    }, alice, 3)
+    const jws = await alice.signJws({
+      ...document,
+      profile: {
+        ...document.profile,
+        encryptionPublicKey: 'redundant',
+      },
+    })
+
+    const result = await ProfileService.verifyProfile(jws)
+
+    expect(result.valid).toBe(false)
+    expect(result.error).toContain('encryptionPublicKey')
   })
 })

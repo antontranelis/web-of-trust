@@ -20,6 +20,7 @@ export interface Attestation {
     context?: string;
     createdAt: string;
     proof: Proof;
+    vcJws?: string;
 }
 /**
  * Local metadata for attestations (not signed, not synced)

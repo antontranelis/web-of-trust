@@ -2,6 +2,7 @@ import type { PublicProfile } from '../../types/identity'
 import type { Verification } from '../../types/verification'
 import type { Attestation } from '../../types/attestation'
 import type { IdentitySession } from '../../application'
+import type { DidDocument } from '../../protocol'
 
 /**
  * Published verifications data — wraps an array of verifications
@@ -40,6 +41,8 @@ export interface ProfileSummary {
  */
 export interface ProfileResolveResult {
   profile: PublicProfile | null
+  didDocument?: DidDocument | null
+  version?: number
   fromCache: boolean
 }
 

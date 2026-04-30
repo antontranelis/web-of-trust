@@ -10,7 +10,6 @@ export interface CachedGraphEntry {
     name?: string;
     bio?: string;
     avatar?: string;
-    encryptionPublicKey?: string;
     verificationCount: number;
     attestationCount: number;
     /** DIDs that have verified this person */

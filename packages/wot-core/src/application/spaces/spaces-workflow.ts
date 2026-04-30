@@ -1,4 +1,3 @@
-import { decodeBase64Url } from '../../protocol'
 import type { SpaceMemberKeyDirectory, SpaceReplicationPort } from '../../ports'
 import type { SpaceDocMeta, SpaceInfo } from '../../types/space'
 
@@ -64,9 +63,9 @@ export class SpacesWorkflow {
 
   async inviteMember(input: InviteMemberInput): Promise<void> {
     const memberDid = requireValue(input.memberDid, 'memberDid')
-    const encodedKey = await this.requireMemberKeys().resolveMemberEncryptionKey(memberDid)
-    if (!encodedKey) throw new Error('NO_ENCRYPTION_KEY')
-    await this.replication.addMember(requireValue(input.spaceId, 'spaceId'), memberDid, decodeBase64Url(encodedKey))
+    const memberEncryptionPublicKey = await this.requireMemberKeys().resolveMemberEncryptionKey(memberDid)
+    if (!memberEncryptionPublicKey) throw new Error('NO_ENCRYPTION_KEY')
+    await this.replication.addMember(requireValue(input.spaceId, 'spaceId'), memberDid, memberEncryptionPublicKey)
   }
 
   removeMember(input: InviteMemberInput): Promise<void> {

@@ -705,6 +705,8 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     const space = this.spaces.get(spaceId)
     if (!space) throw new Error(`Unknown space: ${spaceId}`)
 
+    const previousMembers = [...space.info.members]
+
     // Add to members list
     if (!space.info.members.includes(memberDid)) {
       space.info.members.push(memberDid)
@@ -747,7 +749,6 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       spaceType: space.info.type,
       spaceName: space.info.name,
       appTag: space.info.appTag,
-      members: space.info.members,
       createdAt: space.info.createdAt,
       generation,
       documentUrl: space.documentUrl,
@@ -776,6 +777,34 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
 
     await this._signAndSend(envelope)
 
+    // Without a members array in space-invite, tell the invited member about
+    // members that were already present. The synced space doc remains canonical.
+    for (const existingDid of previousMembers) {
+      if (existingDid === this.identity.getDid()) continue
+      if (existingDid === memberDid) continue
+
+      const updatePayload = {
+        spaceId,
+        action: 'added' as const,
+        memberDid: existingDid,
+        effectiveKeyGeneration: this.groupKeyService.getCurrentGeneration(spaceId),
+      }
+
+      const updateEnvelope: MessageEnvelope = {
+        v: 1,
+        id: crypto.randomUUID(),
+        type: 'member-update',
+        fromDid: this.identity.getDid(),
+        toDid: memberDid,
+        createdAt: new Date().toISOString(),
+        encoding: 'json',
+        payload: JSON.stringify(updatePayload),
+        signature: '',
+      }
+
+      await this._signAndSend(updateEnvelope)
+    }
+
     // Notify existing members about the new member (member-update)
     for (const existingDid of space.info.members) {
       if (existingDid === this.identity.getDid()) continue
@@ -785,7 +814,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         spaceId,
         action: 'added' as const,
         memberDid,
-        members: space.info.members,
+        effectiveKeyGeneration: this.groupKeyService.getCurrentGeneration(spaceId),
       }
 
       const updateEnvelope: MessageEnvelope = {
@@ -870,7 +899,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
         spaceId,
         action: 'removed' as const,
         memberDid,
-        members: space.info.members,
+        effectiveKeyGeneration: newGeneration,
       }
 
       const updateEnvelope: MessageEnvelope = {
@@ -1006,8 +1035,13 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     // Register document -> space mapping
     this.networkAdapter.registerDocument(docHandle.documentId, payload.spaceId)
 
-    // Register all members as peers
-    const members: string[] = payload.members || []
+    const doc = docHandle.doc() as { members?: unknown } | undefined
+    const docMembers = Array.isArray(doc?.members) && doc.members.every(member => typeof member === 'string')
+      ? doc.members as string[]
+      : null
+    const members = Array.from(new Set(docMembers ?? [envelope.fromDid, this.identity.getDid()]))
+
+    // Register known peers; the synced space doc remains the authoritative members source.
     for (const memberDid of members) {
       if (memberDid !== this.identity.getDid()) {
         this.networkAdapter.registerSpacePeer(payload.spaceId, memberDid)
@@ -1068,7 +1102,11 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
     }
     const newKey = await this.identity.decryptForMe(encryptedKey)
 
-    this.groupKeyService.importKey(payload.spaceId, newKey, payload.generation)
+    const importResult = this.groupKeyService.importRotationKey(payload.spaceId, newKey, payload.generation)
+    if (importResult !== 'applied') {
+      console.warn('[ReplicationAdapter] Ignored key-rotation:', importResult, payload.spaceId, payload.generation)
+      return
+    }
 
     if (space) {
       await this._persistSpaceMetadata(space)
@@ -1095,8 +1133,7 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
 
     const myDid = this.identity.getDid()
     const wasRemoved = payload.action === 'removed' &&
-      payload.memberDid === myDid &&
-      !payload.members.includes(myDid)
+      payload.memberDid === myDid
 
     if (wasRemoved) {
       // I was removed from this space — clean up locally
@@ -1150,38 +1187,19 @@ export class AutomergeReplicationAdapter implements ReplicationAdapter {
       return
     }
 
-    const oldMembers = new Set(space.info.members)
-    space.info.members = payload.members
+    if (payload.action === 'added' && !space.info.members.includes(payload.memberDid)) {
+      space.info.members = [...space.info.members, payload.memberDid]
+      if (payload.memberDid !== myDid) this.networkAdapter.registerSpacePeer(payload.spaceId, payload.memberDid)
+    } else if (payload.action === 'removed') {
+      space.info.members = space.info.members.filter(d => d !== payload.memberDid)
+      this.networkAdapter.unregisterSpacePeer(payload.spaceId, payload.memberDid)
+    }
     this._notifySpacesSubscribers()
-
-    // Register/unregister peers based on member changes
-    for (const did of payload.members) {
-      if (did !== myDid && !oldMembers.has(did)) {
-        this.networkAdapter.registerSpacePeer(payload.spaceId, did)
-      }
-    }
-    for (const did of oldMembers) {
-      if (!payload.members.includes(did)) {
-        this.networkAdapter.unregisterSpacePeer(payload.spaceId, did)
-      }
-    }
 
     await this._persistSpaceMetadata(space)
 
-    // Notify listeners about member changes
-    for (const did of payload.members) {
-      if (!oldMembers.has(did)) {
-        for (const cb of this.memberChangeCallbacks) {
-          cb({ spaceId: payload.spaceId, did, action: 'added' })
-        }
-      }
-    }
-    for (const did of oldMembers) {
-      if (!payload.members.includes(did)) {
-        for (const cb of this.memberChangeCallbacks) {
-          cb({ spaceId: payload.spaceId, did, action: 'removed' })
-        }
-      }
+    for (const cb of this.memberChangeCallbacks) {
+      cb({ spaceId: payload.spaceId, did: payload.memberDid, action: payload.action })
     }
   }
 }

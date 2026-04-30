@@ -9,4 +9,5 @@ export * from './GraphCacheStore';
 export * from './ReplicationAdapter';
 export * from './OutboxStore';
 export * from './AuthorizationAdapter';
+export * from './SeedStorageAdapter';
 //# sourceMappingURL=index.d.ts.map

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { SpacesWorkflow } from '../src/application'
-import { encodeBase64Url } from '../src/protocol'
 import type { SpaceMemberKeyDirectory, SpaceReplicationPort } from '../src/ports'
 import type { SpaceDocMeta, SpaceInfo } from '../src/types/space'
 
@@ -65,9 +64,9 @@ class MemorySpaces implements SpaceReplicationPort {
 }
 
 class MemoryMemberKeys implements SpaceMemberKeyDirectory {
-  keys = new Map<string, string>()
+  keys = new Map<string, Uint8Array>()
 
-  async resolveMemberEncryptionKey(did: string): Promise<string | null> {
+  async resolveMemberEncryptionKey(did: string): Promise<Uint8Array | null> {
     return this.keys.get(did) ?? null
   }
 }
@@ -102,7 +101,7 @@ describe('SpacesWorkflow', () => {
   it('invites members by resolving and decoding their encryption key', async () => {
     const spaces = new MemorySpaces()
     const memberKeys = new MemoryMemberKeys()
-    memberKeys.keys.set('did:key:zBob', encodeBase64Url(new Uint8Array([1, 2, 3, 4])))
+    memberKeys.keys.set('did:key:zBob', new Uint8Array([1, 2, 3, 4]))
     const workflow = new SpacesWorkflow({ replication: spaces, memberKeys })
 
     await workflow.inviteMember({ spaceId: 'space-1', memberDid: 'did:key:zBob' })

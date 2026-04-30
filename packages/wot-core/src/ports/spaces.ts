@@ -18,5 +18,5 @@ export interface SpaceReplicationPort {
 }
 
 export interface SpaceMemberKeyDirectory {
-  resolveMemberEncryptionKey(did: string): Promise<string | null>
+  resolveMemberEncryptionKey(did: string): Promise<Uint8Array | null>
 }

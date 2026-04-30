@@ -13,6 +13,7 @@ export interface MessagingAdapter {
     connect(myDid: string): Promise<void>;
     disconnect(): Promise<void>;
     getState(): MessagingState;
+    onStateChange(callback: (state: MessagingState) => void): () => void;
     send(envelope: MessageEnvelope): Promise<DeliveryReceipt>;
     onMessage(callback: (envelope: MessageEnvelope) => void | Promise<void>): () => void;
     onReceipt(callback: (receipt: DeliveryReceipt) => void): () => void;

@@ -33,10 +33,10 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
     const trace = getTraceLog()
     const start = performance.now()
     try {
-      const jws = await identity.signJws(data)
+      const jws = await ProfileService.signProfile(data, identity)
       const res = await this.fetchWithTimeout(
         `${this.baseUrl}/p/${encodeURIComponent(data.did)}`,
-        { method: 'PUT', body: jws, headers: { 'Content-Type': 'text/plain' } },
+        { method: 'PUT', body: jws, headers: { 'Content-Type': 'application/jws' } },
       )
       if (!res.ok) throw new Error(`Profile upload failed: ${res.status}`)
       trace.log({ store: 'profiles', operation: 'write', label: `publishProfile ${data.did.slice(0, 24)}…`, durationMs: Math.round(performance.now() - start), success: true, meta: { did: data.did, name: data.name } })
@@ -94,7 +94,7 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
       const result = await ProfileService.verifyProfile(jws)
       const profile = result.valid && result.profile ? result.profile : null
       trace.log({ store: 'profiles', operation: 'read', label: `resolveProfile ${did.slice(0, 24)}…`, durationMs: Math.round(performance.now() - start), success: true, meta: { did, found: !!profile, name: profile?.name } })
-      return { profile, fromCache: false }
+      return { profile, didDocument: result.didDocument ?? null, version: result.version, fromCache: false }
     } catch (err) {
       trace.log({ store: 'profiles', operation: 'read', label: `resolveProfile ${did.slice(0, 24)}…`, durationMs: Math.round(performance.now() - start), success: false, error: err instanceof Error ? err.message : String(err), meta: { did } })
       throw err
@@ -112,9 +112,9 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
       }
       if (!res.ok) throw new Error(`Verifications fetch failed: ${res.status}`)
       const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      if (!result.valid || !result.profile) return []
-      const data = result.profile as unknown as PublicVerificationsData
+      const result = await ProfileService.verifySignedPayload(jws)
+      if (!result.valid || !result.payload) return []
+      const data = result.payload as unknown as PublicVerificationsData
       const verifications = data.verifications ?? []
       trace.log({ store: 'profiles', operation: 'read', label: `resolveVerifications ${did.slice(0, 24)}…`, durationMs: Math.round(performance.now() - start), success: true, meta: { did, count: verifications.length } })
       return verifications
@@ -135,9 +135,9 @@ export class HttpDiscoveryAdapter implements DiscoveryAdapter {
       }
       if (!res.ok) throw new Error(`Attestations fetch failed: ${res.status}`)
       const jws = await res.text()
-      const result = await ProfileService.verifyProfile(jws)
-      if (!result.valid || !result.profile) return []
-      const data = result.profile as unknown as PublicAttestationsData
+      const result = await ProfileService.verifySignedPayload(jws)
+      if (!result.valid || !result.payload) return []
+      const data = result.payload as unknown as PublicAttestationsData
       const attestations = data.attestations ?? []
       trace.log({ store: 'profiles', operation: 'read', label: `resolveAttestations ${did.slice(0, 24)}…`, durationMs: Math.round(performance.now() - start), success: true, meta: { did, count: attestations.length } })
       return attestations

@@ -141,6 +141,21 @@ describe('WoT protocol interop vectors', () => {
     expect(capabilityPayload).toEqual(phase1.space_capability_jws.payload)
   })
 
+  it('matches the space membership message vectors', () => {
+    expect(phase1.space_membership_messages.invite_key_discovery).toEqual({
+      canonical_key_agreement_id: '#enc-0',
+      x25519_public_b64: phase1.identity.x25519_public_b64,
+      x25519_public_multibase: phase1.identity.x25519_public_multibase,
+    })
+    expect(phase1.space_membership_messages.member_update_body).toEqual({
+      spaceId: '7f3a2b10-4c5d-4e6f-8a7b-9c0d1e2f3a4b',
+      action: 'removed',
+      memberDid: 'did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH',
+      effectiveKeyGeneration: 4,
+    })
+    expect(phase1.space_membership_messages.member_update_body).not.toHaveProperty('members')
+  })
+
   it('recreates ECIES and log payload encryption vectors', async () => {
     const eciesMaterial = await deriveEciesMaterial({
       crypto: cryptoAdapter,

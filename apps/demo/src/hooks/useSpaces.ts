@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { SpacesWorkflow, type SpaceDocMeta, type SpaceMemberKeyDirectory } from '@web_of_trust/core'
+import { SpacesWorkflow, protocol, type SpaceDocMeta, type SpaceMemberKeyDirectory } from '@web_of_trust/core'
 import { useAdapters } from '../context'
 import { useSubscribable } from './useSubscribable'
 
@@ -9,7 +9,13 @@ export function useSpaces() {
   const memberKeys = useMemo<SpaceMemberKeyDirectory>(() => ({
     async resolveMemberEncryptionKey(did: string) {
       const result = await discovery.resolveProfile(did)
-      return result.profile?.encryptionPublicKey ?? null
+      const keyAgreement = result.didDocument?.keyAgreement?.[0]?.publicKeyMultibase
+      if (!keyAgreement) return null
+      try {
+        return protocol.x25519MultibaseToPublicKeyBytes(keyAgreement)
+      } catch {
+        return null
+      }
     },
   }), [discovery])
   const spacesWorkflow = useMemo(

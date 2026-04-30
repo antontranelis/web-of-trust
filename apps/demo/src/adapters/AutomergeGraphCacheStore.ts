@@ -22,7 +22,6 @@ interface EntryDoc {
   name: string | null
   bio: string | null
   avatar: string | null
-  encryptionPublicKey: string | null
   verificationCount: number
   attestationCount: number
   verifierDids: string[]
@@ -84,7 +83,6 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
       name: profile?.name ?? null,
       bio: profile?.bio ?? null,
       avatar: profile?.avatar ?? null,
-      encryptionPublicKey: profile?.encryptionPublicKey ?? null,
       verificationCount: verifications.length,
       attestationCount: attestations.length,
       verifierDids,
@@ -233,7 +231,6 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
         name,
         bio: null,
         avatar: null,
-        encryptionPublicKey: null,
         verificationCount,
         attestationCount,
         verifierDids: [],
@@ -267,7 +264,6 @@ export class AutomergeGraphCacheStore implements GraphCacheStore {
       ...(entry.name != null ? { name: entry.name } : {}),
       ...(entry.bio != null ? { bio: entry.bio } : {}),
       ...(entry.avatar != null ? { avatar: entry.avatar } : {}),
-      ...(entry.encryptionPublicKey != null ? { encryptionPublicKey: entry.encryptionPublicKey } : {}),
       verificationCount: entry.verificationCount,
       attestationCount: entry.attestationCount,
       verifierDids: entry.verifierDids ?? [],

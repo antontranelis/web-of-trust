@@ -46,6 +46,15 @@ export function ed25519MultibaseToPublicKeyBytes(multibase: string): Uint8Array 
   return decoded.slice(ED25519_PREFIX.length)
 }
 
+export function x25519MultibaseToPublicKeyBytes(multibase: string): Uint8Array {
+  if (!multibase.startsWith('z')) throw new Error('Expected base58btc multibase key')
+  const decoded = decodeBase58(multibase.slice(1))
+  if (decoded[0] !== X25519_PREFIX[0] || decoded[1] !== X25519_PREFIX[1]) {
+    throw new Error('Expected X25519 multibase key')
+  }
+  return decoded.slice(X25519_PREFIX.length)
+}
+
 export function resolveDidKey(did: string, options: ResolveDidKeyOptions = {}): DidDocument {
   const publicKeyMultibase = ed25519PublicKeyToMultibase(didKeyToPublicKeyBytes(did))
   const document: DidDocument = {

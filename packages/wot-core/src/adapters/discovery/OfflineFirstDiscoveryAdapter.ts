@@ -107,9 +107,9 @@ export class OfflineFirstDiscoveryAdapter implements DiscoveryAdapter {
             name: cached.name,
             ...(cached.bio ? { bio: cached.bio } : {}),
             ...(cached.avatar ? { avatar: cached.avatar } : {}),
-            ...(cached.encryptionPublicKey ? { encryptionPublicKey: cached.encryptionPublicKey } : {}),
             updatedAt: cached.fetchedAt,
           },
+          didDocument: null,
           fromCache: true,
         }
       }

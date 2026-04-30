@@ -535,6 +535,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     if (!state) throw new Error(`Space ${spaceId} not found`)
 
     const myDid = this.identity.getDid()
+    const previousMembers = [...state.info.members]
 
     // Store member key
     state.memberEncryptionKeys.set(memberDid, memberEncryptionPublicKey)
@@ -559,7 +560,16 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     // Send invite
     const payload = {
       spaceId,
-      spaceInfo: state.info,
+      spaceInfo: {
+        id: state.info.id,
+        type: state.info.type,
+        name: state.info.name,
+        description: state.info.description,
+        image: state.info.image,
+        modules: state.info.modules,
+        appTag: state.info.appTag,
+        createdAt: state.info.createdAt,
+      },
       documentUrl: `yjs:${spaceId}`,
       encryptedGroupKey: {
         ciphertext: Array.from(encryptedKey.ciphertext),
@@ -589,6 +599,42 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     this.sentMessageIds.add(signed.id)
     setTimeout(() => this.sentMessageIds.delete(signed.id), 30_000)
     await this.messaging.send(signed)
+
+    // Without a members array in space-invite, tell the invited member about
+    // members that were already present. The synced space doc remains canonical.
+    for (const existingDid of previousMembers) {
+      if (existingDid === myDid || existingDid === memberDid) continue
+
+      const clearPayload = {
+        spaceId,
+        memberDid: existingDid,
+        action: 'added' as const,
+        effectiveKeyGeneration: generation,
+      }
+      const plaintext = new TextEncoder().encode(JSON.stringify(clearPayload))
+      const encryptedUpdate = await EncryptedSyncService.encryptChange(
+        plaintext, groupKey, spaceId, generation, myDid,
+      )
+      const updateEnvelope: MessageEnvelope = {
+        v: 1,
+        id: crypto.randomUUID(),
+        type: 'member-update',
+        fromDid: myDid,
+        toDid: memberDid,
+        createdAt: new Date().toISOString(),
+        encoding: 'json',
+        payload: JSON.stringify({
+          encrypted: true,
+          spaceId,
+          generation,
+          ciphertext: Array.from(encryptedUpdate.ciphertext),
+          nonce: Array.from(encryptedUpdate.nonce),
+        }),
+        signature: '',
+      }
+      const signedUpdate = await signEnvelope(updateEnvelope, (data) => this.identity.sign(data))
+      try { await this.messaging.send(signedUpdate) } catch { /* offline */ }
+    }
 
     // Notify other members
     await this.sendMemberUpdate(spaceId, memberDid, 'added')
@@ -662,7 +708,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       spaceId,
       memberDid,
       action: 'removed' as const,
-      members: state.info.members,
+      effectiveKeyGeneration: newGen,
     }
 
     for (const did of notifyDids) {
@@ -1225,15 +1271,17 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       const doc = new Y.Doc()
       Y.applyUpdate(doc, decrypted, 'remote')
 
-      const info: SpaceInfo = payload.spaceInfo || {
+      const payloadInfo = payload.spaceInfo ?? {}
+      const info: SpaceInfo = {
         id: spaceId,
-        type: 'shared',
-        members: [envelope.fromDid, this.identity.getDid()],
-        createdAt: new Date().toISOString(),
-      }
-
-      if (!info.members.includes(this.identity.getDid())) {
-        info.members = [...info.members, this.identity.getDid()]
+        type: payloadInfo.type ?? 'shared',
+        name: payloadInfo.name,
+        description: payloadInfo.description,
+        image: payloadInfo.image,
+        modules: payloadInfo.modules,
+        appTag: payloadInfo.appTag,
+        members: Array.from(new Set([envelope.fromDid, this.identity.getDid()])),
+        createdAt: payloadInfo.createdAt ?? new Date().toISOString(),
       }
 
       // Read _meta from received Y.Doc
@@ -1327,8 +1375,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
       // Check if I was removed
       const wasRemoved = payload.action === 'removed' &&
-        payload.memberDid === myDid &&
-        payload.members && !payload.members.includes(myDid)
+        payload.memberDid === myDid
 
       if (wasRemoved) {
         // I was removed — clean up locally
@@ -1370,7 +1417,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         nonce: new Uint8Array(payload.encryptedGroupKey.nonce),
         ephemeralPublicKey: new Uint8Array(payload.encryptedGroupKey.ephemeralPublicKey),
       })
-      this.groupKeyService.importKey(payload.spaceId, groupKey, payload.generation)
+      const importResult = this.groupKeyService.importRotationKey(payload.spaceId, groupKey, payload.generation)
+      if (importResult !== 'applied') {
+        console.warn('[YjsReplication] Ignored key-rotation:', importResult, payload.spaceId, payload.generation)
+        return
+      }
 
       if (this.metadataStorage) {
         await this.metadataStorage.saveGroupKey({
@@ -1561,7 +1612,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     const groupKey = this.groupKeyService.getCurrentKey(spaceId)
     const generation = this.groupKeyService.getCurrentGeneration(spaceId)
 
-    const clearPayload = { spaceId, memberDid, action }
+    const clearPayload = { spaceId, memberDid, action, effectiveKeyGeneration: generation }
 
     for (const did of state.info.members) {
       if (did === myDid || did === memberDid) continue

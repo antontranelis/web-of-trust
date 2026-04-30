@@ -1,7 +1,8 @@
 import { PublicProfile } from '../../types/identity';
 import { Verification } from '../../types/verification';
 import { Attestation } from '../../types/attestation';
-import { WotIdentity } from '../../identity/WotIdentity';
+import { IdentitySession } from '../../application';
+import { DidDocument } from '../../protocol';
 /**
  * Published verifications data — wraps an array of verifications
  * about a DID, signed by the DID owner as JWS.
@@ -36,6 +37,8 @@ export interface ProfileSummary {
  */
 export interface ProfileResolveResult {
     profile: PublicProfile | null;
+    didDocument?: DidDocument | null;
+    version?: number;
     fromCache: boolean;
 }
 /**
@@ -60,9 +63,9 @@ export interface ProfileResolveResult {
  *   öffentlich         privat       Gruppe
  */
 export interface DiscoveryAdapter {
-    publishProfile(data: PublicProfile, identity: WotIdentity): Promise<void>;
-    publishVerifications(data: PublicVerificationsData, identity: WotIdentity): Promise<void>;
-    publishAttestations(data: PublicAttestationsData, identity: WotIdentity): Promise<void>;
+    publishProfile(data: PublicProfile, identity: IdentitySession): Promise<void>;
+    publishVerifications(data: PublicVerificationsData, identity: IdentitySession): Promise<void>;
+    publishAttestations(data: PublicAttestationsData, identity: IdentitySession): Promise<void>;
     resolveProfile(did: string): Promise<ProfileResolveResult>;
     resolveVerifications(did: string): Promise<Verification[]>;
     resolveAttestations(did: string): Promise<Attestation[]>;
