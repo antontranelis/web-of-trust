@@ -36,7 +36,26 @@ import type { SpaceMetadataStorage } from '@web_of_trust/core'
 export interface YjsCompactStore {
   save(docId: string, data: Uint8Array): Promise<void>
   load(docId: string): Promise<Uint8Array | null>
+  delete?(docId: string): Promise<void>
+  list?(): Promise<string[]>
 }
+
+type DurablePendingStore = YjsCompactStore & {
+  delete(docId: string): Promise<void>
+  list(): Promise<string[]>
+}
+
+type PendingSpaceMessageReason = 'unknown-space' | 'blocked-by-key' | 'future-rotation'
+
+interface PendingSpaceMessage {
+  spaceId: string
+  envelope: MessageEnvelope
+  receivedAt: number
+  reason: PendingSpaceMessageReason
+  keyGeneration?: number
+}
+
+class PendingMessageNotDurableError extends Error {}
 
 interface YjsSpaceState {
   info: SpaceInfo
@@ -269,9 +288,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
   private started = false
   private sentMessageIds = new Set<string>()
 
-  // Buffer for content messages that arrive before the space is known (multi-device timing)
-  private pendingMessages = new Map<string, { envelope: MessageEnvelope; receivedAt: number }[]>()
-  private static PENDING_TTL = 60_000 // 60s
+  // Buffer for messages that cannot be applied until space/key dependencies arrive.
+  private pendingMessages = new Map<string, PendingSpaceMessage[]>()
+  private processingPendingSpaces = new Set<string>()
+  private static readonly PENDING_MESSAGE_PREFIX = '__wot_pending_space_message__:'
 
   private flushPersonalDoc?: () => Promise<void>
   private refreshPersonalDocFromVault?: () => Promise<boolean>
@@ -334,6 +354,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       }
     })
 
+    await this.restorePendingMessages()
+
     // Restore spaces from metadata (CompactStore → local Y.Doc)
     await this.restoreSpacesFromMetadata()
     console.debug(`[YjsReplication] after restoreSpacesFromMetadata: ${this.spaces.size} spaces`, Array.from(this.spaces.keys()))
@@ -383,6 +405,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       clearTimeout(this.reconnectFollowupTimer)
       this.reconnectFollowupTimer = null
     }
+    // In-memory cache only. Durable pending messages remain in CompactStore
+    // until they are applied or the space is explicitly deleted.
     this.pendingMessages.clear()
 
     for (const [, scheduler] of this.vaultSchedulers) scheduler.destroy()
@@ -800,6 +824,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       await this.metadataStorage.deleteSpaceMetadata(spaceId)
       await this.metadataStorage.deleteGroupKeys(spaceId)
     }
+    await this.deletePendingMessagesForSpace(spaceId)
     if (this.compactStore && 'delete' in this.compactStore) {
       await (this.compactStore as any).delete(spaceId)
     }
@@ -823,18 +848,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       // Discover new spaces from PersonalDoc that we don't know yet
       await this.restoreSpacesFromMetadata()
 
-      // Process any pending content messages for known spaces
-      // (messages may have been buffered between previous and current requestSync calls)
-      for (const [spaceId, pending] of this.pendingMessages) {
-        if (this.spaces.has(spaceId) && pending.length > 0) {
-          this.pendingMessages.delete(spaceId)
-          const now = Date.now()
-          for (const { envelope, receivedAt } of pending) {
-            if (now - receivedAt < YjsReplicationAdapter.PENDING_TTL) {
-              await this.handleContentMessage(envelope).catch(() => {})
-            }
-          }
-        }
+      // PersonalDoc catch-up may have delivered missing group keys for spaces
+      // that were already loaded. Reload keys before replaying blocked messages.
+      for (const spaceId of this.spaces.keys()) {
+        await this._reloadGroupKeys(spaceId)
+        await this.processPendingForSpace(spaceId)
       }
 
       // Pull latest Vault snapshots for all existing spaces (with concurrency limit)
@@ -1053,6 +1071,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         console.debug(`[YjsReplication] Removing ghost space ${meta.info.id} (no key, empty doc, age ${(ageMs / 60_000).toFixed(0)}min)`)
         await this.metadataStorage.deleteSpaceMetadata(meta.info.id)
         await this.metadataStorage.deleteGroupKeys(meta.info.id)
+        await this.deletePendingMessagesForSpace(meta.info.id)
         if (this.compactStore && 'delete' in this.compactStore) {
           await (this.compactStore as any).delete(meta.info.id)
         }
@@ -1091,33 +1110,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       this.spaces.set(meta.info.id, state)
       this.setupSpaceSync(state)
 
-      // Process any buffered content messages that arrived before this space was known
-      const pending = this.pendingMessages.get(meta.info.id)
-      if (pending) {
-        this.pendingMessages.delete(meta.info.id)
-        const now = Date.now()
-        for (const { envelope, receivedAt } of pending) {
-          if (now - receivedAt < YjsReplicationAdapter.PENDING_TTL) {
-            await this.handleContentMessage(envelope).catch(() => {})
-          }
-        }
-      }
+      await this.processPendingForSpace(meta.info.id)
 
       // Request full state from other devices (fire-and-forget, don't block restore)
       void this.sendSpaceSyncRequest(meta.info.id).catch(() => {})
 
       // Vault pull happens later in _pullAllFromVault() with concurrency limit
-    }
-
-    // Cleanup expired pending messages
-    const now = Date.now()
-    for (const [spaceId, msgs] of this.pendingMessages) {
-      const valid = msgs.filter(m => now - m.receivedAt < YjsReplicationAdapter.PENDING_TTL)
-      if (valid.length === 0) {
-        this.pendingMessages.delete(spaceId)
-      } else {
-        this.pendingMessages.set(spaceId, valid)
-      }
     }
 
     this.notifySpaceListeners()
@@ -1215,20 +1213,25 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       const state = this.spaces.get(spaceId)
 
       if (!state) {
-        // Space not known yet — buffer message for when it's discovered
-        // (multi-device: PersonalDoc sync may arrive after content messages)
-        const pending = this.pendingMessages.get(spaceId) ?? []
-        pending.push({ envelope, receivedAt: Date.now() })
-        this.pendingMessages.set(spaceId, pending)
+        await this.bufferPendingSpaceMessage({
+          spaceId,
+          envelope,
+          receivedAt: Date.now(),
+          reason: 'unknown-space',
+          keyGeneration: typeof payload.generation === 'number' ? payload.generation : undefined,
+        })
         return
       }
 
       const groupKey = this.groupKeyService.getKeyByGeneration(spaceId, payload.generation)
       if (!groupKey) {
-        // Key not available yet — buffer message (key-rotation may arrive later)
-        const pending = this.pendingMessages.get(spaceId) ?? []
-        pending.push({ envelope, receivedAt: Date.now() })
-        this.pendingMessages.set(spaceId, pending)
+        await this.bufferPendingSpaceMessage({
+          spaceId,
+          envelope,
+          receivedAt: Date.now(),
+          reason: 'blocked-by-key',
+          keyGeneration: typeof payload.generation === 'number' ? payload.generation : undefined,
+        })
         return
       }
 
@@ -1251,8 +1254,10 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
 
       // Persist
       this._scheduleCompactDebounced(state)
+      await this.deletePendingSpaceMessage(spaceId, envelope.id)
     } catch (err) {
       console.debug('[YjsReplication] Failed to handle content message:', err)
+      if (err instanceof PendingMessageNotDurableError) throw err
     }
   }
 
@@ -1336,16 +1341,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         })
       }
 
-      // Process any buffered content messages for this space
-      const pending = this.pendingMessages.get(spaceId)
-      if (pending) {
-        this.pendingMessages.delete(spaceId)
-        for (const { envelope: buffered, receivedAt } of pending) {
-          if (Date.now() - receivedAt < YjsReplicationAdapter.PENDING_TTL) {
-            await this.handleContentMessage(buffered).catch(() => {})
-          }
-        }
-      }
+      await this.processPendingForSpace(spaceId)
 
       this.notifySpaceListeners()
     } catch (err) {
@@ -1412,6 +1408,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
           await this.metadataStorage.deleteSpaceMetadata(payload.spaceId)
           await this.metadataStorage.deleteGroupKeys(payload.spaceId)
         }
+        await this.deletePendingMessagesForSpace(payload.spaceId)
       } else if (payload.action === 'added' && !state.info.members.includes(payload.memberDid)) {
         state.info.members = [...state.info.members, payload.memberDid]
         await this.saveSpaceMetadata(state)
@@ -1439,6 +1436,15 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       })
       const importResult = this.groupKeyService.importRotationKey(payload.spaceId, groupKey, payload.generation)
       if (importResult !== 'applied') {
+        if (importResult === 'future') {
+          await this.bufferPendingSpaceMessage({
+            spaceId: payload.spaceId,
+            envelope,
+            receivedAt: Date.now(),
+            reason: 'future-rotation',
+            keyGeneration: typeof payload.generation === 'number' ? payload.generation : undefined,
+          })
+        }
         console.warn('[YjsReplication] Ignored key-rotation:', importResult, payload.spaceId, payload.generation)
         return
       }
@@ -1451,18 +1457,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
         })
       }
 
-      // Process buffered content messages that were waiting for this key
-      const pending = this.pendingMessages.get(payload.spaceId)
-      if (pending && pending.length > 0) {
-        this.pendingMessages.delete(payload.spaceId)
-        for (const { envelope: buffered, receivedAt } of pending) {
-          if (Date.now() - receivedAt < YjsReplicationAdapter.PENDING_TTL) {
-            await this.handleContentMessage(buffered).catch(() => {})
-          }
-        }
-      }
+      await this.deletePendingSpaceMessage(payload.spaceId, envelope.id)
+      await this.processPendingForSpace(payload.spaceId)
     } catch (err) {
       console.debug('[YjsReplication] Failed to handle group key rotation:', err)
+      if (err instanceof PendingMessageNotDurableError) throw err
     }
   }
 
@@ -1523,6 +1522,127 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     this.sentMessageIds.add(signed.id)
     setTimeout(() => this.sentMessageIds.delete(signed.id), 30_000)
     try { await this.messaging.send(signed) } catch { /* offline */ }
+  }
+
+  private getDurablePendingStore(): DurablePendingStore | null {
+    if (!this.compactStore) return null
+    if (typeof this.compactStore.list !== 'function') return null
+    if (typeof this.compactStore.delete !== 'function') return null
+    return this.compactStore as DurablePendingStore
+  }
+
+  private pendingMessageStorageKey(spaceId: string, messageId: string): string {
+    return `${YjsReplicationAdapter.PENDING_MESSAGE_PREFIX}${spaceId}:${messageId}`
+  }
+
+  private addPendingMessageToMemory(message: PendingSpaceMessage): void {
+    const current = this.pendingMessages.get(message.spaceId) ?? []
+    const next = current.filter((m) => m.envelope.id !== message.envelope.id)
+    next.push(message)
+    this.pendingMessages.set(message.spaceId, next)
+  }
+
+  private async bufferPendingSpaceMessage(message: PendingSpaceMessage): Promise<void> {
+    this.addPendingMessageToMemory(message)
+
+    const store = this.getDurablePendingStore()
+    if (!store) {
+      throw new PendingMessageNotDurableError('Cannot ACK pending space message without a durable pending store')
+    }
+
+    try {
+      const encoded = new TextEncoder().encode(JSON.stringify(message))
+      await store.save(this.pendingMessageStorageKey(message.spaceId, message.envelope.id), encoded)
+    } catch (err) {
+      throw new PendingMessageNotDurableError(`Failed to persist pending space message: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  private async restorePendingMessages(): Promise<void> {
+    const store = this.getDurablePendingStore()
+    if (!store) return
+
+    const keys = await store.list()
+    for (const key of keys) {
+      if (!key.startsWith(YjsReplicationAdapter.PENDING_MESSAGE_PREFIX)) continue
+      const stored = await store.load(key)
+      if (!stored) continue
+      try {
+        const message = JSON.parse(new TextDecoder().decode(stored)) as PendingSpaceMessage
+        if (!message.spaceId || !message.envelope?.id) throw new Error('Invalid pending message')
+        this.addPendingMessageToMemory(message)
+      } catch {
+        await store.delete(key).catch(() => {})
+      }
+    }
+  }
+
+  private async deletePendingSpaceMessage(spaceId: string, messageId: string): Promise<void> {
+    const current = this.pendingMessages.get(spaceId)
+    if (current) {
+      const next = current.filter((m) => m.envelope.id !== messageId)
+      if (next.length > 0) {
+        this.pendingMessages.set(spaceId, next)
+      } else {
+        this.pendingMessages.delete(spaceId)
+      }
+    }
+
+    const store = this.getDurablePendingStore()
+    if (store) {
+      await store.delete(this.pendingMessageStorageKey(spaceId, messageId)).catch(() => {})
+    }
+  }
+
+  private async deletePendingMessagesForSpace(spaceId: string): Promise<void> {
+    this.pendingMessages.delete(spaceId)
+
+    const store = this.getDurablePendingStore()
+    if (!store) return
+    const prefix = `${YjsReplicationAdapter.PENDING_MESSAGE_PREFIX}${spaceId}:`
+    const keys = await store.list()
+    await Promise.all(keys.filter((key) => key.startsWith(prefix)).map((key) => store.delete(key).catch(() => {})))
+  }
+
+  private async processPendingForSpace(spaceId: string): Promise<void> {
+    if (this.processingPendingSpaces.has(spaceId)) return
+    const pending = this.pendingMessages.get(spaceId)
+    if (!pending || pending.length === 0) return
+
+    this.processingPendingSpaces.add(spaceId)
+    try {
+      const reasonPriority: Record<PendingSpaceMessageReason, number> = {
+        'future-rotation': 0,
+        'blocked-by-key': 1,
+        'unknown-space': 2,
+      }
+      const ordered = [...pending].sort((a, b) => {
+        const genA = a.keyGeneration ?? Number.MAX_SAFE_INTEGER
+        const genB = b.keyGeneration ?? Number.MAX_SAFE_INTEGER
+        if (genA !== genB) return genA - genB
+        return reasonPriority[a.reason] - reasonPriority[b.reason]
+      })
+
+      for (const message of ordered) {
+        const stillPending = this.pendingMessages.get(spaceId)?.some((m) => m.envelope.id === message.envelope.id)
+        if (!stillPending) continue
+        await this.deletePendingSpaceMessage(spaceId, message.envelope.id)
+        await this.handlePendingSpaceMessage(message.envelope)
+      }
+    } finally {
+      this.processingPendingSpaces.delete(spaceId)
+    }
+  }
+
+  private async handlePendingSpaceMessage(envelope: MessageEnvelope): Promise<void> {
+    switch (envelope.type as string) {
+      case 'content':
+        await this.handleContentMessage(envelope)
+        break
+      case 'group-key-rotation':
+        await this.handleGroupKeyRotation(envelope)
+        break
+    }
   }
 
   // --- Persistence ---
