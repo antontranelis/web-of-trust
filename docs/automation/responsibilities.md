@@ -82,7 +82,11 @@ Reviewer roles served: `security` (baseline), code-quality.
 
 ## Three Hard Rules
 
-1. **Normative spec is human-only.** Only Anton (and explicitly-approved co-authors like Sebastian Schürmann for HMC) writes in normative `wot-spec/` paths: `01-wot-identity/`, `02-wot-trust/`, `03-wot-sync/`, `04-rls-extensions/`, `05-hmc-extensions/`, `schemas/`, `test-vectors/`, `conformance/`, `ROADMAP.md`, `CONFORMANCE.md`, `VERSIONING.md`, `CHANGELOG.md`. Agents may propose changes only via Issues with label `spec-gap`, never edit directly.
+1. **Normative spec changes require synchronous human supervision.**
+
+   Normative paths in `wot-spec/` — `01-wot-identity/`, `02-wot-trust/`, `03-wot-sync/`, `04-rls-extensions/`, `05-hmc-extensions/`, `schemas/`, `test-vectors/`, `conformance/`, `ROADMAP.md`, `CONFORMANCE.md`, `VERSIONING.md`, `CHANGELOG.md` — may be edited with AI assistance during a real-time session, where Anton (or an explicitly-approved co-author such as Sebastian Schürmann for HMC) reviews each diff before commit. The Web of Trust spec was authored this way and continues to evolve this way.
+
+   **Autonomous task contracts MUST NOT include normative paths in `allowed_scope`.** Agents running outside a synchronous session may propose changes only via Issues with label `spec-gap`. The bright line is the mode of work, not the keyboard: synchronous co-authoring is allowed; nightly or hands-off task execution against normative paths is not.
 
    Non-normative paths in `wot-spec/research/` may be drafted by agents under an explicit task contract; the merge still requires Anton's approval.
 
