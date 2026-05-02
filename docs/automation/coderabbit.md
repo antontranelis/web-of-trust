@@ -36,24 +36,41 @@ These gaps are why we still run Claude and Codex reviews. CodeRabbit is a review
 
 ## Configuration
 
-The `.coderabbit.yaml` at the repo root configures the integration. Key settings:
+The repo ships a template at `.coderabbit.example.yaml`. CodeRabbit only reads `.coderabbit.yaml` at the repo root, so the template is inert until copied. This separation keeps the PR documentation-only until activation is explicitly approved.
 
-- **Path filters** — skip generated artifacts (e.g. `packages/wot-vault/wot-core-dist/`).
-- **Custom instructions** — tell CodeRabbit this is a spec-driven project and to reference `wot-spec` when seeing crypto, identity, or sync code.
-- **Auto review** — run on every PR, including drafts (we want early signal).
-- **Tool allowlist** — enable the linters and SAST tools that match our stack (TypeScript, ESLint).
+Key settings in the template:
 
-See the inline comments in `.coderabbit.yaml` for the active settings.
+- **Path filters** — skip generated artifacts (e.g. `packages/wot-vault/wot-core-dist/`) and lock files.
+- **Path instructions** — tell CodeRabbit *what it can actually verify* per path: missing references, risky changes, code-level inconsistencies. The instructions explicitly avoid asking CodeRabbit to verify spec compliance, since it does not know `wot-spec`.
+- **Auto review** — run on every PR, including drafts (early signal).
+- **Tool allowlist** — linters and SAST tools that match our TypeScript/ESLint stack.
+
+See the inline comments in `.coderabbit.example.yaml` for the rationale.
 
 ## Activation
 
-Repository owner activates the GitHub App once:
+Activation is a human gate. Anton (or a designated maintainer) decides when CodeRabbit goes live, then runs:
 
-1. Sign in at <https://coderabbit.ai/login> with the GitHub account that owns or has admin on the org.
-2. Authorise the org and select repositories: `web-of-trust`, `wot-spec`, optionally `real-life-stack`.
-3. Verify by opening a draft PR — CodeRabbit posts an initial summary within minutes.
+1. Copy the template to the active path:
 
-Setup is reversible: revoke the GitHub App authorisation to fully disable.
+   ```bash
+   cp .coderabbit.example.yaml .coderabbit.yaml
+   ```
+
+   Commit and push as a separate, single-purpose PR titled `chore: activate CodeRabbit`. Review the diff to confirm the active config matches the template.
+
+2. Sign in at <https://coderabbit.ai/login> with the GitHub account that owns or has admin on the org.
+
+3. Authorise the org and select repositories: `web-of-trust`, optionally `wot-spec` and `real-life-stack`.
+
+4. Verify by opening a draft PR — CodeRabbit posts an initial summary within minutes.
+
+Setup is reversible in two steps:
+
+- Remove `.coderabbit.yaml` (config-level disable, keeps the App authorised).
+- Revoke the GitHub App authorisation (full disable).
+
+The two-step model means a noisy CodeRabbit can be silenced via repo PR without going to org settings.
 
 ## Review Flow With CodeRabbit Active
 

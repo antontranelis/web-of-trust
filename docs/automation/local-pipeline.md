@@ -77,11 +77,51 @@ The order is intentional: build the observation and review surface first, then t
 
 ## Kill Switch
 
-The label `paused-by-human` on the repository is the single off switch:
+GitHub does not support repository-level labels — labels attach to issues and PRs. The kill switch therefore uses a **singleton control issue** as the global pause flag.
 
-- Every script begins with a pause check.
-- Setting the label takes three seconds via the GitHub UI or `gh issue create --label paused-by-human`.
-- All cron-driven scripts exit immediately. CodeRabbit continues (third-party, can be disabled separately if needed).
-- Removing the label resumes the pipeline at the next tick.
+### Setup (one-time)
+
+Open one issue in the repository with the exact title `Pipeline Control` and pin it. This issue is not closed; it stays open as the durable control surface.
+
+```bash
+gh issue create \
+  --title "Pipeline Control" \
+  --body "Singleton issue used as the pipeline kill switch. Add the label \`paused-by-human\` to pause all local automation. Remove the label to resume." \
+  --label "pipeline-control"
+gh issue pin <issue-number>
+```
+
+Create the `paused-by-human` label as well (one-time):
+
+```bash
+gh label create paused-by-human --color B60205 --description "Pause all local pipeline automation"
+```
+
+### Pause and resume
+
+- **Pause:** Add the label `paused-by-human` to the `Pipeline Control` issue (GitHub UI: one click, or `gh issue edit <n> --add-label paused-by-human`).
+- **Resume:** Remove the label.
+
+### How scripts check it
+
+Every cron-driven script begins with a pause check:
+
+```bash
+PAUSED=$(gh issue list \
+  --search 'in:title "Pipeline Control"' \
+  --label paused-by-human \
+  --state open \
+  --json number)
+[[ "$PAUSED" != "[]" ]] && exit 0
+```
+
+If the search returns the control issue with the pause label, the script exits cleanly. CodeRabbit continues running independently — to also pause its reviews, remove `.coderabbit.yaml` (see `docs/automation/coderabbit.md`).
+
+### Why this design
+
+- **Singleton.** Exactly one control issue means there is no ambiguity about *which* labelled issue counts.
+- **Cheap.** Setting the label is one click. Resume is one click.
+- **Visible.** The pinned issue makes the pipeline state obvious to anyone visiting the repo.
+- **Auditable.** Label history shows when pauses happened and why (issue comments).
 
 This is the maintainer's emergency brake. Use it whenever the pipeline produces output that needs human review before continuing — ambiguous spec interpretation, unexpected regressions, or simply when the maintainer wants quiet time to think.

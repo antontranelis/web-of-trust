@@ -38,7 +38,7 @@ Reviewer roles served: `spec`, `architecture`, `integration`, plus crypto-specif
 - Architecture reviews (knows `IMPLEMENTATION-ARCHITECTURE.md` and layer rules).
 - Crypto-specific security: ECIES, Ed25519/X25519, JWS, key derivation.
 - Cross-cutting implementations: refactors, layer migrations, multi-package work.
-- Concept and research documents in `wot-spec/research/`.
+- Drafts non-normative research documents in `wot-spec/research/` via task contract; human approval required before merge.
 - Integration role: synthesises reviewer outputs into a `mergeable | blocked | needs human decision` verdict.
 
 ### Codex — focused implementation agent
@@ -82,8 +82,12 @@ Reviewer roles served: `security` (baseline), code-quality.
 
 ## Three Hard Rules
 
-1. **Spec authoring is human.** Only Anton writes in `wot-spec/`. Agents may propose changes via Issues with label `spec-gap`, never edit directly. Other team members may push spec changes only with explicit Anton approval.
+1. **Normative spec is human-only.** Only Anton (and explicitly-approved co-authors like Sebastian Schürmann for HMC) writes in normative `wot-spec/` paths: `01-wot-identity/`, `02-wot-trust/`, `03-wot-sync/`, `04-rls-extensions/`, `05-hmc-extensions/`, `schemas/`, `test-vectors/`, `conformance/`, `ROADMAP.md`, `CONFORMANCE.md`, `VERSIONING.md`, `CHANGELOG.md`. Agents may propose changes only via Issues with label `spec-gap`, never edit directly.
+
+   Non-normative paths in `wot-spec/research/` may be drafted by agents under an explicit task contract; the merge still requires Anton's approval.
+
 2. **Merge is Anton.** Even with three reviewer agents approved, the final click stays human.
+
 3. **Domain sovereignty.** App-feature changes need Sebastian Stein's approval if they touch his active scope. Infrastructure changes need Tillmann's approval. Both are veto-capable in their domains.
 
 ## Escalation

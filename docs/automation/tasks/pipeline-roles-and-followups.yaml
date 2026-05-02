@@ -17,7 +17,7 @@ spec_refs:
 allowed_scope:
   - docs/PROJECT-FLOW.md
   - docs/automation/
-  - .coderabbit.yaml
+  - .coderabbit.example.yaml
 forbidden_scope:
   - wot-spec normative documents
   - packages/
@@ -27,10 +27,10 @@ acceptance:
   - docs/PROJECT-FLOW.md links to wot-spec/research/autonomous-pipeline.md as source concept.
   - docs/automation/task-contract.md states where contracts physically live.
   - docs/automation/tasks/ directory exists with README explaining storage model.
-  - docs/automation/responsibilities.md exists with role matrix for Anton, Sebastian Stein, Tillmann, Claude, Codex, CodeRabbit.
-  - docs/automation/coderabbit.md exists explaining how CodeRabbit fits the reviewer-role model.
-  - docs/automation/local-pipeline.md exists with local-vs-GitHub-Actions split and bootstrapping order.
-  - .coderabbit.yaml exists as config stub.
+  - docs/automation/responsibilities.md exists with role matrix for Anton, Sebastian Stein, Tillmann, Claude, Codex, CodeRabbit. The hard rule for spec authoring distinguishes normative paths (human-only) from non-normative research/ (agent-allowed under task contract).
+  - docs/automation/coderabbit.md exists explaining how CodeRabbit fits the reviewer-role model and that activation is a separate human-gated PR.
+  - docs/automation/local-pipeline.md exists with local-vs-GitHub-Actions split, bootstrapping order, and a kill-switch mechanism implementable via a singleton control issue (not a repo-level label).
+  - .coderabbit.example.yaml exists as inert template; activation requires a separate PR copying it to .coderabbit.yaml. The path_instructions ask CodeRabbit only for what it can verify (missing references, risky changes, code-level inconsistencies) and explicitly defer spec compliance to the Claude spec-review role.
   - This task contract itself exists at docs/automation/tasks/pipeline-roles-and-followups.yaml as the format's first self-test.
 checks:
   - git diff --check
