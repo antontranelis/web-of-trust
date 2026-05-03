@@ -67,19 +67,30 @@ jobs:
           cache: 'pip'
           cache-dependency-path: wot-spec/requirements-dev.txt
 
+      # Install steps use continue-on-error so that an install failure
+      # is captured as a status entry and surfaces to manage-issues, not
+      # masked by an early job exit. A bootstrapping break (broken
+      # lockfile, dead python deps) is the kind of regression we
+      # specifically want this watcher to make visible.
       - name: Install web-of-trust dependencies
+        id: install-web-of-trust
         working-directory: web-of-trust
+        continue-on-error: true
         run: pnpm install --frozen-lockfile
 
       - name: Install wot-spec Node dependencies
+        id: install-wot-spec-node
         working-directory: wot-spec
+        continue-on-error: true
         run: |
           if [ -f package.json ]; then
             npm install --no-audit --no-fund
           fi
 
       - name: Install wot-spec Python dependencies
+        id: install-wot-spec-python
         working-directory: wot-spec
+        continue-on-error: true
         run: |
           if [ -f requirements-dev.txt ]; then
             pip install -r requirements-dev.txt
@@ -116,6 +127,9 @@ jobs:
           STATUS="green"
           DETAILS=""
           declare -A CHECKS=(
+            ["install web-of-trust deps"]="${{ steps.install-web-of-trust.outcome }}"
+            ["install wot-spec node deps"]="${{ steps.install-wot-spec-node.outcome }}"
+            ["install wot-spec python deps"]="${{ steps.install-wot-spec-python.outcome }}"
             ["wot-spec validate"]="${{ steps.validate-spec.outcome }}"
             ["@web_of_trust/core test"]="${{ steps.test-core.outcome }}"
             ["@web_of_trust/core build"]="${{ steps.build-core.outcome }}"
@@ -154,17 +168,31 @@ jobs:
     #   3. Fork-based PRs receive a read-only GITHUB_TOKEN, so the gh
     #      issue calls would fail and turn CI red even when validation
     #      passed.
-    # Restricting to push/schedule/workflow_dispatch keeps issue
-    # management on authoritative runs only.
+    #
+    # The ref guard further restricts to authoritative branches
+    # (spec-vnext, main). Without it, a workflow_dispatch run on a
+    # feature branch could still touch the repo-wide rolling issue.
+    #
+    # The rolling issue is per-ref: the title carries the branch name,
+    # so spec-vnext and main maintain independent rolling issues and
+    # cannot interfere with each other (a green main run cannot close
+    # the spec-vnext failure issue, and vice versa).
     #
     # `always()` ensures this job runs even when validate failed —
     # we need to open/update the issue on red, not skip on red.
     runs-on: ubuntu-latest
     needs: validate
-    if: ${{ always() && github.event_name != 'pull_request' }}
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      contains(fromJSON('["refs/heads/spec-vnext", "refs/heads/main"]'), github.ref)
     permissions:
       contents: read
       issues: write
+    env:
+      # Stable identifier for the per-ref rolling issue. Used in title
+      # and search, so spec-vnext and main never share an issue.
+      ROLLING_TITLE_PREFIX: "flow-conformance: red — ${{ github.ref_name }}"
     steps:
       - name: Checkout web-of-trust (for gh CLI repo context)
         uses: actions/checkout@v4
@@ -200,16 +228,19 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.sha }}
           EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          # Find the existing rolling issue for THIS ref only.
+          # Title-prefix match keeps spec-vnext and main fully isolated.
           EXISTING=$(gh issue list \
             --label pipeline-broken \
             --state open \
-            --json number \
-            --jq '.[0].number // empty')
+            --json number,title \
+            --jq ".[] | select(.title | startswith(\"${ROLLING_TITLE_PREFIX}\")) | .number" | head -1)
 
           BODY=$(cat <<MSG
-          ## Conformance check failed
+          ## Conformance check failed on \`${REF_NAME}\`
 
           Trigger: \`${EVENT_NAME}\`
           Commit: \`${COMMIT_SHA}\`
@@ -220,17 +251,17 @@ jobs:
           ${DETAILS}
 
           ---
-          *Posted automatically by the \`flow-conformance\` workflow. This is a single rolling issue — the same issue is reused on subsequent failures and closed automatically when all checks return green.*
+          *Posted automatically by the \`flow-conformance\` workflow. This is a per-ref rolling issue — the same issue is reused on subsequent failures of \`${REF_NAME}\` and closed automatically when all checks return green for that ref.*
           MSG
           )
 
           if [ -n "${EXISTING}" ]; then
-            echo "Adding comment to existing issue #${EXISTING}"
+            echo "Adding comment to existing issue #${EXISTING} for ref ${REF_NAME}"
             gh issue comment "${EXISTING}" --body "${BODY}"
           else
-            echo "Opening new pipeline-broken issue"
+            echo "Opening new pipeline-broken issue for ref ${REF_NAME}"
             gh issue create \
-              --title "flow-conformance: red — $(date -u +%Y-%m-%d)" \
+              --title "${ROLLING_TITLE_PREFIX} ($(date -u +%Y-%m-%d))" \
               --label pipeline-broken \
               --body "${BODY}"
           fi
@@ -242,17 +273,68 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Close only the rolling issue belonging to THIS ref.
+          # Title-prefix match keeps spec-vnext and main isolated:
+          # a green main run cannot close a red spec-vnext issue.
+          EXISTING=$(gh issue list \
+            --label pipeline-broken \
+            --state open \
+            --json number,title \
+            --jq ".[] | select(.title | startswith(\"${ROLLING_TITLE_PREFIX}\")) | .number" | head -1)
+
+          if [ -n "${EXISTING}" ]; then
+            gh issue comment "${EXISTING}" --body "All conformance checks green again on \`${REF_NAME}\` as of \`${COMMIT_SHA}\`. Closing.
+
+          Run: ${RUN_URL}"
+            gh issue close "${EXISTING}" --reason completed
+          fi
+
+      - name: Fallback — surface validation gap when status is missing
+        # If validate exited before producing a status output (e.g. setup
+        # action itself failed), we have no red/green signal. In that
+        # case, surface the gap as a visible issue rather than silently
+        # passing through manage-issues.
+        if: |
+          needs.validate.result == 'failure' &&
+          needs.validate.outputs.status == '' &&
+          steps.pause.outputs.paused == 'false'
+        working-directory: web-of-trust
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           EXISTING=$(gh issue list \
             --label pipeline-broken \
             --state open \
-            --json number \
-            --jq '.[0].number // empty')
+            --json number,title \
+            --jq ".[] | select(.title | startswith(\"${ROLLING_TITLE_PREFIX}\")) | .number" | head -1)
+
+          BODY=$(cat <<MSG
+          ## Conformance watcher itself failed on \`${REF_NAME}\`
+
+          The \`validate\` job did not produce a status output. This usually means a setup or runner-level failure (action couldn't start, runner image issue, GitHub-side error) rather than a code regression.
+
+          Trigger: \`${EVENT_NAME}\`
+          Commit: \`${COMMIT_SHA}\`
+          Run: ${RUN_URL}
+
+          ---
+          *Posted automatically by the \`flow-conformance\` watcher fallback. Investigate the run logs directly — the usual step-level failure summary is not available because validation never reached the status-aggregation step.*
+          MSG
+          )
 
           if [ -n "${EXISTING}" ]; then
-            gh issue comment "${EXISTING}" --body "All conformance checks green again as of \`${COMMIT_SHA}\`. Closing.
-
-          Run: ${RUN_URL}"
-            gh issue close "${EXISTING}" --reason completed
+            gh issue comment "${EXISTING}" --body "${BODY}"
+          else
+            gh issue create \
+              --title "${ROLLING_TITLE_PREFIX} (watcher self-failure $(date -u +%Y-%m-%d))" \
+              --label pipeline-broken \
+              --body "${BODY}"
           fi
