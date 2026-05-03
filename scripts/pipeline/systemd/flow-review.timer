@@ -1,0 +1,20 @@
+[Unit]
+Description=Flow Review timer — fires every 15 minutes
+Documentation=file://%h/workspace/workspace/web-of-trust/scripts/pipeline/README.md
+
+[Timer]
+# Every 15 minutes from boot, every 15 minutes after each completion.
+OnBootSec=2min
+OnUnitActiveSec=15min
+
+# Persistent=true catches up missed runs when the laptop comes back
+# online — exactly the property the maintainer cares about (their
+# laptop is often off at scheduled times).
+Persistent=true
+
+# Random delay up to 30 seconds so multiple machines on the same user
+# don't hit GitHub at the exact same second.
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

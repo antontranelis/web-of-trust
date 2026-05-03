@@ -1,0 +1,26 @@
+[Unit]
+Description=Flow Review — autonomous Claude cross-review trigger
+Documentation=file://%h/workspace/workspace/web-of-trust/scripts/pipeline/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Run from the repo root so claude picks up the project context
+# (settings, allowed tools, MCP servers configured for this repo).
+WorkingDirectory=%h/workspace/workspace/web-of-trust
+ExecStart=%h/workspace/workspace/web-of-trust/scripts/pipeline/flow-review.sh
+
+# Lock so two ticks cannot race if a previous run is still going.
+ExecStartPre=/usr/bin/flock --nonblock /run/user/%U/flow-review.lock --command true
+
+# Soft caps on resource use.
+TimeoutStartSec=15min
+MemoryMax=2G
+
+# Failure handling — if the script itself errors, systemd marks the
+# unit failed; the script's own self-failure path also opens an issue.
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:%h/.nvm/versions/node/current/bin:%h/.local/bin"
+
+[Install]
+WantedBy=default.target

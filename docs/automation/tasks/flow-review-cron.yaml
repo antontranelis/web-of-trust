@@ -1,0 +1,66 @@
+id: flow-review-cron
+title: Add flow-review cron script for autonomous Claude cross-reviews
+repo: web-of-trust
+base: spec-vnext
+type: feat
+priority: medium
+goal: >
+  Add the second concrete pipeline phase as a local cron-driven script
+  that triggers Claude cross-reviews on open PRs without the maintainer
+  having to ask. The script runs every 15 minutes via systemd-user
+  timer with Persistent=true so missed runs catch up when the laptop
+  comes online. Replaces the manual "review ist da" notification
+  bridge that the maintainer is currently the only path through.
+  This iteration covers Claude only — Codex stays manual until a
+  later iteration solves the headless-auth question for ChatGPT Pro.
+spec_refs:
+  - docs/PROJECT-FLOW.md
+  - docs/automation/local-pipeline.md
+  - docs/automation/responsibilities.md
+  - docs/automation/pr-review-rubric.md
+  - .claude/commands/flow-review.md
+allowed_scope:
+  - scripts/pipeline/
+  - docs/automation/local-pipeline.md
+  - docs/automation/tasks/flow-review-cron.yaml
+forbidden_scope:
+  - .github/workflows/
+  - packages/
+  - apps/
+  - normative wot-spec paths
+  - .claude/commands/flow-review.md
+acceptance:
+  - scripts/pipeline/flow-review.sh exists, is executable, passes shellcheck (advisory).
+  - Script honours the singleton Pipeline Control kill switch.
+  - Script tracks reviewed PRs via the `reviewed-by-claude` label so the same PR is never reviewed twice in the same iteration.
+  - Script enforces a daily cap (default 30 reviews/day) and per-tick cap (default 5 PRs/tick) to protect against runaway and quota burn.
+  - Script skips PRs authored by Claude (Co-Authored-By trailer) to enforce the self-review prohibition from `pr-review-rubric.md`.
+  - Script skips draft PRs.
+  - Script handles the `claude` CLI being unavailable or unauthenticated by opening a single rolling `pipeline-broken` issue rather than failing silently.
+  - Script writes per-day logs to `~/.local/share/flow/logs/flow-review-{date}.log`.
+  - scripts/pipeline/systemd/flow-review.service and flow-review.timer exist with Persistent=true and a 15-minute schedule.
+  - scripts/pipeline/README.md documents the install steps so the maintainer can enable the timer in under five minutes.
+  - docs/automation/local-pipeline.md updates the script-layout table to mark flow-review as implemented (was concept-only).
+checks:
+  - "bash -n scripts/pipeline/flow-review.sh"
+  - "git diff --check"
+  - "test -f scripts/pipeline/flow-review.sh && test -x scripts/pipeline/flow-review.sh"
+reviewers:
+  - architecture
+  - security
+  - integration
+human_gates:
+  - First-time enablement on the maintainer's laptop (the maintainer chooses when to start the timer).
+  - The new label `reviewed-by-claude` must be created in the repo before the script can label PRs.
+notes:
+  - Iteration 1: Claude only. Codex automation is a follow-up task because ChatGPT Pro CLI auth is not designed for headless cron use; that needs a separate task contract.
+  - The script does NOT post status synthesis (ready-for-human / needs-discussion) in this iteration. Synthesis is a follow-up — first we want to confirm the per-reviewer flow is reliable before building the integrator on top.
+  - Re-review on new commits is also out of scope for iteration 1 — the maintainer can manually remove the `reviewed-by-claude` label to re-trigger.
+  - Setup-Bedarf on the maintainer's laptop:
+      1. claude CLI installed + logged in
+      2. gh CLI installed + logged in
+      3. systemd-user enabled (`loginctl enable-linger $USER` if needed)
+      4. Copy systemd units into ~/.config/systemd/user/
+      5. Create ~/.local/bin/flow/ symlink or copy the script
+      6. systemctl --user enable --now flow-review.timer
+      7. gh label create reviewed-by-claude (one-time)

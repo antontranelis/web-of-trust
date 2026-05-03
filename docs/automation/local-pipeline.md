@@ -37,13 +37,15 @@ Proposed location: `~/.local/bin/flow/`. Each script is small, single-purpose, i
 
 Each script shares the `flow-` prefix to mirror the slash commands in `.claude/commands/`. Slash commands are the interactive entry point for a maintainer; the shell scripts are the cron-driven counterpart that runs the same pipeline phase headless.
 
-| Script | Slash command equivalent | Frequency | Purpose |
-| --- | --- | --- | --- |
-| `flow-gap.sh` | `/flow-gap` | Weekly (cron, Monday) | Compare conformance manifest against implementation. Generate gap-analysis issue. |
-| `flow-task.sh` | `/flow-task` | Hourly (cron) | Take next `agent-task` + `ready` issue. Route to Claude or Codex. Implement. Open PR. |
-| `flow-review.sh` | `/flow-review` | Every 15 minutes (cron) | For PRs with `needs-cross-review`, trigger the other agent's review. |
-| `flow-state.sh` | `/flow-state` | Weekly (cron, Sunday evening) | Generate the architecture dashboard for human review. |
-| `flow-pause-check.sh` | — | Pre-hook in every script above | Exit if the Pipeline Control issue carries `paused-by-human`. |
+| Script | Slash command equivalent | Frequency | Status | Purpose |
+| --- | --- | --- | --- | --- |
+| `flow-review.sh` | `/flow-review` | Every 15 minutes (cron) | **Implemented (Claude only, iter 1)** | For open PRs without a Claude review, generate one and post it. Codex automation is a follow-up. |
+| `flow-state.sh` | `/flow-state` | Weekly (cron, Sunday evening) | Concept-only | Generate the architecture dashboard for human review. |
+| `flow-gap.sh` | `/flow-gap` | Weekly (cron, Monday) | Concept-only | Compare conformance manifest against implementation. Generate gap-analysis issue. |
+| `flow-task.sh` | `/flow-task` | Hourly (cron) | Concept-only | Take next `agent-task` + `ready` issue. Route to Claude or Codex. Implement. Open PR. |
+| `flow-pause-check.sh` | — | Pre-hook in every script above | Inlined in implemented scripts | Exit if the Pipeline Control issue carries `paused-by-human`. |
+
+Implemented scripts live under `scripts/pipeline/`. See `scripts/pipeline/README.md` for installation steps.
 
 **Note: conformance lives in CI, not on the laptop.** The conformance watcher is implemented as a GitHub Actions workflow (`.github/workflows/flow-conformance.yml`) instead of a local cron script. This phase has no LLM cost, runs read-only, and must execute regardless of whether any maintainer's laptop is online — exactly the criteria from the Local-vs-Remote Split table above. The other pipeline phases stay local because they consume the maintainer's Claude Max / Codex Pro subscription quotas.
 
