@@ -147,7 +147,7 @@ This section is the live snapshot. It changes as people and scopes change. Updat
 - **Domain Owners:** None currently formalised. Anton covers all domains by default. Other humans contribute in phases without locked-in scope:
   - Tillmann Heigel — interest in metrics, logging, integration tests, infrastructure. Phase-based contribution; no formal domain ownership yet.
   - Sebastian Stein — currently building app features (comments and reactions). Phase-based contribution; no formal domain ownership yet.
-- **Spec Co-Authors:** Sebastian Schürmann is approved for HMC extension paths (`05-hmc-extensions/H01-H03`).
+- **Spec Co-Authors:** None currently formalised. Anton remains the only spec author. Co-authorship for specific extension areas (e.g. HMC) is offered to domain experts case by case and listed here when accepted.
 - **Eli:** Intentionally not in the pipeline. Eli holds memory and serves as conversation partner; Eli is not a code worker.
 
 ## Open Questions
