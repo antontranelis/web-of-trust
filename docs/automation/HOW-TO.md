@@ -161,10 +161,13 @@ Currently no domain is formally "owned". When you take on something:
 - File `spec-gap` issues if you hit ambiguity in your domain
 - Coordinate scope with Anton before starting larger work
 
-### As Spec Co-Author (HMC: Sebastian Schürmann)
+### As Spec Co-Author
 
-- Edit normative `wot-spec/05-hmc-extensions/` paths during synchronous sessions, with Anton or AI assistance reviewing each diff before commit (Hard Rule 1).
-- For everything else, defer to Anton.
+A spec co-author is a human formally authorised to edit specific normative `wot-spec/` paths during synchronous sessions (Hard Rule 1). Co-authors review each diff before commit, with AI assistance allowed.
+
+Currently no formal co-authors are listed besides Anton. If a domain-specific co-author is invited later (e.g. for an extension area), the role assignment goes into `responsibilities.md` Current Contributors first.
+
+- Defer to Anton on anything outside the explicitly approved area.
 
 ### As Reviewer (anyone wearing that hat for a PR)
 

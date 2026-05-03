@@ -5,11 +5,11 @@ base: spec-vnext
 type: docs
 priority: medium
 goal: >
-  Give Anton, Tillmann, Sebastian Stein, and Sebastian Schürmann a
-  short, scannable practical guide that answers the questions that
-  come up day-to-day: how do I make a change, how do I review, how do
-  I pause, how do I read pipeline output, what is actually live vs.
-  still concept-only. The existing docs (PROJECT-FLOW, responsibilities,
+  Give the team (Anton plus any phase-based contributors) a short,
+  scannable practical guide that answers the questions that come up
+  day-to-day: how do I make a change, how do I review, how do I pause,
+  how do I read pipeline output, what is actually live vs. still
+  concept-only. The existing docs (PROJECT-FLOW, responsibilities,
   local-pipeline) are reference material; this guide is the entry
   point that points readers into them.
 spec_refs:
@@ -38,7 +38,7 @@ checks:
 reviewers:
   - integration
 human_gates:
-  - Anton must approve role descriptions before merge (Sebastian Stein, Tillmann, Sebastian Schürmann descriptions are inferred from project memory).
+  - Anton must approve role descriptions before merge — Sebastian Stein and Tillmann descriptions are inferred from project memory and may need correction.
 notes:
   - The guide is in English to stay consistent with the other docs in docs/automation/, even though the team conversations are in German.
   - This is operational documentation, not normative — it reflects today's state and is expected to drift as the pipeline activates more phases.
