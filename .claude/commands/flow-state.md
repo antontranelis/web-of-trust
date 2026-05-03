@@ -6,7 +6,7 @@ You are generating the State-of-Project dashboard described in `docs/automation/
 
 ## Output structure
 
-Produce a single Markdown document in this exact shape, then ask whether to write it to `~/.local/share/wot-pipeline/state/{YYYY-MM-DD}-state.md` (or wherever the maintainer prefers).
+Produce a single Markdown document in this exact shape, then ask whether to write it to `~/.local/share/flow/state/{YYYY-MM-DD}-state.md` (or wherever the maintainer prefers).
 
 ```markdown
 # State of Project — {YYYY-MM-DD}

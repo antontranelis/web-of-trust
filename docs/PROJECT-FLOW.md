@@ -17,12 +17,12 @@ Related operational docs in `docs/automation/`:
 - `tasks/` — the durable YAML contracts.
 - `templates/` — issue, PR, and review templates that produce reproducible artifacts.
 
-Slash commands for Claude Code live in `.claude/commands/`:
+Slash commands for Claude Code live in `.claude/commands/`. They share the `/flow-` prefix to keep pipeline operations grouped and discoverable via tab-completion:
 
-- `/gap-analyze` — phase 1 of the pipeline.
-- `/task-implement` — phase 3, autonomous execution of a task contract.
-- `/pr-cross-review` — phase 4, structured cross-review of a PR.
-- `/state-of-project` — weekly dashboard for the maintainer.
+- `/flow-gap` — phase 1, conformance manifest vs implementation.
+- `/flow-task` — phase 3, autonomous execution of a task contract.
+- `/flow-review` — phase 4, structured cross-review of a PR.
+- `/flow-state` — weekly State-of-Project dashboard for the maintainer.
 
 ## Goals
 
