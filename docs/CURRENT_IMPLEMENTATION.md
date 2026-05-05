@@ -426,7 +426,7 @@ Environment variable `VITE_CRDT` controls which StorageAdapter + PersonalDocMana
 | adapter-yjs | 25 | 4.1.0 |
 | **Total** | **566** | |
 
-### wot-core Test Files (29)
+### wot-core Test Files (selected inventory)
 
 ```
 tests/
