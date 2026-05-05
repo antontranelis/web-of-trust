@@ -22,6 +22,7 @@ import {
   encryptEcies,
   encryptLogPayload,
   encodeSdJwtDisclosure,
+  evaluateMemberUpdateDisposition,
   digestSdJwtDisclosure,
   verifyAttestationVcJws,
   verifyDelegatedAttestationBundle,
@@ -174,6 +175,12 @@ describe('WoT protocol interop vectors', () => {
       ...message,
       body: { ...message.body, members: [message.body.memberDid] },
     })).toThrow('Invalid member-update body property: members')
+  })
+
+  it('evaluates member-update generation disposition vectors', () => {
+    for (const testCase of phase1.space_membership_messages.member_update_generation_cases) {
+      expect(evaluateMemberUpdateDisposition(testCase), testCase.name).toBe(testCase.expectedDisposition)
+    }
   })
 
   it('recreates ECIES and log payload encryption vectors', async () => {
