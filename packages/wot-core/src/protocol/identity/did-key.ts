@@ -47,7 +47,7 @@ export interface ResolveDidKeyOptions {
   service?: NonNullable<DidDocument['service']>
 }
 
-export type DidKeyResolverDocuments = Record<string, ResolveDidKeyOptions>
+export type DidKeyResolverDocuments = Partial<Record<string, ResolveDidKeyOptions>>
 
 export function ed25519MultibaseToPublicKeyBytes(multibase: string): Uint8Array {
   const decoded = decodeBase58Multibase(multibase)
