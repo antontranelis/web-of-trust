@@ -1,18 +1,5 @@
-# CodeRabbit configuration template for web-of-trust
-# https://docs.coderabbit.ai/guides/configure-coderabbit
-#
-# This is a TEMPLATE, not an active config. CodeRabbit only reads
-# `.coderabbit.yaml` at the repo root. To activate, copy this file:
-#
-#   cp .coderabbit.example.yaml .coderabbit.yaml
-#
-# and authorise the CodeRabbit GitHub App at https://coderabbit.ai/login.
-# Activation is a human gate — see docs/automation/coderabbit.md.
-#
-# CodeRabbit does NOT know wot-spec. The path_instructions below stay
-# within what a generic AI reviewer can actually verify: missing
-# references, risky changes, code-level inconsistencies. Spec compliance
-# remains the responsibility of the Claude `spec` reviewer role.
+# CodeRabbit configuration for web-of-trust.
+# CodeRabbit reads this active config from the repository root.
 
 language: en
 
@@ -27,10 +14,7 @@ reviews:
   # Lower-noise profile. Tighten further if reviews still become noisy.
   profile: chill
 
-  # The built-in docstring coverage pre-merge check is global and has no
-  # path-level exclusion for tests. Keep it off so local test helpers do not
-  # create noisy warnings; review guidance below still allows CodeRabbit to
-  # ask for explanation when a test is genuinely ambiguous.
+  # Keep summaries useful without turning generic style checks into blockers.
   pre_merge_checks:
     docstrings:
       mode: off
@@ -43,8 +27,8 @@ reviews:
     - "!**/*.lock"
     - "!**/pnpm-lock.yaml"
 
-  # Per-path guidance. CodeRabbit cannot verify spec compliance — the
-  # instructions below describe code-level signals it CAN check.
+  # Per-path guidance. CodeRabbit cannot verify spec compliance; the
+  # instructions below describe code-level signals it can check.
   path_instructions:
     - path: "packages/wot-core/src/protocol/**"
       instructions: |
@@ -56,7 +40,7 @@ reviews:
           when adding new behavior.
         - Obvious code-level inconsistencies (off-by-one in length checks,
           mismatched encodings, incorrect hash sizes).
-        Do NOT claim spec compliance or violation — that judgment belongs
+        Do NOT claim spec compliance or violation; that judgment belongs
         to the human-supervised spec review. Style-only items are noise.
     - path: "packages/wot-core/src/crypto/**"
       instructions: |
@@ -67,7 +51,7 @@ reviews:
         - Reused nonces, missing constant-time comparison, missing input
           length validation, predictable randomness sources.
         - Secret material logged or returned in error paths.
-        Do NOT claim cryptographic correctness — that judgment belongs to
+        Do NOT claim cryptographic correctness; that judgment belongs to
         the Claude crypto-security reviewer.
     - path: "packages/wot-core/src/ports/**"
       instructions: |

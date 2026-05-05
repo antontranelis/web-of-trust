@@ -36,20 +36,21 @@ These gaps are why we still run Claude and Codex reviews. CodeRabbit is a review
 
 ## Configuration
 
-The repo ships a template at `.coderabbit.example.yaml`. CodeRabbit only reads `.coderabbit.yaml` at the repo root, so the template is inert until copied. This separation keeps the PR documentation-only until activation is explicitly approved.
+The active repository config lives at `.coderabbit.yaml`. The repo also ships `.coderabbit.example.yaml` as a copyable template/reference for other repositories.
 
 Key settings in the template:
 
 - **Path filters** — skip generated artifacts (e.g. `packages/wot-vault/wot-core-dist/`) and lock files.
 - **Path instructions** — tell CodeRabbit *what it can actually verify* per path: missing references, risky changes, code-level inconsistencies. The instructions explicitly avoid asking CodeRabbit to verify spec compliance, since it does not know `wot-spec`.
-- **Auto review** — run on every PR, including drafts (early signal).
+- **Auto review** — run on every PR, including drafts and non-default base branches such as `spec-vnext` (early signal).
 - **Tool allowlist** — linters and SAST tools that match our TypeScript/ESLint stack.
+- **Docstring coverage pre-merge check** — disabled because CodeRabbit's built-in check is global and currently has no test-file exclusion. Test files are still reviewed, but local test helpers should not require JSDoc/docstrings unless their behavior is genuinely ambiguous.
 
-See the inline comments in `.coderabbit.example.yaml` for the rationale.
+See the inline comments in `.coderabbit.yaml` and `.coderabbit.example.yaml` for the rationale.
 
 ## Activation
 
-Activation is a human gate. Anton (or a designated maintainer) decides when CodeRabbit goes live, then runs:
+Activation was a human gate and has been approved for this repository. For another repository, Anton (or a designated maintainer) decides when CodeRabbit goes live, then runs:
 
 1. Copy the template to the active path:
 
