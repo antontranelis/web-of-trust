@@ -21,6 +21,8 @@ Disposition legend:
 - **Missing:** no implementation found.
 - **External by design:** intentionally not in TS protocol-core (e.g., DIDComm framing).
 
+Checklist semantics: `[x]` means the requirement has a reusable reference path or is external by design for this planning slice. `[ ]` means follow-up work remains before a strict package-level conformance claim.
+
 Test-vector / schema legend:
 
 - **Vector OK:** asserted by `packages/wot-core/tests/ProtocolInterop.test.ts` against the phase-1 vector.
@@ -35,27 +37,27 @@ Test-vector / schema legend:
 
 These requirements apply to every claimed profile, including `wot-identity@0.1`. General JWS algorithm and exact-signing-input requirements are mapped as `REQ-SIG-005` and `REQ-SIG-006` below to avoid duplicate counting.
 
-- **REQ-GEN-001 — Relevant test vectors MUST be reproduced or verified.**
+- [x] **REQ-GEN-001 — Relevant test vectors MUST be reproduced or verified.**
   - Implementation: `packages/wot-core/tests/ProtocolInterop.test.ts` reproduces or verifies the positive identity and DID-resolution vector fields listed by the `wot-identity@0.1` manifest. **Reusable** for the manifest-listed identity and DID-resolution vectors.
   - Vector: phase-1 `identity` and `did_resolution`. **Vector OK** where listed in section 5; JWS/AES ownership is tracked in [Q-7](#q-7-jws-section-ownership).
   - Schema: not applicable.
 
-- **REQ-GEN-002 — Implementations MUST interpret `../wot-spec/GLOSSARY.md` terminology consistently.**
+- [ ] **REQ-GEN-002 — Implementations MUST interpret `../wot-spec/GLOSSARY.md` terminology consistently.**
   - Implementation: no central glossary-conformance artifact exists in TS; terminology consistency is enforced only by local naming, docs, and reviews today. **Needs rewrite / documentation audit** before a strict conformance claim.
   - Vector: **No vector** — terminology consistency is not a deterministic interop value.
   - Schema: not applicable.
 
-- **REQ-GEN-003 — Unknown optional fields MUST be ignored unless the owning document says otherwise.**
+- [x] **REQ-GEN-003 — Unknown optional fields MUST be ignored unless the owning document says otherwise.**
   - Implementation: `../wot-spec/schemas/did-document-wot.schema.json` uses `additionalProperties: true`, and the hand-written `DidDocument` type only consumes known fields. Generic JWS decoding preserves extra header/payload fields for artifact-specific verifiers. **Reusable** for current identity/DID surfaces.
   - Vector: positive vectors only. **Vector partial** — no negative/extension vector asserts unknown-field tolerance.
   - Schema: DID Document schema explicitly permits additional properties.
 
-- **REQ-GEN-004 — Unknown message types MUST be safely ignored and not treated as valid known types.**
+- [x] **REQ-GEN-004 — Unknown message types MUST be safely ignored and not treated as valid known types.**
   - Implementation: `wot-identity@0.1` does not define a message dispatcher or message-type registry; downstream profiles own concrete message routing. **External by design** for this identity inventory and must be covered by trust/sync inventories.
   - Vector: **No wot-identity profile vector** — no identity-profile message-type vector exists.
   - Schema: not applicable.
 
-- **REQ-GEN-005 — Implementations SHOULD state exactly which profiles they support.**
+- [ ] **REQ-GEN-005 — Implementations SHOULD state exactly which profiles they support.**
   - Implementation: this inventory and PR label identify `wot-identity@0.1`, but there is no machine-readable runtime conformance declaration in `packages/wot-core`. **Needs rewrite / documentation** if profile claims are expected from the package itself.
   - Vector: **No vector** — profile-claim metadata is not covered by phase-1 interop vectors.
   - Schema: not applicable.
@@ -68,57 +70,59 @@ These requirements are derived from `../wot-spec/CONFORMANCE.md`, `../wot-spec/0
 
 ### 1.1 BIP39 seed input
 
-- **REQ-ID-001 — BIP39 mnemonic-to-seed MUST use PBKDF2-HMAC-SHA512 with empty passphrase and the full 64-byte seed output.**
+- [ ] **REQ-ID-001 — BIP39 mnemonic-to-seed MUST use PBKDF2-HMAC-SHA512 with empty passphrase and the full 64-byte seed output.**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`deriveProtocolIdentityFromSeedHex`) consumes the full 64-byte seed once supplied. The protocol layer does not own mnemonic-to-seed conversion today.
   - Legacy parallel: `packages/wot-core/src/identity/WotIdentity.ts` calls `mnemonicToSeedSync(mnemonic, '')` but then slices the first 32 bytes for legacy derivation. **Needs rewrite (legacy path)** and likely a protocol/application boundary decision for where BIP39 conversion lives.
   - Vector: phase-1 `identity.bip39_seed_hex` is consumed by the `derives identity material from the phase-1 vector` test. **Vector OK** for full-seed protocol derivation; mnemonic-to-seed conversion itself is not asserted in TS.
   - Schema: not applicable.
 
-- **REQ-ID-002 — Implementations SHOULD default to the English BIP39 wordlist and MAY support additional wordlists.**
+- [ ] **REQ-ID-002 — Implementations SHOULD default to the English BIP39 wordlist and MAY support additional wordlists.**
   - Implementation: `packages/wot-core/src/wordlists/german-positive.ts` is an application/legacy wordlist, not protocol-core. Protocol-core remains deterministic from seed bytes.
   - Vector: phase-1 vector uses the standard English `abandon ... about` mnemonic.
-  - Disposition: **Reusable** for protocol-core; **needs conscious product/conformance decision** if the demo continues to default to the German wordlist while claiming strict `SHOULD` adherence.
+  - Disposition: **Needs rewrite / product decision** for package-level conformance if the demo continues to default to the German wordlist while claiming strict English-default `SHOULD` adherence. Protocol-core remains reusable because it starts from seed bytes, not words.
 
 ### 1.2 HKDF derivation contexts
 
-- **REQ-ID-003 — Identity Ed25519 seed MUST be derived via `HKDF-SHA-256(seed, info="wot/identity/ed25519/v1", L=32)`.**
+- [ ] **REQ-ID-003 — Identity Ed25519 seed MUST be derived via `HKDF-SHA-256(seed, info="wot/identity/ed25519/v1", L=32)`.**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`IDENTITY_INFO = 'wot/identity/ed25519/v1'`). **Reusable.**
   - Legacy parallel: `packages/wot-core/src/identity/WotIdentity.ts` uses HKDF info `'wot-identity-v1'` (different string). **Needs rewrite (legacy path)** — see [Open Question Q-3](#q-3-hkdf-info-string-divergence).
   - Vector: phase-1 `identity.ed25519_seed_hex`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: not applicable.
 
-- **REQ-ID-004 — Encryption X25519 seed MUST be derived via `HKDF-SHA-256(seed, info="wot/encryption/x25519/v1", L=32)`.**
+- [ ] **REQ-ID-004 — Encryption X25519 seed MUST be derived via `HKDF-SHA-256(seed, info="wot/encryption/x25519/v1", L=32)`.**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`ENCRYPTION_INFO = 'wot/encryption/x25519/v1'`). **Reusable.**
   - Legacy parallel: `packages/wot-core/src/identity/WotIdentity.ts` uses HKDF info `'wot-encryption-v1'`. **Needs rewrite (legacy path)**.
   - Vector: phase-1 `identity.x25519_seed_hex`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: not applicable.
 
+Note: `docs/spec/wot-protocol-spec.md` is legacy/outdated for this profile where it documents a 32-byte seed and dash-form HKDF info strings (`wot-identity-v1`, `wot-encryption-v1`). The sibling `../wot-spec/...` files above are the normative source for this inventory; syncing or deleting the in-repo legacy spec should happen in a separate spec-sync slice.
+
 ### 1.3 Public-key derivation
 
-- **REQ-ID-005 — Ed25519 public key MUST be the curve point derived from the identity seed (RFC 8032).**
+- [x] **REQ-ID-005 — Ed25519 public key MUST be the curve point derived from the identity seed (RFC 8032).**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`deriveProtocolIdentityFromSeedHex`, via `@noble/ed25519`). **Reusable.**
   - Vector: phase-1 `identity.ed25519_public_hex`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: not applicable.
 
-- **REQ-ID-006 — X25519 public key MUST be derived from the X25519 seed (RFC 7748).**
+- [x] **REQ-ID-006 — X25519 public key MUST be derived from the X25519 seed (RFC 7748).**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`deriveProtocolIdentityFromSeedHex`, via `ProtocolCryptoAdapter.x25519PublicFromSeed`). **Reusable.**
   - Vector: phase-1 `identity.x25519_public_hex` and `x25519_public_multibase`. **Vector OK** in the `derives identity material from the phase-1 vector` test. `identity.x25519_public_b64` is asserted by the `matches the space membership message vectors` test through `space_membership_messages.invite_key_discovery`, so it is **Downstream vector** coverage rather than identity-derivation coverage.
   - Schema: not applicable.
 
 ### 1.4 DID and KID
 
-- **REQ-ID-007 — `did:key` identifier MUST encode the Ed25519 public key as `did:key:z<base58btc(0xed01 || pubkey)>`.**
+- [x] **REQ-ID-007 — `did:key` identifier MUST encode the Ed25519 public key as `did:key:z<base58btc(0xed01 || pubkey)>`.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`publicKeyToDidKey`, `ed25519PublicKeyToMultibase`, prefix `0xed 0x01`). **Reusable.**
   - Legacy parallel: `packages/wot-core/src/crypto/did.ts` (`createDid`) — same encoding. **Reusable** as legacy mirror (both should be deduplicated in a later slice — see [Open Question Q-4](#q-4-duplicate-did-encoders)).
   - Vector: phase-1 `identity.did`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: covered indirectly via `did-document-wot.schema.json` `id`.
 
-- **REQ-ID-008 — Canonical signing kid MUST be `<did>#sig-0`.**
+- [x] **REQ-ID-008 — Canonical signing kid MUST be `<did>#sig-0`.**
   - Implementation: `packages/wot-core/src/protocol/identity/key-derivation.ts` (`deriveProtocolIdentityFromSeedHex`). **Reusable.**
   - Vector: phase-1 `identity.kid`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: implied by `did-document-wot.schema.json` (verificationMethod `id` `#sig-0`). **Open Question Q-5** for explicit wording.
 
-- **REQ-ID-009 — When communication-capable `keyAgreement` data is present, its canonical X25519 fragment is `#enc-0`.**
+- [x] **REQ-ID-009 — When communication-capable `keyAgreement` data is present, its canonical X25519 fragment is `#enc-0`.**
   - Implementation: `resolveDidKey` accepts a caller-supplied `keyAgreement` array and correctly returns an empty array for bare `did:key` resolution. This matches `../wot-spec/01-wot-identity/003-did-resolution.md`: X25519 material is not derivable from the Ed25519 `did:key` and must come from QR/profile/cache bootstrap data.
   - Disposition: **Reusable** for bare `did:key` resolution and externally supplied communication-capable documents. A later application slice should make the bootstrap/cache source explicit.
   - Vector: phase-1 `did_resolution.did_document.keyAgreement[0].id == "#enc-0"`. **Vector partial** — the test validates the fixture-supplied communication-capable document, not the bare `did:key` empty-keyAgreement state.
@@ -127,14 +131,14 @@ These requirements are derived from `../wot-spec/CONFORMANCE.md`, `../wot-spec/0
 
 ### 1.5 X25519 multibase encoding
 
-- **REQ-ID-010 — X25519 public key in DID Document MUST be encoded as `z<base58btc(0xec01 || pubkey)>`.**
+- [x] **REQ-ID-010 — X25519 public key in DID Document MUST be encoded as `z<base58btc(0xec01 || pubkey)>`.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`x25519PublicKeyToMultibase`, prefix `0xec 0x01`). **Reusable.**
   - Vector: phase-1 `identity.x25519_public_multibase`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: implied.
 
 ### 1.6 On-device seed protection
 
-- **REQ-ID-011 — The seed MUST be adequately protected on-device and MUST NOT be extractable in plaintext.**
+- [ ] **REQ-ID-011 — The seed MUST be adequately protected on-device and MUST NOT be extractable in plaintext.**
   - Implementation: `packages/wot-core/src/identity/SeedStorage.ts` encrypts stored seed material in IndexedDB using PBKDF2(passphrase) + AES-GCM, and `packages/wot-core/src/adapters/storage/SeedStorageIdentityVault.ts` wraps the full 64-byte BIP39 seed in a versioned envelope before storage. However, `IdentitySeedVault.loadSeed` returns plaintext `Uint8Array` seed bytes to `IdentityWorkflow`, and `ProtocolIdentitySession` keeps seed material in JS private fields for signing, decryption, and framework-key derivation. **Needs rewrite / hardening** before a strict non-extractability claim.
   - Vector: **No vector** — seed-at-rest and non-extractability are platform/security properties, not deterministic interop values.
   - Schema: not applicable.
@@ -148,7 +152,7 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 
 ### 2.1 JCS
 
-- **REQ-SIG-001 — JSON canonicalization MUST follow RFC 8785 (JCS).**
+- [x] **REQ-SIG-001 — JSON canonicalization MUST follow RFC 8785 (JCS).**
   - Implementation: `packages/wot-core/src/protocol/crypto/jcs.ts` (`canonicalize`, `canonicalizeToBytes`). **Reusable.**
   - Vector: phase-1 `did_resolution.jcs_sha256`. **Vector OK** in the `derives identity material from the phase-1 vector` test. `attestation_vc_jws.payload_jcs_sha256` also exercises JCS, but it is **Downstream vector** coverage from `wot-trust@0.1`.
   - Schema: not applicable.
@@ -156,33 +160,33 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 
 ### 2.2 JWS framing
 
-- **REQ-SIG-002 — Identity-issued JWS MUST use compact serialization with `alg=EdDSA`, JCS-canonicalized header and payload, and Ed25519 signature over `BASE64URL(JCS(header)) || "." || BASE64URL(JCS(payload))`.**
+- [ ] **REQ-SIG-002 — Identity-issued JWS MUST use compact serialization with `alg=EdDSA`, JCS-canonicalized header and payload, and Ed25519 signature over `BASE64URL(JCS(header)) || "." || BASE64URL(JCS(payload))`.**
   - Implementation: `packages/wot-core/src/protocol/crypto/jws.ts` (`createJcsEd25519Jws`, `verifyJwsWithPublicKey`). **Reusable.**
   - Legacy parallel: `packages/wot-core/src/crypto/jws.ts` and `packages/wot-core/src/application/identity/identity-workflow.ts` (`ProtocolIdentitySession.signJws`) use non-canonical `JSON.stringify` and a fixed `typ: 'JWT'` header. They are incompatible byte-for-byte with the protocol-core path. **Needs rewrite (legacy path)** — see [Open Question Q-9](#q-9-legacy-jws-callers).
   - Vector: **No wot-identity profile vector** for generic JWS compact serialization. The attestation, log-entry, space-capability, and device-binding tests exercise the same primitive as **Downstream vector** coverage.
   - Schema: not applicable.
 
-- **REQ-SIG-003 — Every WoT JWS MUST set `kid`, and verifiers MUST evaluate it.**
+- [ ] **REQ-SIG-003 — Every WoT JWS MUST set `kid`, and verifiers MUST evaluate it.**
   - Implementation: artifact-specific creators pass `kid` into their headers and artifact-specific verifiers inspect it. Generic `createJcsEd25519Jws` accepts any header with `alg=EdDSA`, and generic `verifyJwsWithPublicKey` verifies a caller-supplied key without requiring `kid`. **Needs rewrite / narrower API** before generic JWS helpers can independently claim this requirement.
   - Vector: phase-1 attestation, log-entry, and capability JWS vectors all carry `kid` values and are verified through artifact-specific tests. There is no negative vector for a missing `kid`.
   - Schema: not applicable.
 
-- **REQ-SIG-004 — DID-bound signatures MUST resolve the signing key through `kid` -> `resolve(did)` -> DID Document and purpose binding.**
+- [ ] **REQ-SIG-004 — DID-bound signatures MUST resolve the signing key through `kid` -> `resolve(did)` -> DID Document and purpose binding.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`didKeyToPublicKeyBytes`) supports Phase-1 `did:key` extraction, and higher-level verifiers use it for current vectors. The generic path is not method-agnostic and does not consume the `DidResolver` port yet. **Needs rewrite** for the full DID-method-agnostic `resolve(did)` architecture.
   - Vector: phase-1 attestation/device-binding JWS verification exercises `did:key`-derived public keys. No vector asserts a non-`did:key` resolver or an unknown/uncached DID returning `null`.
   - Schema: not applicable.
 
-- **REQ-SIG-005 — Verifiers MUST whitelist `alg=EdDSA` and reject all other algorithms before signature verification.**
+- [x] **REQ-SIG-005 — Verifiers MUST whitelist `alg=EdDSA` and reject all other algorithms before signature verification.**
   - Implementation: `createJcsEd25519JwsWithSigner` and `verifyJwsWithPublicKey` reject unsupported `alg`. **Reusable.**
   - Vector: positive EdDSA vectors only. **Vector partial** — no negative algorithm-confusion vector yet.
   - Schema: not applicable.
 
-- **REQ-SIG-006 — Verifiers MUST verify the signature over the exact received JWS signing-input bytes, without re-canonicalizing the payload.**
+- [x] **REQ-SIG-006 — Verifiers MUST verify the signature over the exact received JWS signing-input bytes, without re-canonicalizing the payload.**
   - Implementation: `decodeJws` preserves `${encodedHeader}.${encodedPayload}` as `signingInput`, and `verifyJwsWithPublicKey` verifies those bytes. **Reusable.**
   - Vector: **No wot-identity profile vector** for exact-byte JWS verification. Attestation, log-entry, capability, and device-binding interop tests provide **Downstream vector** coverage.
   - Schema: not applicable.
 
-- **REQ-SIG-007 — JWS `typ` values MUST be the per-document spec values where the owning document defines one.**
+- [x] **REQ-SIG-007 — JWS `typ` values MUST be the per-document spec values where the owning document defines one.**
   - Implementation: enforced per artifact (see `device-key-binding.ts`, `attestation-vc-jws.ts`, `space-capability.ts`). **Reusable** at the per-artifact level.
   - Vector: `attestation_vc_jws.header.typ == "vc+jwt"` is **Downstream vector** coverage from `wot-trust@0.1`; `wot-identity@0.1` has no own `typ` vector.
   - Schema: per-artifact schemas (not in `wot-identity@0.1` profile).
@@ -194,41 +198,41 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 
 ### 3.1 `did:key` resolution
 
-- **REQ-RES-001 — Resolving a `did:key:z6Mk…` MUST return a DID Document whose `id` equals the input DID.**
+- [x] **REQ-RES-001 — Resolving a `did:key:z6Mk…` MUST return a DID Document whose `id` equals the input DID.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`resolveDidKey`). **Reusable.**
   - Vector: phase-1 `did_resolution.did_document.id`. **Vector OK** in the `derives identity material from the phase-1 vector` test.
   - Schema: `did-document-wot.schema.json` `id`.
 
-- **REQ-RES-002 — DID Document MUST contain a single Ed25519 verification method with `id="#sig-0"`, `type="Ed25519VerificationKey2020"`, `controller=<did>`, and `publicKeyMultibase` matching `z<base58btc(0xed01 || pubkey)>`.**
+- [x] **REQ-RES-002 — DID Document MUST contain a single Ed25519 verification method with `id="#sig-0"`, `type="Ed25519VerificationKey2020"`, `controller=<did>`, and `publicKeyMultibase` matching `z<base58btc(0xed01 || pubkey)>`.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`resolveDidKey`). **Reusable.**
   - Vector: phase-1 `did_resolution.did_document.verificationMethod[0]`. **Vector OK**.
   - Schema: `did-document-wot.schema.json` requires each `verificationMethod` item to contain `id`, `type`, `controller`, and `publicKeyMultibase`.
 
-- **REQ-RES-003 — DID Document MUST list `#sig-0` in `authentication` and `assertionMethod`.**
+- [x] **REQ-RES-003 — DID Document MUST list `#sig-0` in `authentication` and `assertionMethod`.**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`resolveDidKey`). **Reusable.**
   - Vector: phase-1 `did_resolution.did_document.authentication`, `.assertionMethod`. **Vector OK**.
   - Schema: implied.
 
-- **REQ-RES-004 — DID Document MUST contain a `keyAgreement` array, but bare `did:key` resolution MAY return it empty and consumers MUST treat missing key-agreement data as non-communicative state, not a signature error.**
+- [x] **REQ-RES-004 — DID Document MUST contain a `keyAgreement` array, but bare `did:key` resolution MAY return it empty and consumers MUST treat missing key-agreement data as non-communicative state, not a signature error.**
   - Implementation: `resolveDidKey` returns `keyAgreement: []` by default and accepts caller-supplied `keyAgreement` data from bootstrap/profile/cache sources. **Reusable.**
   - Disposition: **Reusable** for the spec's two DID-document states: signature-capable bare `did:key` and communication-capable externally enriched documents. The implementation still needs an application-level source-of-truth slice for QR/profile/cache enrichment.
   - Vector: phase-1 `did_resolution.did_document.keyAgreement[0]`. **Vector partial** — the test validates the enriched fixture-supplied document; there is no explicit vector for the bare empty array state.
   - Schema: `did-document-wot.schema.json` requires the `keyAgreement` field and validates entries when present, but permits an empty array.
   - See [Follow-up Q-6](#q-6-communication-capable-did-document-source).
 
-- **REQ-RES-005 — DID Document MAY include `service` entries (e.g. `WoTInbox`).**
+- [x] **REQ-RES-005 — DID Document MAY include `service` entries (e.g. `WoTInbox`).**
   - Implementation: `packages/wot-core/src/protocol/identity/did-key.ts` (`resolveDidKey`). **Reusable.**
   - Vector: phase-1 `did_resolution.did_document.service`. **Vector OK**.
   - Schema: `did-document-wot.schema.json` validates optional `service` entries with `id`, `type`, and `serviceEndpoint`.
 
-- **REQ-RES-006 — JCS-SHA256 over the resolved DID Document MUST equal the published vector hash (interop fingerprint).**
+- [x] **REQ-RES-006 — JCS-SHA256 over the resolved DID Document MUST equal the published vector hash (interop fingerprint).**
   - Implementation: composed at test time via `cryptoAdapter.sha256(canonicalizeToBytes(...))`. **Reusable** (no production code path computes this hash today; that is acceptable because it is a vector-only invariant).
   - Vector: phase-1 `did_resolution.jcs_sha256`. **Vector OK**.
   - Schema: not applicable.
 
 ### 3.2 DID Resolver port
 
-- **REQ-RES-007 — A conforming client MUST implement `resolve(did)` for supported DID methods and return a `DidDocument | null`; `did:key` is normative in Phase 1.**
+- [ ] **REQ-RES-007 — A conforming client MUST implement `resolve(did)` for supported DID methods and return a `DidDocument | null`; `did:key` is normative in Phase 1.**
   - Implementation: `resolveDidKey` implements deterministic Phase-1 `did:key` resolution, and `DidResolver` defines the async port shape. There is no concrete resolver adapter that centralizes `resolve(did)`, unsupported-method `null`, missing-document `null`, or offline cache behavior. **Needs rewrite / wiring** for a full conforming resolver surface.
   - Vector: phase-1 `did_resolution.did_document` covers positive `did:key` resolution. Missing vectors: unknown method, known method with missing document, and offline cache behavior.
   - Schema: successful results are shaped by `did-document-wot.schema.json`; `null` cases are outside JSON Schema.
@@ -352,10 +356,10 @@ The hand-written `DidDocument` interface matches the schema-required fields used
 Requirement bucket | Reusable | Needs rewrite | Missing | External | Total
 ---|---:|---:|---:|---:|---:
 General conformance | 2 | 2 | 0 | 1 | 5
-Identity material derivation | 8 | 3 | 0 | 0 | 11
-Signatures and verification | 5 | 2 | 0 | 0 | 7
+Identity material derivation | 6 | 5 | 0 | 0 | 11
+Signatures and verification | 4 | 3 | 0 | 0 | 7
 DID resolution | 6 | 1 | 0 | 0 | 7
-**Total** | **21** | **8** | **0** | **1** | **30**
+**Total** | **18** | **11** | **0** | **1** | **30**
 
 The protocol-core path under `packages/wot-core/src/protocol/` covers the current positive phase-1 identity and DID-resolution vectors. The remaining "needs rewrite" count is dominated by legacy parallels in `packages/wot-core/src/identity/` and `packages/wot-core/src/crypto/`, the generic JWS helper surface that does not independently enforce `kid`/resolver semantics, resolver-port wiring, and seed-vault hardening. The migration is already planned in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md) slices 2 (Identity) and 4 (Attestations) and should be tracked there rather than re-opened in this profile.
 
