@@ -5,7 +5,7 @@ const ED25519_PREFIX = new Uint8Array([0xed, 0x01])
 const X25519_PREFIX = new Uint8Array([0xec, 0x01])
 const PUBLIC_KEY_LENGTH = 32
 
-export class DidKeyValidationError extends Error {
+class DidKeyValidationError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'DidKeyValidationError'
