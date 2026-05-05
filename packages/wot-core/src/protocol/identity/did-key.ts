@@ -104,7 +104,7 @@ export function createDidKeyResolver(documents: DidKeyResolverDocuments = {}): D
       if (!did.startsWith('did:key:')) return null
 
       try {
-        return resolveDidKey(did, snapshot[did])
+        return resolveDidKey(did, getDidKeyResolverOptions(snapshot, did))
       } catch (error) {
         if (!(error instanceof DidKeyValidationError)) throw error
         return null
@@ -114,11 +114,18 @@ export function createDidKeyResolver(documents: DidKeyResolverDocuments = {}): D
 }
 
 function snapshotDidKeyResolverDocuments(documents: DidKeyResolverDocuments): DidKeyResolverDocuments {
-  const snapshot: DidKeyResolverDocuments = {}
+  const snapshot = Object.create(null) as DidKeyResolverDocuments
   for (const [did, options] of Object.entries(documents)) {
     if (options) snapshot[did] = cloneResolveDidKeyOptions(options)
   }
   return snapshot
+}
+
+function getDidKeyResolverOptions(
+  documents: DidKeyResolverDocuments,
+  did: string,
+): ResolveDidKeyOptions | undefined {
+  return Object.prototype.hasOwnProperty.call(documents, did) ? documents[did] : undefined
 }
 
 function cloneResolveDidKeyOptions(options: ResolveDidKeyOptions): ResolveDidKeyOptions {
@@ -137,6 +144,7 @@ function cloneKeyAgreement(
 }
 
 function cloneService(service: NonNullable<DidDocument['service']> | undefined): DidDocument['service'] | undefined {
+  if (!service || service.length === 0) return undefined
   return service?.map((entry) => ({ ...entry }))
 }
 

@@ -82,6 +82,7 @@ describe('WoT protocol interop vectors', () => {
     ).toThrow('Expected X25519 multibase key')
 
     const bareDidDocument = resolveDidKey(phase1.identity.did)
+    expect(resolveDidKey(phase1.identity.did, { service: [] })).not.toHaveProperty('service')
     const didDocument = await resolver.resolve(phase1.identity.did)
     expect(bareDidDocument).toEqual(didDocument)
     expect(didDocument).toEqual({
