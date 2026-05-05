@@ -25,6 +25,7 @@ Test-vector / schema legend:
 
 - **Vector OK:** asserted by `packages/wot-core/tests/ProtocolInterop.test.ts` against the phase-1 vector.
 - **Vector partial:** vector field exists but is not asserted from this codebase.
+- **Downstream vector:** exercised by a vector that belongs to a downstream profile rather than the `wot-identity@0.1` manifest entry.
 - **No vector:** no test vector covers this requirement.
 - **No schema:** no JSON Schema in this profile covers this requirement.
 
@@ -110,7 +111,7 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 
 - [ ] **REQ-SIG-001 — JSON canonicalization MUST follow RFC 8785 (JCS).**
   - Implementation: `packages/wot-core/src/protocol/crypto/jcs.ts` (`canonicalize`, `canonicalizeToBytes`). **Reusable.**
-  - Vector: phase-1 `did_resolution.jcs_sha256` and `attestation_vc_jws.payload_jcs_sha256` exercise canonicalize-then-SHA-256. **Vector OK** in the `derives identity material from the phase-1 vector` and `canonicalizes and verifies the attestation VC-JWS vector` tests.
+  - Vector: phase-1 `did_resolution.jcs_sha256`. **Vector OK** in the `derives identity material from the phase-1 vector` test. `attestation_vc_jws.payload_jcs_sha256` also exercises JCS, but it is **Downstream vector** coverage from `wot-trust@0.1`.
   - Schema: not applicable.
   - Notes: implementation does not currently support the full JCS number escape rules beyond IEEE-754 finiteness; sufficient for current vectors. Spec-side question — see [Open Question Q-8](#q-8-jcs-number-edge-cases).
 
@@ -119,7 +120,7 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 - [ ] **REQ-SIG-002 — Identity-issued JWS MUST use compact serialization with `alg=EdDSA`, JCS-canonicalized header and payload, and Ed25519 signature over `BASE64URL(JCS(header)) || "." || BASE64URL(JCS(payload))`.**
   - Implementation: `packages/wot-core/src/protocol/crypto/jws.ts` (`createJcsEd25519Jws`, `verifyJwsWithPublicKey`). **Reusable.**
   - Legacy parallel: `packages/wot-core/src/crypto/jws.ts` uses non-canonical `JSON.stringify` and a fixed `typ: 'JWT'` header. It is incompatible byte-for-byte with the protocol-core path. **Needs rewrite (legacy path)** — see [Open Question Q-9](#q-9-legacy-jws-callers).
-  - Vector: phase-1 `attestation_vc_jws.signing_input` / `.signature_b64` / `.jws`. **Vector OK** indirectly via `ProtocolInterop.test.ts` (attestation, log-entry, space-capability tests).
+  - Vector: **No wot-identity profile vector** for generic JWS compact serialization. The attestation, log-entry, space-capability, and device-binding tests exercise the same primitive as **Downstream vector** coverage.
   - Schema: not applicable.
 
 - [ ] **REQ-SIG-003 — Every WoT JWS MUST set `kid`, and verifiers MUST evaluate it.**
@@ -139,12 +140,12 @@ The spec covers JWS framing for identity-related artifacts. The `wot-identity@0.
 
 - [ ] **REQ-SIG-006 — Verifiers MUST verify the signature over the exact received JWS signing-input bytes, without re-canonicalizing the payload.**
   - Implementation: `decodeJws` preserves `${encodedHeader}.${encodedPayload}` as `signingInput`, and `verifyJwsWithPublicKey` verifies those bytes. **Reusable.**
-  - Vector: positive JWS vectors exercise exact compact serialization. **Vector OK** through attestation, log-entry, capability, and device-binding interop tests.
+  - Vector: **No wot-identity profile vector** for exact-byte JWS verification. Attestation, log-entry, capability, and device-binding interop tests provide **Downstream vector** coverage.
   - Schema: not applicable.
 
 - [ ] **REQ-SIG-007 — JWS `typ` values MUST be the per-document spec values where the owning document defines one.**
   - Implementation: enforced per artifact (see `device-key-binding.ts:43`, `attestation-vc-jws.ts`, `space-capability.ts`). **Reusable** at the per-artifact level.
-  - Vector: phase-1 `attestation_vc_jws.header.typ == "vc+jwt"`. **Vector OK** (decoded by `decodeJws` in tests).
+  - Vector: `attestation_vc_jws.header.typ == "vc+jwt"` is **Downstream vector** coverage from `wot-trust@0.1`; `wot-identity@0.1` has no own `typ` vector.
   - Schema: per-artifact schemas (not in `wot-identity@0.1` profile).
   - Notes: `wot-identity@0.1` owns the JWS mechanics; downstream profiles own their `typ` strings.
 
@@ -204,13 +205,13 @@ The DID Document type in `packages/wot-core/src/protocol/identity/did-document.t
 - `authentication[]`, `assertionMethod[]` (string fragments)
 - `keyAgreement` as a required array; `keyAgreement[].{id,type,controller,publicKeyMultibase}` when entries are present
 - `service[].{id,type,serviceEndpoint}` (when present)
-- `capabilityDelegation[]` as an optional string-fragment array
 
 Gaps:
 
 - No JSON-Schema-level validation in TS (`@web_of_trust/core` defers schema validation to `wot-spec` per `packages/wot-core/src/protocol/COVERAGE.md:33-40`). **No schema** check in TS today.
 - No runtime JSON Schema validation in TS; TypeScript structural typing does not enforce schema regex patterns.
 - No negative tests for malformed `id`, `controller`, `publicKeyMultibase`, or missing required arrays.
+- `capabilityDelegation[]` is schema-only coverage today: the schema allows it, but the phase-1 `did_resolution.did_document` vector and the TS `DidDocument` interface do not model or assert it.
 
 Disposition: **Reusable** as runtime types; schema-conformance validation is consciously deferred to the spec repository.
 
@@ -249,7 +250,7 @@ Coverage gaps:
 | DID Document type | `protocol/identity/did-document.ts` | none | **Reusable.** |
 | `did:key` resolution helper | `protocol/identity/did-key.ts:resolveDidKey`, `protocol/identity/did-document.ts` (`DidResolver`) | none | **Reusable** for deterministic Phase-1 `did:key`; application workflows still need consistent resolver-port wiring (see Q-11). |
 | JCS | `protocol/crypto/jcs.ts` | none | **Reusable.** |
-| JWS create / verify | `protocol/crypto/jws.ts` | `crypto/jws.ts` (legacy) | **Needs rewrite (legacy path).** Legacy uses `JSON.stringify`, `typ: 'JWT'`, and Web Crypto `Ed25519` directly. Migrating remaining callers is tracked in `docs/reference-implementation-refactor.md` slice 2/4. |
+| JWS create / verify | `protocol/crypto/jws.ts` | `crypto/jws.ts` (legacy) | **Needs rewrite (legacy path).** Legacy uses `JSON.stringify`, `typ: 'JWT'`, and Web Crypto `Ed25519` directly. Migrating remaining callers is tracked in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md) slice 2/4. |
 | Mnemonic + wordlist | `application/identity/identity-workflow.ts`, `wordlists/german-positive.ts` | `identity/WotIdentity.ts` | **Reusable** at the application layer if the conformance claim states the chosen default wordlist. Spec says English SHOULD be default and additional wordlists MAY be supported (see Q-2). |
 
 ---
@@ -313,7 +314,7 @@ The hand-written `DidDocument` interface matches the schema-required fields used
 | DID resolution | 7 | 0 | 0 | 0 | 7 |
 | **Total** | **20** | **4** | **0** | **0** | **24** |
 
-The protocol-core path under `packages/wot-core/src/protocol/` covers the current positive phase-1 identity and DID-resolution vectors. The remaining "needs rewrite" count is dominated by legacy parallels in `packages/wot-core/src/identity/` and `packages/wot-core/src/crypto/`, plus the generic JWS helper surface that does not independently enforce `kid`/resolver semantics. The migration is already planned in `docs/reference-implementation-refactor.md` slices 2 and 4 and should be tracked there rather than re-opened in this profile.
+The protocol-core path under `packages/wot-core/src/protocol/` covers the current positive phase-1 identity and DID-resolution vectors. The remaining "needs rewrite" count is dominated by legacy parallels in `packages/wot-core/src/identity/` and `packages/wot-core/src/crypto/`, plus the generic JWS helper surface that does not independently enforce `kid`/resolver semantics. The migration is already planned in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md) slices 2 and 4 and should be tracked there rather than re-opened in this profile.
 
 No runtime module is marked fully missing for `wot-identity@0.1`: bare `did:key` resolution exists. The next implementation slices should add negative/edge vectors and resolver-port wiring before removing legacy identity/JWS code.
 
@@ -323,5 +324,5 @@ No runtime module is marked fully missing for `wot-identity@0.1`: bare `did:key`
 - No edits to `../wot-spec/` (forbidden).
 - No edits to `apps/` or top-level `packages/` runtime code (forbidden).
 - No automation workflow changes (`.github/` forbidden).
-- The legacy-path migration is tracked in `docs/reference-implementation-refactor.md`, not in this document.
+- The legacy-path migration is tracked in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md), not in this document.
 - Profiles other than `wot-identity@0.1` (i.e. `wot-trust@0.1`, `wot-sync@0.1`, `wot-device-delegation@0.1`, `wot-rls@0.1`, `wot-hmc@0.1`) are out of scope and continue to be tracked in `packages/wot-core/src/protocol/COVERAGE.md`.
