@@ -1,5 +1,5 @@
 import { decodeBase58, encodeBase58 } from '../crypto/encoding'
-import type { DidDocument } from './did-document'
+import type { DidDocument, DidResolver } from './did-document'
 
 const ED25519_PREFIX = new Uint8Array([0xed, 0x01])
 const X25519_PREFIX = new Uint8Array([0xec, 0x01])
@@ -37,13 +37,17 @@ export interface ResolveDidKeyOptions {
   service?: NonNullable<DidDocument['service']>
 }
 
+export type DidKeyResolverDocuments = Record<string, ResolveDidKeyOptions>
+
 export function ed25519MultibaseToPublicKeyBytes(multibase: string): Uint8Array {
   if (!multibase.startsWith('z')) throw new Error('Expected base58btc multibase key')
   const decoded = decodeBase58(multibase.slice(1))
   if (decoded[0] !== ED25519_PREFIX[0] || decoded[1] !== ED25519_PREFIX[1]) {
     throw new Error('Expected Ed25519 multibase key')
   }
-  return decoded.slice(ED25519_PREFIX.length)
+  const publicKey = decoded.slice(ED25519_PREFIX.length)
+  if (publicKey.length !== 32) throw new Error('Expected 32-byte Ed25519 public key')
+  return publicKey
 }
 
 export function x25519MultibaseToPublicKeyBytes(multibase: string): Uint8Array {
@@ -75,4 +79,18 @@ export function resolveDidKey(did: string, options: ResolveDidKeyOptions = {}): 
   if (options.service) document.service = options.service
 
   return document
+}
+
+export function createDidKeyResolver(documents: DidKeyResolverDocuments = {}): DidResolver {
+  return {
+    async resolve(did: string): Promise<DidDocument | null> {
+      if (!did.startsWith('did:key:')) return null
+
+      try {
+        return resolveDidKey(did, documents[did])
+      } catch {
+        return null
+      }
+    },
+  }
 }
