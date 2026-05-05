@@ -566,4 +566,42 @@ describe('Multi-Device Sync', () => {
     expect(aliceAdapter2.getKeyGeneration(spaceId)).toBe(2)
     expect((await aliceCompact2.list()).some((key) => key.includes('__wot_pending_space_message__'))).toBe(false)
   })
+
+  it('should classify incoming member-updates before applying them', async () => {
+    const spaceId = await createSharedSpace()
+    const spaceBefore = await aliceAdapter2.getSpace(spaceId)
+    expect(spaceBefore?.members).toContain(bob.getDid())
+
+    const memberChanges: Array<{ did: string; action: string }> = []
+    const unsubscribe = aliceAdapter2.onMemberChange((change) => {
+      memberChanges.push({ did: change.did, action: change.action })
+    })
+
+    const envelope: MessageEnvelope = {
+      v: 1,
+      id: 'future-member-update',
+      type: 'member-update',
+      fromDid: alice.getDid(),
+      toDid: alice.getDid(),
+      createdAt: new Date().toISOString(),
+      encoding: 'json',
+      payload: JSON.stringify({
+        spaceId,
+        memberDid: bob.getDid(),
+        action: 'removed',
+        effectiveKeyGeneration: aliceAdapter2.getKeyGeneration(spaceId) + 2,
+      }),
+      signature: '',
+    }
+    const signed = await signEnvelope(envelope, (data) => alice.sign(data))
+
+    await (aliceAdapter2 as unknown as { handleMemberUpdate(envelope: MessageEnvelope): Promise<void> })
+      .handleMemberUpdate(signed)
+
+    const spaceAfter = await aliceAdapter2.getSpace(spaceId)
+    expect(spaceAfter?.members).toContain(bob.getDid())
+    expect(memberChanges).toEqual([])
+
+    unsubscribe()
+  })
 })

@@ -32,6 +32,11 @@ import {
   verifyEnvelope,
 } from '@web_of_trust/core/crypto'
 import {
+  evaluateMemberUpdateDisposition,
+  type MemberUpdateDisposition,
+  type MemberUpdateSignal,
+} from '@web_of_trust/core/protocol'
+import {
   traceAsync,
 } from '@web_of_trust/core/storage'
 
@@ -59,6 +64,13 @@ interface PendingSpaceMessage {
 }
 
 class PendingMessageNotDurableError extends Error {}
+
+type ParsedMemberUpdatePayload = {
+  spaceId: string
+  action: 'added' | 'removed'
+  memberDid: string
+  effectiveKeyGeneration: number
+}
 
 interface YjsSpaceState {
   info: SpaceInfo
@@ -1377,6 +1389,15 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
       const state = this.spaces.get(payload.spaceId)
       if (!state) return
 
+      const incomingUpdate = this.parseMemberUpdateSignal(payload, envelope.fromDid)
+      if (!incomingUpdate) return
+
+      const disposition = this.classifyMemberUpdate(state, incomingUpdate)
+      if (!this.shouldApplyMemberUpdateDisposition(disposition)) {
+        console.debug('[YjsReplication] Ignored member-update by disposition:', disposition)
+        return
+      }
+
       // Authorization: any member can invite (added), only creator can remove
       if (payload.action === 'removed') {
         if (envelope.fromDid !== state.info.members[0]) {
@@ -1427,6 +1448,40 @@ export class YjsReplicationAdapter implements ReplicationAdapter {
     } catch (err) {
       console.debug('[YjsReplication] Failed to handle member update:', err)
     }
+  }
+
+  private parseMemberUpdateSignal(payload: unknown, signerDid: string): MemberUpdateSignal | null {
+    const update = payload as Partial<ParsedMemberUpdatePayload>
+    if (typeof update.spaceId !== 'string') return null
+    if (update.action !== 'added' && update.action !== 'removed') return null
+    if (typeof update.memberDid !== 'string') return null
+    const effectiveKeyGeneration = update.effectiveKeyGeneration
+    if (typeof effectiveKeyGeneration !== 'number' || !Number.isInteger(effectiveKeyGeneration)) return null
+
+    return {
+      spaceId: update.spaceId,
+      action: update.action,
+      memberDid: update.memberDid,
+      effectiveKeyGeneration,
+      signerDid,
+    }
+  }
+
+  private classifyMemberUpdate(state: YjsSpaceState, incomingUpdate: MemberUpdateSignal): MemberUpdateDisposition {
+    const adminDid = state.info.members[0]
+    return evaluateMemberUpdateDisposition({
+      localKeyGeneration: this.groupKeyService.getCurrentGeneration(incomingUpdate.spaceId),
+      knownAdminDids: adminDid ? [adminDid] : [],
+      knownMemberDids: state.info.members,
+      seenUpdates: [],
+      incomingUpdate,
+    })
+  }
+
+  private shouldApplyMemberUpdateDisposition(disposition: MemberUpdateDisposition): boolean {
+    return disposition === 'store-pending-and-sync'
+      || disposition === 'store-unverified-pending-and-sync'
+      || disposition === 'upgrade-pending-and-sync'
   }
 
   private async handleGroupKeyRotation(envelope: MessageEnvelope): Promise<void> {
