@@ -1,6 +1,6 @@
 # Legacy Boundary Map
 
-This inventory classifies the current TypeScript implementation before replacement work. It is non-normative and follows the spec-side architecture notes in `../wot-spec/ARCHITECTURE.md`, `../wot-spec/IMPLEMENTATION-ARCHITECTURE.md`, `../wot-spec/CONFORMANCE.md`, and `../wot-spec/conformance/manifest.json`.
+This inventory classifies the current TypeScript implementation before replacement work. It is non-normative and follows the spec-side architecture notes in [`README.md#spec-landkarte`](../../../wot-spec/README.md#spec-landkarte), [`ARCHITECTURE.md`](../../../wot-spec/ARCHITECTURE.md), [`IMPLEMENTATION-ARCHITECTURE.md`](../../../wot-spec/IMPLEMENTATION-ARCHITECTURE.md), [`CONFORMANCE.md`](../../../wot-spec/CONFORMANCE.md), and [`conformance/manifest.json`](../../../wot-spec/conformance/manifest.json).
 
 The purpose is not to preserve legacy APIs by default. Proven mechanisms should be kept only when they can be mapped to explicit protocol, application, port, adapter, app, or server-infrastructure responsibilities.
 
@@ -47,7 +47,7 @@ Current area | Classification | Target boundary | Notes
 `apps/demo/src/context/IdentityContext.tsx` and `PendingVerificationContext.tsx` | `demo-only` | React/app state | Useful UX state. Identity context currently mixes biometric/session concerns with app identity lifecycle and should consume application workflows only.
 `apps/demo/src/hooks/` | `demo-only` | React layer | Hooks are valuable as future React-package candidates, but currently call adapters, services, protocol-shaped objects, and app contexts directly. Keep app-local until a second consumer justifies extraction.
 `apps/demo/src/services/` | `rewrite` | Application or app adapters | Contact, verification, attestation, identity, biometric, barcode, and reset services mix application workflow, browser/native runtime APIs, storage adapters, and UI assumptions. Preserve only behavior that maps cleanly to application use cases or app-only runtime adapters.
-`apps/demo/src/adapters/` | `adapter-only` or `demo-only` | App-local adapters | Local Automerge/Yjs storage, cache, outbox, row mappers, and personal network adapters are useful migration examples. Keep behind ports only; app-local row/storage schemas are not reference protocol.
+`apps/demo/src/adapters/` | `adapter-only` | App-local adapters | Local Automerge/Yjs storage, cache, outbox, row mappers, and personal network adapters are useful migration examples. Keep behind ports only; app-local row/storage schemas are not reference protocol. Demo-specific wiring that is not useful behind a port should remain covered by the surrounding `demo-only` app rows.
 `apps/demo/src/components/`, `pages/`, `i18n/`, `live-update.ts` | `demo-only` | App/UI | Product UI, QR rendering/scanning, native live updates, language state, D3 graph rendering, and browser behavior are not reference implementation boundaries.
 `packages/wot-relay/src/` | `server-infra` | Sync broker infrastructure | WebSocket relay, challenge handling, offline queue, ACKs, and dashboard are reference-service candidates for Sync 003 only after envelope/capability checks are aligned with protocol modules.
 `packages/wot-profiles/src/` | `server-infra` | Discovery/profile service infrastructure | SQLite profile store, HTTP server, dashboard, and profile JWS verification are service infrastructure for Sync 004. Replace local `jws-verify` authority with shared protocol verification.
@@ -102,7 +102,7 @@ Offline discovery cache and publish state | Discovery/cache ports and adapters |
 Yjs and Automerge personal docs | Docstore/replication adapters | CRDT document mechanics are implementation detail; Sync ordering, capability, and key rules stay in protocol/application.
 Group key generation and rotation disposition | Application sync workflow plus protocol validation | Preserve stale/future/next-generation handling, but make pending/durable state explicit and testable.
 Vault HTTP document store and push scheduler | Vault adapter/server-infra | Application chooses when to push/pull; adapter performs HTTP and scheduling.
-Relay, profile, and vault servers | Server-infra | Servers exercise protocol behavior but do not become the source of normative rules.
+Relay, profile, and vault servers | `server-infra` | Servers exercise protocol behavior but do not become the source of normative rules.
 Demo React hooks and contexts | Demo-only, possible future React package | Extract only after workflows and ports are stable and a second consumer needs them.
 
 ## Ambiguous Or Human-Decision Items
