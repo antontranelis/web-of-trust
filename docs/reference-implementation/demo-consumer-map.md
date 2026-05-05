@@ -4,7 +4,7 @@ This document maps the current demo app to the target reference implementation b
 
 ## Sources
 
-Spec paths below are repo-root filesystem paths following `docs/PROJECT-FLOW.md`; they intentionally use `../wot-spec/...` rather than file-relative Markdown links from this document.
+Spec references below are repo-root path references, sometimes with Markdown anchors, following `docs/PROJECT-FLOW.md`; they intentionally use `../wot-spec/...` rather than file-relative Markdown links from this document.
 
 - Spec map: `../wot-spec/README.md#spec-landkarte`
 - Conformance profiles: `../wot-spec/CONFORMANCE.md` and `../wot-spec/conformance/manifest.json`
@@ -84,7 +84,7 @@ Current location | Direct import or dependency | Why it is debt | Target owner
 `apps/demo/src/context/AdapterContext.tsx` | Dynamic imports from `@web_of_trust/adapter-yjs` and `@web_of_trust/adapter-automerge` | Runtime selection is legitimate, but it is mixed with React provider state and recovery behavior. | Composition root factory returning port implementations.
 `apps/demo/src/hooks/useSpaces.ts` | `@web_of_trust/core/protocol` for `x25519MultibaseToPublicKeyBytes` | React hook performs protocol decoding for member-key lookup. | `SpaceMemberKeyDirectory` adapter/use-case supplied by composition root or application layer.
 `apps/demo/src/hooks/useGraphCache.ts` | `GraphCacheService` from `@web_of_trust/core/services` | Hook imports a core service directly instead of a workflow/view model. | Discovery/graph application use-case or cache port.
-`apps/demo/src/services/AttestationService.ts` | `signEnvelope` from `@web_of_trust/core/crypto` and `createResourceRef` from types | App-local service signs transport envelopes and builds resource references. | Attestation delivery application use-case using messaging/outbox ports.
+`apps/demo/src/services/AttestationService.ts` | `signEnvelope` from `@web_of_trust/core/crypto` and `createResourceRef` from `@web_of_trust/core/types` | App-local service signs transport envelopes and builds resource references. | Attestation delivery application use-case using messaging/outbox ports.
 `apps/demo/src/services/AttestationService.ts` | `createAttestationWorkflow` from runtime | App service constructs workflow indirectly and owns delivery state. | Application attestation use-case plus delivery-status port/view model.
 `apps/demo/src/hooks/useVerification.ts` | `verificationWorkflow` via `../services/verificationWorkflow` | Hook calls a singleton workflow and manually builds relay envelopes. | Verification application use-case that receives storage/messaging/discovery ports.
 `apps/demo/src/services/resetLocalAppData.ts`, `apps/demo/src/pages/Identity.tsx` | Dynamic CRDT database deletion imports | UI/service code knows concrete CRDT persistence. | Runtime reset adapter or storage-management port.
