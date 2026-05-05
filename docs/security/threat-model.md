@@ -14,7 +14,7 @@
 |-------|-------------|
 | **User** | App user with own identity (Ed25519 key pair) |
 | **Contact** | Verified contact (mutual QR code verification) |
-| **Space Creator** | Creator of a space (`members[0]`), can manage members |
+| **Space Admin / Creator** | Locally known authority for membership changes; current adapters still derive this from creator state |
 | **Space Member** | Has GroupKey, can read and write |
 
 ### Attackers
@@ -40,7 +40,7 @@
 | Relay forges sender | Ed25519 envelope signature | ✅ Strong | `verifyEnvelope()` in both adapters |
 | Outsider joins space | GroupKey (X25519 ECIES encrypted) | ✅ Strong | No key, no access |
 | Removed member reads on | Key rotation | ✅ Strong | New key, removed member excluded |
-| Unauthorized membership change | `members[0]` check + envelope signature | ✅ Strong | Only creator can invite/remove |
+| Unauthorized membership change | Envelope signature + member-update disposition evaluation | ✅ Strong | Known-authority updates can become pending, unknown or lower-authority updates remain unverified/ignored until canonical sync confirms membership |
 | Member shares GroupKey | — | ❌ Not preventable | Shared secret, by design |
 | Member writes unwanted content | — | ❌ No read-only | Whoever has the key can produce CRDT changes |
 | Vault data read | AES-256-GCM (GroupKey) | ✅ Strong | Vault sees only ciphertext |
@@ -103,9 +103,9 @@
 
 | Threat | Risk | Mitigation |
 |--------|------|------------|
-| Member becomes creator | Low | `members[0]` is immutable (stored locally, updated only via signed messages) |
+| Member becomes admin authority | Low | Membership authority is derived from locally known admin/member DIDs and confirmed by signed member-update plus canonical sync state |
 | Server abuses power | Low | Server has no content rights (E2E) |
-| Member grants self admin rights | Low | `handleMemberUpdate` checks envelope signature against `members[0]` |
+| Member grants self admin rights | Low | Signed member-update is classified by authority; unknown or lower-authority changes stay unverified-pending or ignored until canonical sync confirms them |
 
 ---
 
@@ -125,7 +125,7 @@ Can:
 Cannot:
   - Decrypt content (no GroupKey)
   - Forge sender (envelope signature)
-  - Add/remove members (members[0] check + signature)
+  - Add/remove members without a signed member-update that passes authority classification and canonical sync confirmation
   - Steal identities (private keys only local)
 ```
 
@@ -142,13 +142,13 @@ Can:
   - Change space name and image
 
 Cannot:
-  - Remove other members (only creator/members[0])
-  - Officially invite new members (only creator)
+  - Remove other members without known admin authority and canonical sync confirmation
+  - Officially invite new members without a member-update path that remains pending until confirmed
   - Forge member-update without being classified as unverified-pending or lower authority by the member-update disposition evaluator
   - Read other spaces (separate GroupKey per space)
 ```
 
-**Mitigation:** Creator can remove Bob → key rotation → Bob is locked out of new content. Old content remains compromised.
+**Mitigation:** A confirmed admin removal rotates keys so Bob is locked out of new content. Old content remains compromised.
 
 ### Scenario 3: Recovery Phrase Compromised
 
