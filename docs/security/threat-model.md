@@ -2,7 +2,7 @@
 
 > Attack vectors and mitigations in the Web of Trust — honest analysis.
 
-*As of March 17, 2026*
+*As of May 5, 2026*
 
 ---
 
@@ -40,7 +40,7 @@
 | Relay forges sender | Ed25519 envelope signature | ✅ Strong | `verifyEnvelope()` in both adapters |
 | Outsider joins space | GroupKey (X25519 ECIES encrypted) | ✅ Strong | No key, no access |
 | Removed member reads on | Key rotation | ✅ Strong | New key, removed member excluded |
-| Unauthorized membership change | Current adapters: envelope signature + creator-derived authority checks | ⚠️ Medium | Core now exposes member-update disposition vocabulary, but durable pending/unverified-pending state and canonical confirmation are not yet wired into adapters |
+| Unauthorized membership change | Current adapters: envelope signature + creator-derived authority checks | ⚠️ Medium | Core now exposes member-update disposition vocabulary, but durable pending/unverified-pending state is not yet wired into adapters |
 | Member shares GroupKey | — | ❌ Not preventable | Shared secret, by design |
 | Member writes unwanted content | — | ❌ No read-only | Whoever has the key can produce CRDT changes |
 | Vault data read | AES-256-GCM (GroupKey) | ✅ Strong | Vault sees only ciphertext |
@@ -69,7 +69,7 @@
 | Modify message on relay | Low | E2E encryption + envelope signature |
 | Manipulate CRDT state (external) | Low | Without GroupKey, no valid ciphertext producible |
 | Manipulate CRDT state (member) | Medium | **Not preventable** — whoever has the key can write |
-| Forge member-update | Low | Current adapters require a valid envelope signature and creator-derived authority; core disposition evaluation exists for future pending/unverified adapter handling |
+| Forge member-update | Low | A valid envelope signature identifies the sender; current adapters still require creator-derived authority before applying membership effects. Core disposition evaluation exists for future pending/unverified adapter handling |
 | Manipulate local data | Medium | Compromised device = game over |
 
 ### R — Repudiation (Deniability)
@@ -105,7 +105,7 @@
 |--------|------|------------|
 | Member becomes admin authority | Low | Current adapters derive authority from creator state; core disposition semantics are available for future admin/member authority classification |
 | Server abuses power | Low | Server has no content rights (E2E) |
-| Member grants self admin rights | Low | Current adapters require signed messages and creator-derived authority; durable pending/canonical confirmation semantics are pending adapter work |
+| Member grants self admin rights | Low | Current adapters require signed messages and creator-derived authority; durable pending and unverified-pending handling is pending adapter work |
 
 ---
 
@@ -144,11 +144,11 @@ Can:
 Cannot:
   - Remove other members without current creator-derived authority
   - Officially invite new members without passing current adapter authorization checks
-  - Forge member-update that passes current envelope signature and authority checks; future adapter work will classify unknown/lower-authority updates as unverified-pending or ignored
+  - Make a forged or unauthorized member-update pass current envelope signature and authority checks; future adapter work is expected to classify unknown or lower-authority updates as unverified-pending or ignored
   - Read other spaces (separate GroupKey per space)
 ```
 
-**Mitigation:** Current authorized removal rotates keys so Bob is locked out of new content. Old content remains compromised. Canonical pending-state confirmation is planned adapter work, not current runtime behavior.
+**Mitigation:** Current authorized removal rotates keys so Bob is locked out of new content. Old content remains compromised. Future adapter work is expected to keep unauthorized or lower-authority membership updates explicitly unverified until validated; this is not current runtime behavior.
 
 ### Scenario 3: Recovery Phrase Compromised
 

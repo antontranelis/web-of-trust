@@ -217,15 +217,19 @@ Interface: `SpaceHandle<T>` with `getDoc()`, `transact()`, `onRemoteUpdate()`, `
 
 `@web_of_trust/core` now exposes the pure protocol helper
 `evaluateMemberUpdateDisposition` for member-update state decisions. It evaluates
-an incoming `member-update` signal against the local key generation, known
-admin/member DIDs, and previously seen pending updates, returning one of:
+an incoming `member-update` signal against the local key generation, known admin
+DIDs, known member DIDs for `added` signals, and previously seen pending updates.
+Removals require known-admin authority; known members are not authoritative for
+removal signals. The helper returns one of:
 `store-pending-and-sync`, `store-unverified-pending-and-sync`,
 `upgrade-pending-and-sync`, `ignore-lower-authority`, `ignore-duplicate`,
 `ignore-stale`, or `buffer-future-and-catch-up`.
 
-Interop coverage is in `ProtocolInterop.test.ts` via the spec vector
-`space_membership_messages.member_update_generation_cases` from PR 18. The Yjs
-and Automerge replication adapters have not yet integrated durable pending-state
+Interop coverage is in `ProtocolInterop.test.ts` via the local fixture
+`packages/wot-core/tests/fixtures/wot-spec/phase-1-interop.json` at
+`space_membership_messages.member_update_generation_cases`, synchronized from
+`../wot-spec/test-vectors/phase-1-interop.json` on `spec-vnext`. The Yjs and
+Automerge replication adapters have not yet integrated durable pending-state
 or unverified-pending storage; this docs-only slice only records the core
 semantics now available for future adapter work.
 
