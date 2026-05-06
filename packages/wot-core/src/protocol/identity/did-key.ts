@@ -165,9 +165,6 @@ function decodeBase58Multibase(multibase: string): Uint8Array {
   try {
     return decodeBase58(multibase.slice(1))
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Invalid base58 character:')) {
-      throw new DidKeyValidationError(error.message)
-    }
-    throw error
+    throw new DidKeyValidationError(error instanceof Error ? error.message : String(error))
   }
 }

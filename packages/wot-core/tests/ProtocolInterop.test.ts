@@ -129,8 +129,10 @@ describe('WoT protocol interop vectors', () => {
     expect(bytesToHex(didDocumentHash)).toBe(phase1.did_resolution.jcs_sha256)
 
     didDocument.keyAgreement[0].id = '#mutated-output'
+    if (didDocument.service) didDocument.service[0].serviceEndpoint = 'wss://mutated-output.example.com'
     const didDocumentAgain = await resolver.resolve(phase1.identity.did)
     expect(didDocumentAgain?.keyAgreement).toEqual(phase1.did_resolution.did_document.keyAgreement)
+    expect(didDocumentAgain?.service).toEqual(phase1.did_resolution.did_document.service)
   })
 
   it('derives identity material from the phase-1 vector', async () => {
