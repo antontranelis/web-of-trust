@@ -891,7 +891,20 @@ describe('WoT protocol interop vectors', () => {
 
       expect(
         decideVerificationAttestationAcceptance({
-          payload: verificationAttestationPayload({ jti: `urn:uuid:other-${trust002Challenge.nonce}-bob` }),
+          payload: verificationAttestationPayload({ type: ['WotAttestation'] }),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces,
+        }),
+      ).toEqual({ decision: 'reject', reason: 'not-verification-attestation' })
+
+      expect(
+        decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload({
+            credentialSubject: { id: trust002Challenge.did, claim: 'kann gut programmieren' },
+            jti: undefined,
+          }),
           localDid: trust002Challenge.did,
           activeChallenge,
           now: new Date('2026-04-22T10:04:59Z'),
@@ -948,6 +961,28 @@ describe('WoT protocol interop vectors', () => {
 
       expect(
         decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload({ jti: `urn:uuid:other-${trust002Challenge.nonce}-bob` }),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces: new Set<string>(),
+        }),
+      ).toEqual({ decision: 'remote-unbound', reason: 'no-active-matching-nonce' })
+
+      expect(
+        decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload({
+            jti: `urn:uuid:ver-123e4567-e89b-42d3-a456-426614174000-${trust002Challenge.nonce}-bob`,
+          }),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces: new Set<string>(),
+        }),
+      ).toEqual({ decision: 'remote-unbound', reason: 'no-active-matching-nonce' })
+
+      expect(
+        decideVerificationAttestationAcceptance({
           payload: verificationAttestationPayload({ jti: `urn:uuid:ver-${trust002Challenge.nonce.toUpperCase()}-bob` }),
           localDid: trust002Challenge.did,
           activeChallenge,
@@ -966,6 +1001,16 @@ describe('WoT protocol interop vectors', () => {
         }),
       ).toEqual({ decision: 'reject', reason: 'nonce-consumed' })
       expect([...consumedNonces]).toEqual([trust002Challenge.nonce])
+
+      expect(
+        decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload(),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces: new Set<string>([trust002Challenge.nonce.toUpperCase()]),
+        }),
+      ).toEqual({ decision: 'reject', reason: 'nonce-consumed' })
 
       expect(
         decideVerificationAttestationAcceptance({

@@ -5,7 +5,6 @@ const QR_CHALLENGE_FIELDS = new Set(['did', 'name', 'enc', 'nonce', 'ts', 'broke
 const DID_PATTERN = /^did:[a-z0-9]+:.+/
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const UUID_TOKEN_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi
 const DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
 const DATE_TIME_PARTS_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/
 const BROKER_PROTOCOLS = new Set(['ws:', 'wss:', 'http:', 'https:'])
@@ -103,12 +102,12 @@ export function decideVerificationAttestationAcceptance(
   if (options.payload.sub !== options.localDid || options.payload.credentialSubject?.id !== options.localDid) {
     return { decision: 'reject', reason: 'wrong-subject' }
   }
-  if (!options.payload.jti) return { decision: 'remote-unbound', reason: 'missing-jti-nonce' }
   if (!isVerificationAttestationPayload(options.payload)) {
     return { decision: 'reject', reason: 'not-verification-attestation' }
   }
+  if (!options.payload.jti) return { decision: 'remote-unbound', reason: 'missing-jti-nonce' }
   const activeNonce = options.activeChallenge?.nonce.toLowerCase()
-  if (!options.activeChallenge || !activeNonce || !jtiContainsNonce(options.payload.jti, activeNonce)) {
+  if (!options.activeChallenge || !activeNonce || !jtiMatchesActiveNonce(options.payload.jti, activeNonce)) {
     return { decision: 'remote-unbound', reason: 'no-active-matching-nonce' }
   }
   if (hasConsumedNonce(options.consumedNonces, activeNonce)) {
@@ -161,9 +160,9 @@ function isValidDateTime(value: string): boolean {
 
 function isVerificationAttestationPayload(payload: AttestationVcPayload): boolean {
   return (
+    payload.type.includes('VerifiableCredential') &&
     payload.type.includes('WotAttestation') &&
-    payload.credentialSubject.claim === VERIFICATION_ATTESTATION_CLAIM &&
-    payload.jti?.startsWith('urn:uuid:ver-') === true
+    payload.credentialSubject.claim === VERIFICATION_ATTESTATION_CLAIM
   )
 }
 
@@ -193,12 +192,13 @@ function isValidBrokerHostname(hostname: string): boolean {
   return hostname.split('.').every((part) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(part))
 }
 
-function jtiContainsNonce(jti: string, nonce: string): boolean {
-  UUID_TOKEN_PATTERN.lastIndex = 0
-  for (const match of jti.matchAll(UUID_TOKEN_PATTERN)) {
-    if (match[0].toLowerCase() === nonce) return true
-  }
-  return false
+function jtiMatchesActiveNonce(jti: string, nonce: string): boolean {
+  if (!UUID_PATTERN.test(nonce)) return false
+
+  // Trust 002 models Verification-Attestation IDs as `urn:uuid:ver-<nonce>-<did-suffix>`.
+  const expectedPrefix = `urn:uuid:ver-${nonce}`
+  const normalizedJti = jti.toLowerCase()
+  return normalizedJti === expectedPrefix || normalizedJti.startsWith(`${expectedPrefix}-`)
 }
 
 function hasConsumedNonce(consumedNonces: ReadonlySet<string>, nonce: string): boolean {
