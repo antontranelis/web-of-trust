@@ -821,6 +821,18 @@ describe('WoT protocol interop vectors', () => {
     ).rejects.toThrow()
     await expect(
       createSpaceCapabilityJws({
+        payload: { ...validPayload, audience: 'did:key:%' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow('Invalid capability audience')
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, audience: 'did:key:abc%zz' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow('Invalid capability audience')
+    await expect(
+      createSpaceCapabilityJws({
         payload: { ...validPayload, audience: 'did:web:example.com:alice' },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
@@ -863,6 +875,8 @@ describe('WoT protocol interop vectors', () => {
         name: 'DID audience with trailing garbage',
         payload: { ...validPayload, audience: `${validPayload.audience} trailing` },
       },
+      { name: 'DID audience with bare percent', payload: { ...validPayload, audience: 'did:key:%' } },
+      { name: 'DID audience with invalid percent escape', payload: { ...validPayload, audience: 'did:key:abc%zz' } },
       { name: 'invalid issuedAt date-time', payload: { ...validPayload, issuedAt: '2026-04-22' } },
       { name: 'invalid validUntil date-time', payload: { ...validPayload, validUntil: '2026-10-22' } },
     ]
