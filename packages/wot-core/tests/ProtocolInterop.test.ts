@@ -208,12 +208,23 @@ describe('WoT protocol interop vectors', () => {
   })
 
   it('rejects invalid English BIP39 mnemonics', async () => {
-    await expect(deriveBip39SeedFromMnemonic(
-      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon',
-    )).rejects.toThrow('Invalid BIP39 mnemonic')
-    await expect(deriveBip39SeedFromMnemonic(
-      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon invalid',
-    )).rejects.toThrow('Invalid BIP39 mnemonic')
+    const invalidChecksumMnemonic =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon'
+    const invalidWordMnemonic =
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon invalid'
+
+    await expect(deriveBip39SeedFromMnemonic(invalidChecksumMnemonic)).rejects.toThrow(
+      'Invalid BIP39 mnemonic',
+    )
+    await expect(deriveBip39SeedFromMnemonic(invalidWordMnemonic)).rejects.toThrow(
+      'Invalid BIP39 mnemonic',
+    )
+    await expect(deriveProtocolIdentityFromMnemonic(invalidChecksumMnemonic, cryptoAdapter)).rejects.toThrow(
+      'Invalid BIP39 mnemonic',
+    )
+    await expect(deriveProtocolIdentityFromMnemonic(invalidWordMnemonic, cryptoAdapter)).rejects.toThrow(
+      'Invalid BIP39 mnemonic',
+    )
   })
 
   it('rejects non-64-byte BIP39 seed input for protocol identity derivation', async () => {
