@@ -82,7 +82,7 @@ const trust002Challenge = {
   broker: 'wss://broker.example.com',
 }
 
-function verificationAttestationPayload(overrides: Record<string, unknown> = {}) {
+function verificationAttestationPayload(overrides: Partial<AttestationVcPayload> = {}): AttestationVcPayload {
   return {
     '@context': ['https://www.w3.org/ns/credentials/v2', 'https://web-of-trust.de/vocab/v1'],
     type: ['VerifiableCredential', 'WotAttestation'],
@@ -97,7 +97,7 @@ function verificationAttestationPayload(overrides: Record<string, unknown> = {})
     nbf: 1776852060,
     jti: `urn:uuid:ver-${trust002Challenge.nonce}-bob`,
     ...overrides,
-  }
+  } satisfies AttestationVcPayload
 }
 
 async function createSignedAttestationPayload(payload: Record<string, unknown>): Promise<string> {

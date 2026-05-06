@@ -110,7 +110,10 @@ export function decideVerificationAttestationAcceptance(
   return { decision: 'accept-in-person', nonce: options.activeChallenge.nonce }
 }
 
-function assertStringField(record: Record<string, unknown>, field: string): asserts record is Record<string, string> {
+function assertStringField<K extends string>(
+  record: Record<string, unknown>,
+  field: K,
+): asserts record is Record<string, unknown> & Record<K, string> {
   if (typeof record[field] !== 'string') throw new Error(`Missing QR challenge field: ${field}`)
 }
 
