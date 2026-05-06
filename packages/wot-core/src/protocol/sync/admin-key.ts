@@ -29,7 +29,9 @@ export async function deriveSpaceAdminKeyFromSeedHex(
 }
 
 export function bip39SeedHexToBytes(bip39SeedHex: string): Uint8Array {
-  if (!/^[0-9a-f]+$/i.test(bip39SeedHex)) throw new Error('Invalid BIP39 seed hex')
+  if (typeof bip39SeedHex !== 'string' || !/^[0-9a-f]{128}$/i.test(bip39SeedHex)) {
+    throw new Error('BIP39 seed hex must be exactly 128 hex characters')
+  }
   const seed = hexToBytes(bip39SeedHex)
   if (seed.length !== BIP39_SEED_LENGTH_BYTES) {
     throw new Error(`BIP39 seed hex must decode to ${BIP39_SEED_LENGTH_BYTES} bytes`)

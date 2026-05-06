@@ -158,6 +158,18 @@ function cryptoWithVerify(
   }
 }
 
+const cryptoRejectingHkdf: ProtocolCryptoAdapter = {
+  verifyEd25519: cryptoAdapter.verifyEd25519.bind(cryptoAdapter),
+  sha256: cryptoAdapter.sha256.bind(cryptoAdapter),
+  hkdfSha256: async () => {
+    throw new Error('HKDF should not be called for invalid derivation inputs')
+  },
+  x25519PublicFromSeed: cryptoAdapter.x25519PublicFromSeed.bind(cryptoAdapter),
+  x25519SharedSecret: cryptoAdapter.x25519SharedSecret.bind(cryptoAdapter),
+  aes256GcmEncrypt: cryptoAdapter.aes256GcmEncrypt.bind(cryptoAdapter),
+  aes256GcmDecrypt: cryptoAdapter.aes256GcmDecrypt.bind(cryptoAdapter),
+}
+
 function cryptoWithSharedSecret(sharedSecret: Uint8Array): ProtocolCryptoAdapter {
   return {
     ...cryptoWithVerify(cryptoAdapter.verifyEd25519.bind(cryptoAdapter)),
@@ -1389,33 +1401,33 @@ describe('WoT protocol interop vectors', () => {
     ]
     for (const spaceId of invalidSpaceIds) {
       await expect(
-        deriveSpaceAdminKeyFromSeedHex(phase1.identity.bip39_seed_hex, spaceId, cryptoAdapter),
-      ).rejects.toThrow()
+        deriveSpaceAdminKeyFromSeedHex(phase1.identity.bip39_seed_hex, spaceId, cryptoRejectingHkdf),
+      ).rejects.toThrow('spaceId must be a UUID v4 string')
     }
 
     await expect(
       deriveSpaceAdminKeyFromSeedHex(
         phase1.identity.bip39_seed_hex.slice(0, 126),
         phase1.admin_key_derivation.space_id,
-        cryptoAdapter,
+        cryptoRejectingHkdf,
       ),
-    ).rejects.toThrow()
+    ).rejects.toThrow('BIP39 seed hex must be exactly 128 hex characters')
     await expect(
       deriveSpaceAdminKeyFromSeedHex(
         `${phase1.identity.bip39_seed_hex.slice(0, 127)}z`,
         phase1.admin_key_derivation.space_id,
-        cryptoAdapter,
+        cryptoRejectingHkdf,
       ),
-    ).rejects.toThrow()
+    ).rejects.toThrow('BIP39 seed hex must be exactly 128 hex characters')
   })
 
   it('rejects invalid personal doc derivation inputs before deriving key material', async () => {
     await expect(
-      derivePersonalDocFromSeedHex(phase1.identity.bip39_seed_hex.slice(0, 126), cryptoAdapter),
-    ).rejects.toThrow()
+      derivePersonalDocFromSeedHex(phase1.identity.bip39_seed_hex.slice(0, 126), cryptoRejectingHkdf),
+    ).rejects.toThrow('BIP39 seed hex must be exactly 128 hex characters')
     await expect(
-      derivePersonalDocFromSeedHex(`${phase1.identity.bip39_seed_hex.slice(0, 127)}z`, cryptoAdapter),
-    ).rejects.toThrow()
+      derivePersonalDocFromSeedHex(`${phase1.identity.bip39_seed_hex.slice(0, 127)}z`, cryptoRejectingHkdf),
+    ).rejects.toThrow('BIP39 seed hex must be exactly 128 hex characters')
   })
 
   it('formats personal document IDs from exactly 32-byte Personal Doc keys', () => {
