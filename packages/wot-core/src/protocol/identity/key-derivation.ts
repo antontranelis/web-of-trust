@@ -39,6 +39,7 @@ async function deriveProtocolIdentityFromSeedBytes(
   return { ed25519Seed, ed25519PublicKey, x25519Seed, x25519PublicKey, did, kid: `${did}#sig-0` }
 }
 
+// wot-identity@0.1 Identity 001 fixes BIP39 seed derivation to passphrase="" and the full 64-byte seed; English is the default wordlist.
 export async function deriveBip39SeedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
   const [{ mnemonicToSeed, validateMnemonic }, { wordlist: englishWordlist }] = await Promise.all([
     import('@scure/bip39'),
@@ -50,6 +51,7 @@ export async function deriveBip39SeedFromMnemonic(mnemonic: string): Promise<Uin
   return mnemonicToSeed(mnemonic, BIP39_EMPTY_PASSPHRASE)
 }
 
+// wot-identity@0.1 Identity 001 derives protocol identity material from the full BIP39 seed without slicing.
 export async function deriveProtocolIdentityFromMnemonic(
   mnemonic: string,
   cryptoAdapter: ProtocolCryptoAdapter,
