@@ -368,7 +368,7 @@ No runtime module is marked fully missing for `wot-identity@0.1`: bare `did:key`
 
 ## 9. Out of scope for this slice
 
-- No code changes (this slice is inventory/planning only).
+- No changes outside the protocol-core reference slice, focused tests, and conformance inventory/docs.
 - No edits to `../wot-spec/` (forbidden).
 - No edits to `apps/` or top-level `packages/` runtime code (forbidden).
 - No automation workflow changes (`.github/` forbidden).

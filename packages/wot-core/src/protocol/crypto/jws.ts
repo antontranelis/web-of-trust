@@ -22,6 +22,7 @@ export function decodeJws<Header = Record<string, unknown>, Payload = Record<str
   const parts = jws.split('.')
   if (parts.length !== 3) throw new Error('Invalid JWS compact serialization')
   const [encodedHeader, encodedPayload, encodedSignature] = parts
+  // Identity 002 requires compact JWS serialization with all three segments present.
   if (!encodedHeader || !encodedPayload || !encodedSignature) throw new Error('Invalid JWS compact serialization')
   return {
     header: JSON.parse(new TextDecoder().decode(decodeBase64Url(encodedHeader))) as Header,
@@ -69,5 +70,6 @@ export async function verifyJwsWithPublicKey(
 }
 
 function assertJwsKid(kid: unknown): asserts kid is string {
+  // Identity 002 requires a kid in every WoT JWS.
   if (typeof kid !== 'string' || kid.length === 0) throw new Error('Missing JWS kid')
 }
