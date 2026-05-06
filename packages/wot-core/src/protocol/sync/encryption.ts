@@ -8,6 +8,7 @@ const AES_256_KEY_LENGTH = 32
 const AES_GCM_TAG_LENGTH = 16
 
 // Sync 001 fixes ECIES key sizes, AES-GCM nonces, and ciphertext+tag framing.
+// Empty plaintext policy is conservative reference hardening; see wot-spec#33.
 
 export interface EciesMessage {
   epk: string
@@ -73,6 +74,7 @@ export async function deriveEciesMaterial(options: DeriveEciesMaterialOptions): 
 
 export async function encryptEcies(options: EncryptEciesOptions): Promise<EciesMessage> {
   assertLength(options.nonce, NONCE_LENGTH, 'ECIES nonce')
+  // NEEDS CLARIFICATION(wot-spec#33): AES-GCM permits empty plaintext, but WoT ECIES carries meaningful signed inbox/control payloads.
   assertNonEmpty(options.plaintext, 'ECIES plaintext')
   const material = await deriveEciesMaterial(options)
   const ciphertext = await options.crypto.aes256GcmEncrypt(material.aesKey, options.nonce, options.plaintext)
@@ -114,6 +116,7 @@ export async function deriveLogPayloadNonce(
 
 export async function encryptLogPayload(options: EncryptLogPayloadOptions): Promise<LogPayloadEncryptionResult> {
   assertLength(options.spaceContentKey, AES_256_KEY_LENGTH, 'Space content key')
+  // NEEDS CLARIFICATION(wot-spec#33): Sync 002 describes log data as a CRDT update; reject empty updates as conservative hardening.
   assertNonEmpty(options.plaintext, 'Log payload plaintext')
   const nonce = await deriveLogPayloadNonce(options.crypto, options.deviceId, options.seq)
   const ciphertextTag = await options.crypto.aes256GcmEncrypt(options.spaceContentKey, nonce, options.plaintext)
@@ -142,6 +145,7 @@ function assertLength(bytes: Uint8Array, expectedLength: number, name: string): 
 }
 
 function assertEciesMessage(value: unknown): asserts value is EciesMessage {
+  // Sync 001 encrypted message format is the object { epk, nonce, ciphertext }.
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('Invalid ECIES message')
 }
 
@@ -150,10 +154,12 @@ function assertNonEmpty(bytes: Uint8Array, name: string): void {
 }
 
 function assertCiphertextTag(bytes: Uint8Array, name: string): void {
+  // NEEDS CLARIFICATION(wot-spec#33): require ciphertext bytes in addition to the 16-byte GCM tag.
   if (bytes.length <= AES_GCM_TAG_LENGTH) throw new Error(`${name} must include ciphertext and authentication tag`)
 }
 
 function assertEncryptedBlob(bytes: Uint8Array, name: string): void {
+  // Sync 001 frames log data as nonce || ciphertext || tag; wot-spec#33 tracks whether zero ciphertext bytes are valid.
   if (bytes.length <= NONCE_LENGTH + AES_GCM_TAG_LENGTH) throw new Error(`Invalid ${name}`)
 }
 

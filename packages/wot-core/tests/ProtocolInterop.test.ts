@@ -1011,12 +1011,21 @@ describe('WoT protocol interop vectors', () => {
     })
     const tamperedCiphertext = decodeBase64Url(eciesMessage.ciphertext)
     tamperedCiphertext[0] ^= 0xff
+    const tagTamperedCiphertext = decodeBase64Url(eciesMessage.ciphertext)
+    tagTamperedCiphertext[tagTamperedCiphertext.length - 1] ^= 0xff
 
     await expect(
       decryptEcies({
         crypto: cryptoAdapter,
         recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
         message: { ...eciesMessage, ciphertext: encodeBase64Url(tamperedCiphertext) },
+      }),
+    ).rejects.toThrow()
+    await expect(
+      decryptEcies({
+        crypto: cryptoAdapter,
+        recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
+        message: { ...eciesMessage, ciphertext: encodeBase64Url(tagTamperedCiphertext) },
       }),
     ).rejects.toThrow()
     await expect(
@@ -1076,9 +1085,18 @@ describe('WoT protocol interop vectors', () => {
     })
     const tamperedBlob = new Uint8Array(encryptedLogPayload.blob)
     tamperedBlob[tamperedBlob.length - 1] ^= 0xff
+    const bodyTamperedBlob = new Uint8Array(encryptedLogPayload.blob)
+    bodyTamperedBlob[encryptedLogPayload.nonce.length] ^= 0xff
     const wrongKey = hexToBytes(phase1.log_payload_encryption.space_content_key_hex)
     wrongKey[0] ^= 0xff
 
+    await expect(
+      decryptLogPayload({
+        crypto: cryptoAdapter,
+        spaceContentKey: hexToBytes(phase1.log_payload_encryption.space_content_key_hex),
+        blob: bodyTamperedBlob,
+      }),
+    ).rejects.toThrow()
     await expect(
       decryptLogPayload({
         crypto: cryptoAdapter,
