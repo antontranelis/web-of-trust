@@ -105,11 +105,19 @@ Captured for follow-up. None of these are decided here.
 
 ## Scope of This Slice
 
-This slice is **documentation only**.
+This slice adds the protocol-level snapshot/full-state disposition helper for the
+normative Sync 002 safety rules and records prose-backed coverage for it.
 
-- No package exports change.
-- No runtime code changes.
+- `packages/wot-core/src/protocol/sync/snapshot-disposition.ts` classifies
+  caller-supplied snapshot metadata against the expected `docId` and
+  `keyGeneration`.
+- The helper is exported from `packages/wot-core/src/protocol/index.ts`.
+- `packages/wot-core/tests/SyncSnapshotDisposition.test.ts` covers matching
+  metadata, mismatches, invalid generations, blocked-by-key outcomes, absent
+  coverage heads, optimization eligibility, and no-rollback guidance.
 - No legacy compatibility shims are introduced or removed by this slice.
-- No tests are added or removed. Future slices add the tests their behavior requires.
+- No snapshot wire-format parser, encryption/decryption, CRDT import/merge,
+  coverage-head comparison, storage, network, adapter, broker, or application
+  orchestration is introduced.
 
 If a follow-up reading uncovers a normative gap, raise it as a `wot-spec` PR before changing TypeScript behavior.
