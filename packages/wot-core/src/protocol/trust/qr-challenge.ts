@@ -7,7 +7,8 @@ const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const UUID_TOKEN_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi
 const DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
-const BROKER_PATTERN = /^(wss?|https?):\/\/.+/
+const DATE_TIME_PARTS_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/
+const BROKER_PROTOCOLS = new Set(['ws:', 'wss:', 'http:', 'https:'])
 const ACTIVE_CHALLENGE_MAX_AGE_MS = 5 * 60 * 1000
 
 export interface QrChallenge {
@@ -66,9 +67,7 @@ export function parseQrChallenge(rawJson: string): QrChallenge {
   if (decodeBase64Url(challenge.enc).byteLength !== 32) throw new Error('Invalid QR challenge enc length')
   if (!UUID_PATTERN.test(challenge.nonce)) throw new Error('Invalid QR challenge nonce')
   if (!isValidDateTime(challenge.ts)) throw new Error('Invalid QR challenge ts')
-  if (challenge.broker !== undefined && !BROKER_PATTERN.test(challenge.broker)) {
-    throw new Error('Invalid QR challenge broker')
-  }
+  if (challenge.broker !== undefined) assertValidBroker(challenge.broker)
 
   const result: QrChallenge = {
     did: challenge.did,
@@ -125,6 +124,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidDateTime(value: string): boolean {
   return DATE_TIME_PATTERN.test(value) && Number.isFinite(Date.parse(value))
+}
+
+function assertValidBroker(value: string): void {
+  if (value.trim() !== value || /\s/.test(value)) throw new Error('Invalid QR challenge broker')
+
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('Invalid QR challenge broker')
+  }
+
+  if (!BROKER_PROTOCOLS.has(url.protocol)) throw new Error('Invalid QR challenge broker')
+  if (url.username || url.password) throw new Error('Invalid QR challenge broker')
+  if (!isValidBrokerHostname(url.hostname)) throw new Error('Invalid QR challenge broker')
+  if (url.port && !/^\d+$/.test(url.port)) throw new Error('Invalid QR challenge broker')
+}
+
+function isValidBrokerHostname(hostname: string): boolean {
+  if (hostname.length === 0) return false
+  if (hostname === 'localhost') return true
+  if (hostname.startsWith('[') && hostname.endsWith(']')) return true
+  if (/^\d+(?:\.\d+){3}$/.test(hostname)) {
+    return hostname.split('.').every((part) => Number(part) >= 0 && Number(part) <= 255)
+  }
+  return hostname.split('.').every((part) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(part))
 }
 
 function jtiContainsNonce(jti: string, nonce: string): boolean {

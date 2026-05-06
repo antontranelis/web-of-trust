@@ -823,6 +823,8 @@ describe('WoT protocol interop vectors', () => {
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, nonce: 'not-a-uuid' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, ts: 'not-a-date' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'ftp://broker.example.com' }))).toThrow()
+      expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'wss://user:pass@broker.example.com' }))).toThrow()
+      expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'wss://bad_host.example.com' }))).toThrow()
     })
 
     it('requires enc to be base64url and decode to exactly 32 bytes', () => {
