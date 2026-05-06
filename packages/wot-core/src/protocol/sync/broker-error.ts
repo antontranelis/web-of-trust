@@ -62,7 +62,7 @@ function assertRecord(value: unknown, name: string): Record<string, unknown> {
 }
 
 function assertHumanReadableMessage(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error('Invalid broker error message')
   }
 }

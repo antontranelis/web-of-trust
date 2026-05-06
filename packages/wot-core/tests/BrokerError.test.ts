@@ -56,6 +56,7 @@ describe('Sync 003 broker error catalog', () => {
     const invalidMessages = [
       { code: 'DOC_NOT_FOUND' },
       { code: 'DOC_NOT_FOUND', message: '' },
+      { code: 'DOC_NOT_FOUND', message: '   ' },
       { code: 'DOC_NOT_FOUND', message: 404 },
       { code: 'DOC_NOT_FOUND', message: null },
     ]
