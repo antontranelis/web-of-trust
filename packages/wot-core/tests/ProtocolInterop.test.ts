@@ -123,6 +123,21 @@ function textToBase64Url(text: string): string {
   return encodeBase64Url(new TextEncoder().encode(text))
 }
 
+async function createSpaceCapabilityTestJws(
+  payload: Record<string, unknown>,
+  header: Record<string, JsonValue> = {
+    alg: 'EdDSA',
+    kid: `wot:space:${payload.spaceId}#cap-${payload.generation}`,
+    typ: 'wot-capability+jwt',
+  },
+): Promise<string> {
+  return createJcsEd25519Jws(
+    header,
+    payload as JsonValue,
+    hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+  )
+}
+
 function cryptoWithVerify(
   verifyEd25519: ProtocolCryptoAdapter['verifyEd25519'],
 ): ProtocolCryptoAdapter {
@@ -770,6 +785,114 @@ describe('WoT protocol interop vectors', () => {
 
     expect(parsed.from).not.toBe(payload.authorKid.split('#', 1)[0])
     expect(payload.authorKid).toBe(phase1.log_entry_jws.payload.authorKid)
+  })
+
+  it('validates space capability payload schema before signing', async () => {
+    const validPayload = phase1.space_capability_jws.payload
+
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, spaceId: 'not-a-uuid' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow('Invalid capability spaceId')
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, spaceId: validPayload.spaceId.toUpperCase() },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow('Invalid capability spaceId')
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, spaceId: '7f3a2b10-4c5d-5e6f-8a7b-9c0d1e2f3a4b' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow()
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, audience: 'web-of-trust:alice' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow()
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, permissions: ['read', 'read'] },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow()
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, validUntil: '2026-10-22' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).rejects.toThrow()
+  })
+
+  it('rejects malformed or context-mismatched space capability JWS values before returning a payload', async () => {
+    const validPayload = phase1.space_capability_jws.payload
+    const publicKey = ed25519MultibaseToPublicKeyBytes(phase1.space_capability_jws.verification_key_multibase)
+    const verifyOptions = {
+      crypto: cryptoAdapter,
+      publicKey,
+      expectedSpaceId: validPayload.spaceId,
+      expectedAudience: validPayload.audience,
+      expectedGeneration: validPayload.generation,
+      now: new Date('2026-04-23T10:00:00Z'),
+    }
+
+    const invalidPayloads = [
+      { name: 'extra field', payload: { ...validPayload, brokerOperation: 'sync-request' } },
+      { name: 'duplicate permission', payload: { ...validPayload, permissions: ['read', 'read'] } },
+      { name: 'unknown permission', payload: { ...validPayload, permissions: ['read', 'admin'] } },
+      { name: 'invalid UUID spaceId', payload: { ...validPayload, spaceId: '7f3a2b10' } },
+      { name: 'uppercase UUID spaceId', payload: { ...validPayload, spaceId: validPayload.spaceId.toUpperCase() } },
+      { name: 'non-v4 UUID spaceId', payload: { ...validPayload, spaceId: '7f3a2b10-4c5d-5e6f-8a7b-9c0d1e2f3a4b' } },
+      { name: 'invalid DID audience', payload: { ...validPayload, audience: 'alice' } },
+      { name: 'invalid issuedAt date-time', payload: { ...validPayload, issuedAt: '2026-04-22' } },
+      { name: 'invalid validUntil date-time', payload: { ...validPayload, validUntil: '2026-10-22' } },
+    ]
+
+    for (const { name, payload } of invalidPayloads) {
+      await expect(
+        verifySpaceCapabilityJws(await createSpaceCapabilityTestJws(payload), verifyOptions),
+        name,
+      ).rejects.toThrow()
+    }
+
+    await expect(
+      verifySpaceCapabilityJws(
+        await createSpaceCapabilityTestJws(
+          { ...validPayload, validUntil: '2026-04-23T10:00:00Z' },
+        ),
+        verifyOptions,
+      ),
+    ).rejects.toThrow()
+    await expect(
+      verifySpaceCapabilityJws(
+        await createSpaceCapabilityTestJws(validPayload, {
+          alg: 'EdDSA',
+          kid: `wot:space:${validPayload.spaceId}#cap-${validPayload.generation}`,
+          typ: 'jwt',
+        }),
+        verifyOptions,
+      ),
+    ).rejects.toThrow()
+    await expect(
+      verifySpaceCapabilityJws(
+        await createSpaceCapabilityTestJws(validPayload, {
+          alg: 'EdDSA',
+          kid: `wot:space:${validPayload.spaceId}#cap-${validPayload.generation + 1}`,
+          typ: 'wot-capability+jwt',
+        }),
+        verifyOptions,
+      ),
+    ).rejects.toThrow()
+    await expect(
+      verifySpaceCapabilityJws(phase1.space_capability_jws.jws, {
+        ...verifyOptions,
+        expectedAudience: 'did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH',
+      }),
+    ).rejects.toThrow()
   })
 
   it('matches the space membership message vectors', () => {
