@@ -3,17 +3,28 @@ export const MEMBER_UPDATE_MESSAGE_TYPE = 'https://web-of-trust.de/protocols/mem
 
 export type MemberUpdateAction = 'added' | 'removed'
 
-export interface DidcommPlaintextMessage<Body> {
+export interface DidcommPlaintextMessage<Body = Record<string, unknown>> {
   id: string
   typ: typeof DIDCOMM_PLAINTEXT_TYP
   type: string
   from: string
-  to: string[]
+  to?: string[]
   created_time: number
   thid?: string
   pthid?: string
   body: Body
   [key: string]: unknown
+}
+
+export interface CreatePlaintextMessageOptions<Body extends object> {
+  id: string
+  type: string
+  from: string
+  to?: string[]
+  createdTime: number
+  body: Body
+  thid?: string
+  pthid?: string
 }
 
 export interface MemberUpdateBody {
@@ -38,18 +49,53 @@ export interface CreateMemberUpdateMessageOptions {
   pthid?: string
 }
 
-export function createMemberUpdateMessage(options: CreateMemberUpdateMessageOptions): MemberUpdateMessage {
-  const message: MemberUpdateMessage = {
+export function createPlaintextMessage<Body extends object>(
+  options: CreatePlaintextMessageOptions<Body>,
+): DidcommPlaintextMessage<Body> {
+  const message: DidcommPlaintextMessage<Body> = {
     id: options.id,
     typ: DIDCOMM_PLAINTEXT_TYP,
-    type: MEMBER_UPDATE_MESSAGE_TYPE,
+    type: options.type,
     from: options.from,
-    to: options.to,
     created_time: options.createdTime,
     body: options.body,
   }
+  if (options.to !== undefined) message.to = options.to
   if (options.thid !== undefined) message.thid = options.thid
   if (options.pthid !== undefined) message.pthid = options.pthid
+  assertPlaintextMessage(message)
+  return message
+}
+
+export function parsePlaintextMessage(value: unknown): DidcommPlaintextMessage {
+  assertPlaintextMessage(value)
+  return value
+}
+
+export function assertPlaintextMessage(value: unknown): asserts value is DidcommPlaintextMessage {
+  const message = assertRecord(value, 'plaintext message')
+  assertUuid(message.id, 'plaintext message id')
+  if (message.typ !== DIDCOMM_PLAINTEXT_TYP) throw new Error('Invalid plaintext message typ')
+  assertUri(message.type, 'plaintext message type')
+  assertDid(message.from, 'plaintext message from')
+  if (message.to !== undefined) assertDidArray(message.to, 'plaintext message to')
+  assertNonNegativeInteger(message.created_time, 'plaintext message created_time')
+  if (message.thid !== undefined) assertNonEmptyString(message.thid, 'plaintext message thid')
+  if (message.pthid !== undefined) assertNonEmptyString(message.pthid, 'plaintext message pthid')
+  assertRecord(message.body, 'plaintext message body')
+}
+
+export function createMemberUpdateMessage(options: CreateMemberUpdateMessageOptions): MemberUpdateMessage {
+  const message = createPlaintextMessage({
+    id: options.id,
+    type: MEMBER_UPDATE_MESSAGE_TYPE,
+    from: options.from,
+    to: options.to,
+    createdTime: options.createdTime,
+    body: options.body,
+    thid: options.thid,
+    pthid: options.pthid,
+  }) as unknown as MemberUpdateMessage
   assertMemberUpdateMessage(message)
   return message
 }
@@ -60,16 +106,12 @@ export function parseMemberUpdateMessage(value: unknown): MemberUpdateMessage {
 }
 
 export function assertMemberUpdateMessage(value: unknown): asserts value is MemberUpdateMessage {
-  const message = assertRecord(value, 'member-update message')
-  assertUuid(message.id, 'member-update id')
-  if (message.typ !== DIDCOMM_PLAINTEXT_TYP) throw new Error('Invalid member-update typ')
-  if (message.type !== MEMBER_UPDATE_MESSAGE_TYPE) throw new Error('Invalid member-update type')
-  assertDid(message.from, 'member-update from')
-  assertDidArray(message.to, 'member-update to')
-  assertNonNegativeInteger(message.created_time, 'member-update created_time')
-  if (message.thid !== undefined) assertUuid(message.thid, 'member-update thid')
-  if (message.pthid !== undefined) assertUuid(message.pthid, 'member-update pthid')
-  assertMemberUpdateBody(message.body)
+  assertPlaintextMessage(value)
+  if (value.type !== MEMBER_UPDATE_MESSAGE_TYPE) throw new Error('Invalid member-update type')
+  assertDidArray(value.to, 'member-update to')
+  if (value.thid !== undefined) assertUuid(value.thid, 'member-update thid')
+  if (value.pthid !== undefined) assertUuid(value.pthid, 'member-update pthid')
+  assertMemberUpdateBody(value.body)
 }
 
 export function assertMemberUpdateBody(value: unknown): asserts value is MemberUpdateBody {
@@ -114,4 +156,17 @@ function assertDidArray(value: unknown, name: string): void {
 
 function assertNonNegativeInteger(value: unknown, name: string): void {
   if (!Number.isInteger(value) || (value as number) < 0) throw new Error(`Invalid ${name}`)
+}
+
+function assertNonEmptyString(value: unknown, name: string): void {
+  if (typeof value !== 'string' || value.length === 0) throw new Error(`Invalid ${name}`)
+}
+
+function assertUri(value: unknown, name: string): void {
+  if (typeof value !== 'string') throw new Error(`Invalid ${name}`)
+  try {
+    new URL(value)
+  } catch {
+    throw new Error(`Invalid ${name}`)
+  }
 }

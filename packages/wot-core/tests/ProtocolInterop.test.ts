@@ -9,8 +9,10 @@ import {
   createJcsEd25519Jws,
   createJcsEd25519JwsWithSigner,
   createLogEntryJws,
+  createLogEntryMessage,
   createMemberUpdateMessage,
   decideVerificationAttestationAcceptance,
+  createPlaintextMessage,
   createSdJwtVcCompact,
   createSpaceCapabilityJws,
   decodeJws,
@@ -40,7 +42,9 @@ import {
   verifyDeviceKeyBindingJws,
   verifyJwsWithPublicKey,
   verifyLogEntryJws,
+  parseLogEntryMessage,
   parseMemberUpdateMessage,
+  parsePlaintextMessage,
   verifySdJwtVc,
   verifySpaceCapabilityJws,
   resolveDidKey,
@@ -131,6 +135,8 @@ function cryptoWithVerify(
     aes256GcmDecrypt: cryptoAdapter.aes256GcmDecrypt.bind(cryptoAdapter),
   }
 }
+
+const LOG_ENTRY_MESSAGE_TYPE = 'https://web-of-trust.de/protocols/log-entry/1.0'
 
 describe('WoT protocol interop vectors', () => {
   it('resolves bare did:key through the protocol DidResolver surface', async () => {
@@ -652,6 +658,93 @@ describe('WoT protocol interop vectors', () => {
       now: new Date('2026-04-23T10:00:00Z'),
     })
     expect(capabilityPayload).toEqual(phase1.space_capability_jws.payload)
+  })
+
+  it('rejects schema-invalid log-entry payloads inside signed JWS objects', async () => {
+    const validPayload = phase1.log_entry_jws.payload
+    const signingSeed = hexToBytes(phase1.identity.ed25519_seed_hex)
+    const invalidPayloads = [
+      ['additional payload property', { ...validPayload, extra: true }],
+      ['invalid seq integer', { ...validPayload, seq: 42.5 }],
+      ['invalid deviceId UUID', { ...validPayload, deviceId: 'not-a-uuid' }],
+      ['invalid docId UUID', { ...validPayload, docId: 'not-a-uuid' }],
+      ['invalid authorKid DID URL', { ...validPayload, authorKid: phase1.identity.did }],
+      ['invalid keyGeneration integer', { ...validPayload, keyGeneration: -1 }],
+      ['invalid base64url data', { ...validPayload, data: 'abc=' }],
+      ['invalid timestamp date-time', { ...validPayload, timestamp: '2026-04-17 10:00:00' }],
+    ] as const
+
+    for (const [name, payload] of invalidPayloads) {
+      const jws = await createLogEntryJws({ payload: payload as any, signingSeed })
+      await expect(verifyLogEntryJws(jws, { crypto: cryptoAdapter }), name).rejects.toThrow()
+    }
+  })
+
+  it('matches the DIDComm-compatible plaintext envelope vector', () => {
+    const message = createPlaintextMessage({
+      id: phase1.didcomm_plaintext_envelope.message.id,
+      type: phase1.didcomm_plaintext_envelope.message.type,
+      from: phase1.didcomm_plaintext_envelope.message.from,
+      to: phase1.didcomm_plaintext_envelope.message.to,
+      createdTime: phase1.didcomm_plaintext_envelope.message.created_time,
+      thid: phase1.didcomm_plaintext_envelope.message.thid,
+      body: phase1.didcomm_plaintext_envelope.message.body,
+    })
+
+    expect(message).toEqual(phase1.didcomm_plaintext_envelope.message)
+    expect(parsePlaintextMessage(message)).toEqual(message)
+  })
+
+  it('rejects invalid plaintext envelope shapes', () => {
+    const validMessage = phase1.didcomm_plaintext_envelope.message
+    const invalidMessages = [
+      ['invalid typ', { ...validMessage, typ: 'application/json' }],
+      ['invalid created_time', { ...validMessage, created_time: '1776514800' }],
+      ['empty to', { ...validMessage, to: [] }],
+      ['invalid to DID', { ...validMessage, to: ['not-a-did'] }],
+      ['invalid body', { ...validMessage, body: phase1.log_entry_jws.jws }],
+    ] as const
+
+    for (const [name, message] of invalidMessages) {
+      expect(() => parsePlaintextMessage(message), name).toThrow()
+    }
+  })
+
+  it('treats log-entry envelope body entries as opaque JWS compact strings', () => {
+    const message = createLogEntryMessage({
+      id: phase1.didcomm_plaintext_envelope.message.id,
+      from: 'did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH',
+      to: [phase1.identity.did],
+      createdTime: phase1.didcomm_plaintext_envelope.message.created_time,
+      entry: phase1.log_entry_jws.jws,
+    })
+
+    expect(message).toEqual({
+      id: phase1.didcomm_plaintext_envelope.message.id,
+      typ: 'application/didcomm-plain+json',
+      type: LOG_ENTRY_MESSAGE_TYPE,
+      from: 'did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH',
+      to: [phase1.identity.did],
+      created_time: phase1.didcomm_plaintext_envelope.message.created_time,
+      body: { entry: phase1.log_entry_jws.jws },
+    })
+    expect(parseLogEntryMessage(message).body.entry).toBe(phase1.log_entry_jws.jws)
+  })
+
+  it('uses the inner log-entry JWS authorKid as the authority anchor, not envelope from', async () => {
+    const message = createLogEntryMessage({
+      id: phase1.didcomm_plaintext_envelope.message.id,
+      from: 'did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH',
+      to: [phase1.identity.did],
+      createdTime: phase1.didcomm_plaintext_envelope.message.created_time,
+      entry: phase1.log_entry_jws.jws,
+    })
+
+    const parsed = parseLogEntryMessage(message)
+    const payload = await verifyLogEntryJws(parsed.body.entry, { crypto: cryptoAdapter })
+
+    expect(parsed.from).not.toBe(payload.authorKid.split('#', 1)[0])
+    expect(payload.authorKid).toBe(phase1.log_entry_jws.payload.authorKid)
   })
 
   it('matches the space membership message vectors', () => {
