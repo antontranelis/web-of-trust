@@ -19,6 +19,8 @@ import {
   derivePersonalDocFromSeedHex,
   deriveEciesMaterial,
   deriveLogPayloadNonce,
+  deriveBip39SeedFromMnemonic,
+  deriveProtocolIdentityFromMnemonic,
   deriveSpaceAdminKeyFromSeedHex,
   deriveProtocolIdentityFromSeedHex,
   didKeyToPublicKeyBytes,
@@ -184,6 +186,34 @@ describe('WoT protocol interop vectors', () => {
     const didDocumentHash = await cryptoAdapter.sha256(canonicalizeToBytes(didDocument as unknown as JsonValue))
     expect(didDocument).toEqual(phase1.did_resolution.did_document)
     expect(bytesToHex(didDocumentHash)).toBe(phase1.did_resolution.jcs_sha256)
+  })
+
+  it('derives the full BIP39 seed from the phase-1 English mnemonic', async () => {
+    const seed = await deriveBip39SeedFromMnemonic(phase1.identity.mnemonic)
+
+    expect(seed).toHaveLength(64)
+    expect(bytesToHex(seed)).toBe(phase1.identity.bip39_seed_hex)
+  })
+
+  it('derives identity material from the phase-1 mnemonic through the full-seed path', async () => {
+    const fromMnemonic = await deriveProtocolIdentityFromMnemonic(phase1.identity.mnemonic, cryptoAdapter)
+    const fromSeedHex = await deriveProtocolIdentityFromSeedHex(phase1.identity.bip39_seed_hex, cryptoAdapter)
+
+    expect(bytesToHex(fromMnemonic.ed25519Seed)).toBe(bytesToHex(fromSeedHex.ed25519Seed))
+    expect(bytesToHex(fromMnemonic.ed25519PublicKey)).toBe(bytesToHex(fromSeedHex.ed25519PublicKey))
+    expect(bytesToHex(fromMnemonic.x25519Seed)).toBe(bytesToHex(fromSeedHex.x25519Seed))
+    expect(bytesToHex(fromMnemonic.x25519PublicKey)).toBe(bytesToHex(fromSeedHex.x25519PublicKey))
+    expect(fromMnemonic.did).toBe(fromSeedHex.did)
+    expect(fromMnemonic.kid).toBe(fromSeedHex.kid)
+  })
+
+  it('rejects invalid English BIP39 mnemonics', async () => {
+    await expect(deriveBip39SeedFromMnemonic(
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon',
+    )).rejects.toThrow('Invalid BIP39 mnemonic')
+    await expect(deriveBip39SeedFromMnemonic(
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon invalid',
+    )).rejects.toThrow('Invalid BIP39 mnemonic')
   })
 
   it('canonicalizes and verifies the attestation VC-JWS vector', async () => {

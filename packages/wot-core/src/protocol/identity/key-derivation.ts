@@ -1,10 +1,13 @@
 import * as ed25519 from '@noble/ed25519'
-import { hexToBytes } from '../crypto/hex'
+import { mnemonicToSeed, validateMnemonic } from '@scure/bip39'
+import { wordlist as englishWordlist } from '@scure/bip39/wordlists/english.js'
+import { bytesToHex, hexToBytes } from '../crypto/hex'
 import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { publicKeyToDidKey } from './did-key'
 
 const IDENTITY_INFO = 'wot/identity/ed25519/v1'
 const ENCRYPTION_INFO = 'wot/encryption/x25519/v1'
+const BIP39_EMPTY_PASSPHRASE = ''
 
 export interface ProtocolIdentityMaterial {
   ed25519Seed: Uint8Array
@@ -26,4 +29,18 @@ export async function deriveProtocolIdentityFromSeedHex(
   const x25519PublicKey = await cryptoAdapter.x25519PublicFromSeed(x25519Seed)
   const did = publicKeyToDidKey(ed25519PublicKey)
   return { ed25519Seed, ed25519PublicKey, x25519Seed, x25519PublicKey, did, kid: `${did}#sig-0` }
+}
+
+export async function deriveBip39SeedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
+  if (!validateMnemonic(mnemonic, englishWordlist)) throw new Error('Invalid BIP39 mnemonic')
+
+  return mnemonicToSeed(mnemonic, BIP39_EMPTY_PASSPHRASE)
+}
+
+export async function deriveProtocolIdentityFromMnemonic(
+  mnemonic: string,
+  cryptoAdapter: ProtocolCryptoAdapter,
+): Promise<ProtocolIdentityMaterial> {
+  const seed = await deriveBip39SeedFromMnemonic(mnemonic)
+  return deriveProtocolIdentityFromSeedHex(bytesToHex(seed), cryptoAdapter)
 }
