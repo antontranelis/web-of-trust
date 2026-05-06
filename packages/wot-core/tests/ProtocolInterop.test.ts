@@ -812,16 +812,21 @@ describe('WoT protocol interop vectors', () => {
       })).nonce).toBe(trust002Challenge.nonce)
 
       for (const field of ['did', 'name', 'enc', 'nonce', 'ts'] as const) {
-        const invalid = { ...trust002Challenge }
-        delete invalid[field]
+        const invalid = Object.fromEntries(
+          Object.entries(trust002Challenge).filter(([key]) => key !== field),
+        )
         expect(() => parseQrChallenge(JSON.stringify(invalid)), `missing ${field}`).toThrow()
       }
 
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, extra: true }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, did: 'alice' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, name: '' }))).toThrow()
+      expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, name: 123 }))).toThrow(
+        'Invalid QR challenge field: name',
+      )
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, nonce: 'not-a-uuid' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, ts: 'not-a-date' }))).toThrow()
+      expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, ts: '2026-02-31T10:00:00Z' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'ftp://broker.example.com' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'wss://user:pass@broker.example.com' }))).toThrow()
       expect(() => parseQrChallenge(JSON.stringify({ ...trust002Challenge, broker: 'wss://bad_host.example.com' }))).toThrow()
@@ -866,6 +871,28 @@ describe('WoT protocol interop vectors', () => {
         nonce: trust002Challenge.nonce,
       })
       expect(consumedNonces.size).toBe(0)
+
+      expect(
+        decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload({ jti: `urn:uuid:other-${trust002Challenge.nonce}-bob` }),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces,
+        }),
+      ).toEqual({ decision: 'accept-in-person', nonce: trust002Challenge.nonce })
+
+      expect(
+        decideVerificationAttestationAcceptance({
+          payload: verificationAttestationPayload({
+            jti: `urn:uuid:ver-123e4567-e89b-42d3-a456-426614174000-${trust002Challenge.nonce}-bob`,
+          }),
+          localDid: trust002Challenge.did,
+          activeChallenge,
+          now: new Date('2026-04-22T10:04:59Z'),
+          consumedNonces,
+        }),
+      ).toEqual({ decision: 'accept-in-person', nonce: trust002Challenge.nonce })
 
       expect(
         decideVerificationAttestationAcceptance({
@@ -952,28 +979,6 @@ describe('WoT protocol interop vectors', () => {
       expect(
         decideVerificationAttestationAcceptance({
           payload: verificationAttestationPayload({ jti: 'urn:uuid:ver-other-nonce-bob' }),
-          localDid: trust002Challenge.did,
-          activeChallenge,
-          now: new Date('2026-04-22T10:04:59Z'),
-          consumedNonces: new Set<string>(),
-        }),
-      ).toEqual({ decision: 'remote-unbound', reason: 'no-active-matching-nonce' })
-
-      expect(
-        decideVerificationAttestationAcceptance({
-          payload: verificationAttestationPayload({ jti: `urn:uuid:other-${trust002Challenge.nonce}-bob` }),
-          localDid: trust002Challenge.did,
-          activeChallenge,
-          now: new Date('2026-04-22T10:04:59Z'),
-          consumedNonces: new Set<string>(),
-        }),
-      ).toEqual({ decision: 'remote-unbound', reason: 'no-active-matching-nonce' })
-
-      expect(
-        decideVerificationAttestationAcceptance({
-          payload: verificationAttestationPayload({
-            jti: `urn:uuid:ver-123e4567-e89b-42d3-a456-426614174000-${trust002Challenge.nonce}-bob`,
-          }),
           localDid: trust002Challenge.did,
           activeChallenge,
           now: new Date('2026-04-22T10:04:59Z'),

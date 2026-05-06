@@ -107,7 +107,7 @@ export function decideVerificationAttestationAcceptance(
   }
   if (!options.payload.jti) return { decision: 'remote-unbound', reason: 'missing-jti-nonce' }
   const activeNonce = options.activeChallenge?.nonce.toLowerCase()
-  if (!options.activeChallenge || !activeNonce || !jtiMatchesActiveNonce(options.payload.jti, activeNonce)) {
+  if (!options.activeChallenge || !activeNonce || !jtiContainsActiveNonce(options.payload.jti, activeNonce)) {
     return { decision: 'remote-unbound', reason: 'no-active-matching-nonce' }
   }
   if (hasConsumedNonce(options.consumedNonces, activeNonce)) {
@@ -123,7 +123,8 @@ function assertStringField<K extends string>(
   record: Record<string, unknown>,
   field: K,
 ): asserts record is Record<string, unknown> & Record<K, string> {
-  if (typeof record[field] !== 'string') throw new Error(`Missing QR challenge field: ${field}`)
+  if (record[field] === undefined) throw new Error(`Missing QR challenge field: ${field}`)
+  if (typeof record[field] !== 'string') throw new Error(`Invalid QR challenge field: ${field}`)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -192,13 +193,11 @@ function isValidBrokerHostname(hostname: string): boolean {
   return hostname.split('.').every((part) => /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(part))
 }
 
-function jtiMatchesActiveNonce(jti: string, nonce: string): boolean {
+function jtiContainsActiveNonce(jti: string, nonce: string): boolean {
   if (!UUID_PATTERN.test(nonce)) return false
 
-  // Trust 002 models Verification-Attestation IDs as `urn:uuid:ver-<nonce>-<did-suffix>`.
-  const expectedPrefix = `urn:uuid:ver-${nonce}`
-  const normalizedJti = jti.toLowerCase()
-  return normalizedJti === expectedPrefix || normalizedJti.startsWith(`${expectedPrefix}-`)
+  // Trust 002 requires that the Verification-Attestation ID contains the active challenge nonce.
+  return jti.toLowerCase().includes(nonce)
 }
 
 function hasConsumedNonce(consumedNonces: ReadonlySet<string>, nonce: string): boolean {
