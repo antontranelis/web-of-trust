@@ -18,10 +18,10 @@ Legend:
 | `wot-identity@0.1` | focused protocol tests | JWS/JCS mechanics from Identity 002 | `crypto/jcs.ts`, `crypto/jws.ts` | Full for slice | Sender-side JCS signing input, required non-empty `kid`, unsupported-alg rejection before crypto verification, exact received signing-input verification, tampered bytes, and unambiguous malformed compact JWS inputs. Spec-vector ownership remains tracked in `real-life-org/wot-spec#16`; JCS number edge vectors remain tracked in `real-life-org/wot-spec#17`. |
 | `wot-trust@0.1` | `phase-1-interop.json` | `attestation_vc_jws` | `trust/attestation-vc-jws.ts`, `crypto/jcs.ts`, `crypto/jws.ts` | Full | Payload JCS hash, create, verify, VC context/type checks, issuer/subject checks, claim presence, deterministic `nbf`/`exp` checks, and extension-field tolerance. Delivery and `attestation-ack` semantics remain out of protocol-core scope and deferred to wot-spec issue #21. |
 | `wot-trust@0.1` | `qr-challenge.schema.json` examples and Trust 002 behavior | `qr_challenge` | `trust/qr-challenge.ts` | Partial | Raw JSON QR challenge parsing, required fields, 32-byte `enc`, active challenge 5-minute window, and online nonce acceptance decisions. This follows `wot-spec` Trust 002 as the normative source; older in-repo protocol docs are legacy context, not conformance authority. Nonce-history storage and QR regeneration remain application responsibilities. |
-| `wot-sync@0.1` | `phase-1-interop.json` | `didcomm_plaintext_envelope` | none | External by design | Transport-envelope compatibility is validated by `wot-spec` with `didcomm-node` and `@veramo/did-comm`; DIDComm is intentionally not part of TS protocol-core. |
+| `wot-sync@0.1` | `phase-1-interop.json` | `didcomm_plaintext_envelope` | `sync/membership-messages.ts`, `sync/log-entry.ts` | Partial | Pure plaintext-envelope shape helpers reproduce the vector and log-entry transport body shape. External DIDComm library compatibility remains validated by `wot-spec` with `didcomm-node` and `@veramo/did-comm`. |
 | `wot-sync@0.1` | `phase-1-interop.json` | `ecies` | `sync/encryption.ts`, `protocol-adapters/web-crypto.ts` | Full | Ephemeral public key, shared secret, HKDF AES key, encrypt vector, decrypt roundtrip. |
 | `wot-sync@0.1` | `phase-1-interop.json` | `log_payload_encryption` | `sync/encryption.ts` | Full | Deterministic nonce, AES-GCM ciphertext/tag, blob encoding, decrypt roundtrip. |
-| `wot-sync@0.1` | `phase-1-interop.json` | `log_entry_jws` | `sync/log-entry.ts` | Full | Create and verify JWS; authorKid binding and payload checks. |
+| `wot-sync@0.1` | `phase-1-interop.json` | `log_entry_jws` | `sync/log-entry.ts` | Full | Create and verify JWS; authorKid binding, schema-backed payload shape checks, and envelope-authority boundary checks. |
 | `wot-sync@0.1` | `phase-1-interop.json` | `space_capability_jws` | `sync/space-capability.ts` | Full | Create and verify JWS; key, audience, space, generation, expiry checks. |
 | `wot-sync@0.1` | `phase-1-interop.json` | `space_membership_messages.member_update_generation_cases` | `sync/member-update-disposition.ts` | Full | Evaluates signer authority, idempotency, authority upgrade/no-downgrade, stale/current/next generation, and future generation disposition vectors. |
 | `wot-sync@0.1` | `phase-1-interop.json` | `admin_key_derivation` | `sync/admin-key.ts` | Full | HKDF info, Ed25519 seed/public key, admin DID. |
@@ -33,20 +33,21 @@ Legend:
 
 ## Schema Coverage
 
-JSON Schema validation remains owned by `wot-spec`:
+Full JSON Schema validation remains owned by `wot-spec`:
 
 ```bash
 npm run validate:schemas
 ```
 
-The TypeScript protocol-core currently validates protocol behavior against vectors, not all JSON Schema positive and negative examples.
+The TypeScript protocol-core validates protocol behavior against vectors and now mirrors focused Sync 002/003 schema constraints for log-entry payloads and plaintext-envelope shapes. Complete schema-suite validation remains centralized in `wot-spec`.
 
 ## Current Gaps
 
 - Complete SD-JWT VC implementation beyond the current trust-list vector requirements.
 - JSON Schema validation in TS; currently intentionally centralized in `wot-spec`.
 - Spec-owned standalone JWS/AES vector ownership and JCS number edge-case coverage are deferred to `real-life-org/wot-spec#16` and `real-life-org/wot-spec#17`.
+- Log-entry `deviceId`/`docId` UUID version-specific enforcement is deferred pending `wot-spec` issue #23; TS currently mirrors the generic schema `uuid` boundary.
 
 ## External Boundaries
 
-- DIDComm plaintext-envelope compatibility is a transport boundary, not a protocol-core gap. It remains validated in `wot-spec` against DIDComm libraries.
+- DIDComm plaintext-envelope library compatibility is a transport boundary. TypeScript exposes pure shape helpers for the Sync 003 plaintext envelope, while DIDComm parser compatibility remains validated in `wot-spec` against DIDComm libraries.
