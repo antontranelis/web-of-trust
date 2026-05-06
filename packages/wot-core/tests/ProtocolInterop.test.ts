@@ -216,6 +216,12 @@ describe('WoT protocol interop vectors', () => {
     )).rejects.toThrow('Invalid BIP39 mnemonic')
   })
 
+  it('rejects non-64-byte BIP39 seed input for protocol identity derivation', async () => {
+    await expect(
+      deriveProtocolIdentityFromSeedHex(bytesToHex(new Uint8Array(32)), cryptoAdapter),
+    ).rejects.toThrow('Expected 64-byte BIP39 seed')
+  })
+
   it('canonicalizes and verifies the attestation VC-JWS vector', async () => {
     const payloadHash = await cryptoAdapter.sha256(canonicalizeToBytes(phase1.attestation_vc_jws.payload as JsonValue))
 

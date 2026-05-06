@@ -1,7 +1,7 @@
 import * as ed25519 from '@noble/ed25519'
 import { mnemonicToSeed, validateMnemonic } from '@scure/bip39'
 import { wordlist as englishWordlist } from '@scure/bip39/wordlists/english.js'
-import { bytesToHex, hexToBytes } from '../crypto/hex'
+import { hexToBytes } from '../crypto/hex'
 import type { ProtocolCryptoAdapter } from '../crypto/ports'
 import { publicKeyToDidKey } from './did-key'
 
@@ -23,6 +23,16 @@ export async function deriveProtocolIdentityFromSeedHex(
   cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<ProtocolIdentityMaterial> {
   const seed = hexToBytes(bip39SeedHex)
+  return deriveProtocolIdentityFromSeedBytes(seed, cryptoAdapter)
+}
+
+async function deriveProtocolIdentityFromSeedBytes(
+  bip39Seed: Uint8Array,
+  cryptoAdapter: ProtocolCryptoAdapter,
+): Promise<ProtocolIdentityMaterial> {
+  if (bip39Seed.length !== 64) throw new Error('Expected 64-byte BIP39 seed')
+
+  const seed = bip39Seed
   const ed25519Seed = await cryptoAdapter.hkdfSha256(seed, IDENTITY_INFO, 32)
   const ed25519PublicKey = new Uint8Array(await ed25519.getPublicKeyAsync(ed25519Seed))
   const x25519Seed = await cryptoAdapter.hkdfSha256(seed, ENCRYPTION_INFO, 32)
@@ -42,5 +52,5 @@ export async function deriveProtocolIdentityFromMnemonic(
   cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<ProtocolIdentityMaterial> {
   const seed = await deriveBip39SeedFromMnemonic(mnemonic)
-  return deriveProtocolIdentityFromSeedHex(bytesToHex(seed), cryptoAdapter)
+  return deriveProtocolIdentityFromSeedBytes(seed, cryptoAdapter)
 }
