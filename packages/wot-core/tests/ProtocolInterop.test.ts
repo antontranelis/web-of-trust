@@ -280,6 +280,19 @@ describe('WoT protocol interop vectors', () => {
     })).resolves.toEqual(payload)
   })
 
+  it('accepts attestation validFrom with an explicit timezone offset', async () => {
+    const payload = {
+      ...phase1.attestation_vc_jws.payload,
+      validFrom: '2026-04-21T12:00:00+02:00',
+    }
+    const jws = await createSignedAttestationPayload(payload)
+
+    await expect(verifyAttestationVcJws(jws, {
+      crypto: cryptoAdapter,
+      now: new Date('2026-04-22T10:00:00Z'),
+    })).resolves.toEqual(payload)
+  })
+
   it('rejects signed attestation VC-JWS payloads missing mandatory Trust 001 fields', async () => {
     const basePayload = phase1.attestation_vc_jws.payload
     const invalidPayloads: Array<[string, Record<string, unknown>]> = [
@@ -333,6 +346,10 @@ describe('WoT protocol interop vectors', () => {
         ...phase1.attestation_vc_jws.payload,
         validFrom: '2026-04-23T12:00:00Z',
         nbf: 1776945600,
+      }],
+      ['validFrom without timezone', {
+        ...phase1.attestation_vc_jws.payload,
+        validFrom: '2026-04-21T10:00:00',
       }],
       ['validFrom and nbf mismatch', { ...phase1.attestation_vc_jws.payload, nbf: 1776945600 }],
       ['expired exp', { ...phase1.attestation_vc_jws.payload, exp: 1776851999 }],

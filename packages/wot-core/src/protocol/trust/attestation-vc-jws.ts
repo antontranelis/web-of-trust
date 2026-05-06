@@ -9,6 +9,7 @@ const VC_CONTEXT = 'https://www.w3.org/ns/credentials/v2'
 const WOT_CONTEXT = 'https://web-of-trust.de/vocab/v1'
 const VERIFIABLE_CREDENTIAL_TYPE = 'VerifiableCredential'
 const WOT_ATTESTATION_TYPE = 'WotAttestation'
+const RFC3339_DATE_TIME_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
 
 export interface AttestationVcPayload {
   '@context': string[]
@@ -151,6 +152,7 @@ function integerSeconds(value: unknown, message: string): number {
 }
 
 function isoDateTimeSeconds(value: string, message: string): number {
+  if (!RFC3339_DATE_TIME_WITH_ZONE.test(value)) throw new Error(message)
   const time = Date.parse(value)
   if (!Number.isFinite(time)) throw new Error(message)
   return Math.floor(time / 1000)
