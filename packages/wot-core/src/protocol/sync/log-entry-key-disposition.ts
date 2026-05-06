@@ -5,6 +5,10 @@ export interface ClassifyLogEntryKeyDispositionInput {
   availableKeyGenerations: readonly number[]
 }
 
+/**
+ * Classifies `log_entry_jws.payload.keyGeneration` for wot-sync blocked-by-key handling.
+ * Reference: wot-sync@0.1 Sync 002 (missing-field handling tracked in real-life-org/wot-spec#25).
+ */
 export function classifyLogEntryKeyDisposition(
   input: ClassifyLogEntryKeyDispositionInput,
 ): LogEntryKeyDisposition {

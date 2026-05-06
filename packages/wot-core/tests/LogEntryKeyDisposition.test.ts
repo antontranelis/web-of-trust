@@ -1,6 +1,12 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { classifyLogEntryKeyDisposition } from '../src/protocol'
-import phase1 from './fixtures/wot-spec/phase-1-interop.json'
+
+const phase1 = loadSpecVector('./fixtures/wot-spec/phase-1-interop.json')
+
+function loadSpecVector(relativePath: string): any {
+  return JSON.parse(readFileSync(new URL(relativePath, import.meta.url), 'utf8'))
+}
 
 describe('log-entry key disposition', () => {
   it('returns process-decrypt when the log entry key generation is locally available', () => {
