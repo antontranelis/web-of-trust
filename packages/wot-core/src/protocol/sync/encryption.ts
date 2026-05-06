@@ -7,6 +7,8 @@ const X25519_KEY_LENGTH = 32
 const AES_256_KEY_LENGTH = 32
 const AES_GCM_TAG_LENGTH = 16
 
+// Sync 001 fixes ECIES key sizes, AES-GCM nonces, and ciphertext+tag framing.
+
 export interface EciesMessage {
   epk: string
   nonce: string
@@ -103,6 +105,7 @@ export async function deriveLogPayloadNonce(
   deviceId: string,
   seq: number,
 ): Promise<Uint8Array> {
+  // Sync 001 derives log payload nonces as SHA-256(deviceId || "|" || seq)[0:12].
   if (!deviceId) throw new Error('Missing deviceId')
   if (!Number.isSafeInteger(seq) || seq < 0) throw new Error('Invalid seq')
   const digest = await cryptoAdapter.sha256(new TextEncoder().encode(`${deviceId}|${seq}`))

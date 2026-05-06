@@ -958,6 +958,17 @@ describe('WoT protocol interop vectors', () => {
     await expect(
       decryptEcies({
         crypto: cryptoAdapter,
+        recipientPrivateSeed: new Uint8Array(31),
+        message: {
+          epk: phase1.ecies.ephemeral_public_b64,
+          nonce: 'GhscHR4fICEiIyQl',
+          ciphertext: phase1.ecies.ciphertext_b64,
+        },
+      }),
+    ).rejects.toThrow('ECIES recipient private seed must be 32 bytes')
+    await expect(
+      decryptEcies({
+        crypto: cryptoAdapter,
         recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
         message: {
           epk: encodeBase64Url(new Uint8Array(31)),
@@ -1037,6 +1048,13 @@ describe('WoT protocol interop vectors', () => {
         deviceId: phase1.log_payload_encryption.device_id,
         seq: phase1.log_payload_encryption.seq,
         plaintext: new TextEncoder().encode(phase1.log_payload_encryption.plaintext),
+      }),
+    ).rejects.toThrow('Space content key must be 32 bytes')
+    await expect(
+      decryptLogPayload({
+        crypto: cryptoAdapter,
+        spaceContentKey: new Uint8Array(31),
+        blob: decodeBase64Url(phase1.log_payload_encryption.blob_b64),
       }),
     ).rejects.toThrow('Space content key must be 32 bytes')
     await expect(
