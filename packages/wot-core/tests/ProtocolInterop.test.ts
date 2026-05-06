@@ -137,6 +137,13 @@ function cryptoWithVerify(
   }
 }
 
+function cryptoWithSharedSecret(sharedSecret: Uint8Array): ProtocolCryptoAdapter {
+  return {
+    ...cryptoWithVerify(cryptoAdapter.verifyEd25519.bind(cryptoAdapter)),
+    x25519SharedSecret: async () => sharedSecret,
+  }
+}
+
 describe('WoT protocol interop vectors', () => {
   it('resolves bare did:key through the protocol DidResolver surface', async () => {
     const resolver: DidResolver = createDidKeyResolver()
@@ -920,7 +927,7 @@ describe('WoT protocol interop vectors', () => {
         spaceContentKey: hexToBytes(phase1.log_payload_encryption.space_content_key_hex),
         blob: emptyLogBlob,
       }),
-    ).rejects.toThrow('Invalid Encrypted log payload blob')
+    ).rejects.toThrow('Invalid encrypted log payload blob')
   })
 
   it('rejects malformed ECIES key, nonce, and ciphertext boundaries', async () => {
@@ -953,6 +960,17 @@ describe('WoT protocol interop vectors', () => {
         crypto: cryptoAdapter,
         recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
         message: null as any,
+      }),
+    ).rejects.toThrow('Invalid ECIES message')
+    await expect(
+      decryptEcies({
+        crypto: cryptoAdapter,
+        recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
+        message: {
+          epk: 123,
+          nonce: 'GhscHR4fICEiIyQl',
+          ciphertext: phase1.ecies.ciphertext_b64,
+        } as any,
       }),
     ).rejects.toThrow('Invalid ECIES message')
     await expect(
@@ -999,6 +1017,29 @@ describe('WoT protocol interop vectors', () => {
         },
       }),
     ).rejects.toThrow('ECIES ciphertext must be a valid base64url string')
+  })
+
+  it('rejects all-zero ECIES shared secrets before HKDF', async () => {
+    const zeroSharedSecretCrypto = cryptoWithSharedSecret(new Uint8Array(32))
+
+    await expect(
+      deriveEciesMaterial({
+        crypto: zeroSharedSecretCrypto,
+        ephemeralPrivateSeed: hexToBytes(phase1.ecies.ephemeral_private_hex),
+        recipientPublicKey: decodeBase64Url(phase1.ecies.recipient_x25519_public_b64),
+      }),
+    ).rejects.toThrow('ECIES shared secret must not be all zero bytes')
+    await expect(
+      decryptEcies({
+        crypto: zeroSharedSecretCrypto,
+        recipientPrivateSeed: hexToBytes(phase1.identity.x25519_seed_hex),
+        message: {
+          epk: phase1.ecies.ephemeral_public_b64,
+          nonce: 'GhscHR4fICEiIyQl',
+          ciphertext: phase1.ecies.ciphertext_b64,
+        },
+      }),
+    ).rejects.toThrow('ECIES shared secret must not be all zero bytes')
   })
 
   it('rejects ECIES tamper and wrong-key decrypt attempts', async () => {
@@ -1072,7 +1113,7 @@ describe('WoT protocol interop vectors', () => {
         spaceContentKey: hexToBytes(phase1.log_payload_encryption.space_content_key_hex),
         blob: new Uint8Array(12 + 16),
       }),
-    ).rejects.toThrow('Invalid Encrypted log payload blob')
+    ).rejects.toThrow('Invalid encrypted log payload blob')
   })
 
   it('rejects log payload tamper and wrong-key decrypt attempts', async () => {

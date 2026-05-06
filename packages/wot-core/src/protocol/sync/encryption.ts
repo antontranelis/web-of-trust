@@ -64,10 +64,11 @@ export async function deriveEciesMaterial(options: DeriveEciesMaterialOptions): 
   assertLength(options.ephemeralPrivateSeed, X25519_KEY_LENGTH, 'ECIES ephemeral private seed')
   assertLength(options.recipientPublicKey, X25519_KEY_LENGTH, 'ECIES recipient public key')
   const ephemeralPublicKey = await options.crypto.x25519PublicFromSeed(options.ephemeralPrivateSeed)
-  const sharedSecret = await options.crypto.x25519SharedSecret(options.ephemeralPrivateSeed, options.recipientPublicKey)
-  const aesKey = await options.crypto.hkdfSha256(sharedSecret, ECIES_INFO, AES_256_KEY_LENGTH)
   assertLength(ephemeralPublicKey, X25519_KEY_LENGTH, 'ECIES ephemeral public key')
+  const sharedSecret = await options.crypto.x25519SharedSecret(options.ephemeralPrivateSeed, options.recipientPublicKey)
   assertLength(sharedSecret, X25519_KEY_LENGTH, 'ECIES shared secret')
+  assertNotAllZero(sharedSecret, 'ECIES shared secret')
+  const aesKey = await options.crypto.hkdfSha256(sharedSecret, ECIES_INFO, AES_256_KEY_LENGTH)
   assertLength(aesKey, AES_256_KEY_LENGTH, 'ECIES AES key')
   return { ephemeralPublicKey, sharedSecret, aesKey }
 }
@@ -97,6 +98,7 @@ export async function decryptEcies(options: DecryptEciesOptions): Promise<Uint8A
   assertCiphertextTag(ciphertext, 'ECIES ciphertext')
   const sharedSecret = await options.crypto.x25519SharedSecret(options.recipientPrivateSeed, ephemeralPublicKey)
   assertLength(sharedSecret, X25519_KEY_LENGTH, 'ECIES shared secret')
+  assertNotAllZero(sharedSecret, 'ECIES shared secret')
   const aesKey = await options.crypto.hkdfSha256(sharedSecret, ECIES_INFO, AES_256_KEY_LENGTH)
   assertLength(aesKey, AES_256_KEY_LENGTH, 'ECIES AES key')
   return options.crypto.aes256GcmDecrypt(aesKey, nonce, ciphertext)
@@ -127,7 +129,7 @@ export async function encryptLogPayload(options: EncryptLogPayloadOptions): Prom
 
 export async function decryptLogPayload(options: DecryptLogPayloadOptions): Promise<Uint8Array> {
   assertLength(options.spaceContentKey, AES_256_KEY_LENGTH, 'Space content key')
-  assertEncryptedBlob(options.blob, 'Encrypted log payload blob')
+  assertEncryptedBlob(options.blob, 'encrypted log payload blob')
   const nonce = options.blob.slice(0, NONCE_LENGTH)
   const ciphertextTag = options.blob.slice(NONCE_LENGTH)
   return options.crypto.aes256GcmDecrypt(options.spaceContentKey, nonce, ciphertextTag)
@@ -144,9 +146,24 @@ function assertLength(bytes: Uint8Array, expectedLength: number, name: string): 
   if (bytes.length !== expectedLength) throw new Error(`${name} must be ${expectedLength} bytes`)
 }
 
+function assertNotAllZero(bytes: Uint8Array, name: string): void {
+  // RFC 7748 low-order peer keys can produce all-zero X25519 outputs; never feed that into HKDF.
+  let accumulator = 0
+  for (const byte of bytes) accumulator |= byte
+  if (accumulator === 0) throw new Error(`${name} must not be all zero bytes`)
+}
+
 function assertEciesMessage(value: unknown): asserts value is EciesMessage {
   // Sync 001 encrypted message format is the object { epk, nonce, ciphertext }.
   if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('Invalid ECIES message')
+  const message = value as Record<string, unknown>
+  if (
+    typeof message.epk !== 'string' ||
+    typeof message.nonce !== 'string' ||
+    typeof message.ciphertext !== 'string'
+  ) {
+    throw new Error('Invalid ECIES message')
+  }
 }
 
 function assertNonEmpty(bytes: Uint8Array, name: string): void {
