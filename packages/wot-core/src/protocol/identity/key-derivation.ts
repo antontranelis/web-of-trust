@@ -6,7 +6,7 @@ import { publicKeyToDidKey } from './did-key'
 const IDENTITY_INFO = 'wot/identity/ed25519/v1'
 const ENCRYPTION_INFO = 'wot/encryption/x25519/v1'
 const BIP39_EMPTY_PASSPHRASE = ''
-const BIP39_SEED_HEX_PATTERN = /^[0-9a-fA-F]{128}$/
+const HEX_PATTERN = /^[0-9a-fA-F]*$/
 
 interface Bip39Modules {
   mnemonicToSeed: (mnemonic: string, passphrase?: string) => Promise<Uint8Array>
@@ -29,7 +29,9 @@ export async function deriveProtocolIdentityFromSeedHex(
   bip39SeedHex: string,
   cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<ProtocolIdentityMaterial> {
-  if (!BIP39_SEED_HEX_PATTERN.test(bip39SeedHex)) throw new Error('Expected 64-byte BIP39 seed hex')
+  if (bip39SeedHex.length % 2 !== 0 || !HEX_PATTERN.test(bip39SeedHex)) {
+    throw new Error('Invalid BIP39 seed hex')
+  }
 
   const seed = hexToBytes(bip39SeedHex)
   return deriveProtocolIdentityFromSeedBytes(seed, cryptoAdapter)
