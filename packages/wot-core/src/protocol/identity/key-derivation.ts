@@ -6,6 +6,15 @@ import { publicKeyToDidKey } from './did-key'
 const IDENTITY_INFO = 'wot/identity/ed25519/v1'
 const ENCRYPTION_INFO = 'wot/encryption/x25519/v1'
 const BIP39_EMPTY_PASSPHRASE = ''
+const BIP39_SEED_HEX_PATTERN = /^[0-9a-fA-F]{128}$/
+
+interface Bip39Modules {
+  mnemonicToSeed: (mnemonic: string, passphrase?: string) => Promise<Uint8Array>
+  validateMnemonic: (mnemonic: string, wordlist: string[]) => boolean
+  englishWordlist: string[]
+}
+
+let bip39ModulesPromise: Promise<Bip39Modules> | undefined
 
 export interface ProtocolIdentityMaterial {
   ed25519Seed: Uint8Array
@@ -20,6 +29,8 @@ export async function deriveProtocolIdentityFromSeedHex(
   bip39SeedHex: string,
   cryptoAdapter: ProtocolCryptoAdapter,
 ): Promise<ProtocolIdentityMaterial> {
+  if (!BIP39_SEED_HEX_PATTERN.test(bip39SeedHex)) throw new Error('Expected 64-byte BIP39 seed hex')
+
   const seed = hexToBytes(bip39SeedHex)
   return deriveProtocolIdentityFromSeedBytes(seed, cryptoAdapter)
 }
@@ -41,10 +52,7 @@ async function deriveProtocolIdentityFromSeedBytes(
 
 // wot-identity@0.1 Identity 001 fixes BIP39 seed derivation to passphrase="" and the full 64-byte seed; English is the default wordlist.
 export async function deriveBip39SeedFromMnemonic(mnemonic: string): Promise<Uint8Array> {
-  const [{ mnemonicToSeed, validateMnemonic }, { wordlist: englishWordlist }] = await Promise.all([
-    import('@scure/bip39'),
-    import('@scure/bip39/wordlists/english.js'),
-  ])
+  const { mnemonicToSeed, validateMnemonic, englishWordlist } = await loadBip39Modules()
 
   if (!validateMnemonic(mnemonic, englishWordlist)) throw new Error('Invalid BIP39 mnemonic')
 
@@ -58,4 +66,19 @@ export async function deriveProtocolIdentityFromMnemonic(
 ): Promise<ProtocolIdentityMaterial> {
   const seed = await deriveBip39SeedFromMnemonic(mnemonic)
   return deriveProtocolIdentityFromSeedBytes(seed, cryptoAdapter)
+}
+
+function loadBip39Modules(): Promise<Bip39Modules> {
+  if (!bip39ModulesPromise) {
+    bip39ModulesPromise = Promise.all([
+      import('@scure/bip39'),
+      import('@scure/bip39/wordlists/english.js'),
+    ]).then(([bip39, english]) => ({
+      mnemonicToSeed: bip39.mnemonicToSeed,
+      validateMnemonic: bip39.validateMnemonic,
+      englishWordlist: english.wordlist,
+    }))
+  }
+
+  return bip39ModulesPromise
 }

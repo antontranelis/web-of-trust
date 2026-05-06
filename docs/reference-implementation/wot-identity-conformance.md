@@ -368,9 +368,9 @@ No runtime module is marked fully missing for `wot-identity@0.1`: bare `did:key`
 
 ## 9. Out of scope for this protocol seed implementation slice
 
-- No changes outside the protocol-core reference slice, focused tests, and conformance inventory/docs.
+- No changes outside the targeted protocol identity-seed slice, focused tests, and conformance inventory/docs.
 - No edits to `../wot-spec/`; normative spec changes remain separate human-approved spec PRs.
-- No demo, app, adapter, CRDT, discovery/profile-service cache, sync, relay, vault, legacy crypto, service, or application workflow changes.
+- No edits to `apps/` or non-protocol runtime surfaces outside the targeted `packages/wot-core/src/protocol/` identity-seed slice.
 - No automation workflow changes (`.github/` forbidden).
 - The legacy-path migration is tracked in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md), not in this document.
 - Profiles other than `wot-identity@0.1` (i.e. `wot-trust@0.1`, `wot-sync@0.1`, `wot-device-delegation@0.1`, `wot-rls@0.1`, `wot-hmc@0.1`) are out of scope and continue to be tracked in `packages/wot-core/src/protocol/COVERAGE.md`.
