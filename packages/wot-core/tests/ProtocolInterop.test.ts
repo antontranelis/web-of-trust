@@ -815,10 +815,16 @@ describe('WoT protocol interop vectors', () => {
     ).rejects.toThrow()
     await expect(
       createSpaceCapabilityJws({
-        payload: { ...validPayload, audience: `${validPayload.audience} trailing` },
+        payload: { ...validPayload, audience: 'web-of-trust:alice' },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
     ).rejects.toThrow()
+    await expect(
+      createSpaceCapabilityJws({
+        payload: { ...validPayload, audience: 'did:web:example.com:alice' },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).resolves.toMatch(/^.+\..+\..+$/)
     await expect(
       createSpaceCapabilityJws({
         payload: { ...validPayload, permissions: ['read', 'read'] },
