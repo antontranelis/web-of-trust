@@ -244,8 +244,9 @@ export class VerificationWorkflow {
 }
 
 function parseVerificationJtiNonce(jti: string): string | null {
-  const match = /^urn:uuid:(?:ver|verification)-([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:-.+)?$/i.exec(jti)
-  return match?.[1].toLowerCase() ?? null
+  const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ig
+  for (const match of jti.matchAll(uuidPattern)) return match[0].toLowerCase()
+  return null
 }
 
 function encodeJson(value: unknown): string {
