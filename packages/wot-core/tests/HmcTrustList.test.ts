@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   createJcsEd25519Jws,
@@ -9,11 +11,23 @@ import {
 import { WebCryptoProtocolCryptoAdapter } from '../src/protocol-adapters'
 import type { JsonValue } from '../src/protocol'
 
-const phase1 = JSON.parse(readFileSync('tests/fixtures/wot-spec/phase-1-interop.json', 'utf8'))
+const phase1 = JSON.parse(readFixture('fixtures/wot-spec/phase-1-interop.json'))
 const cryptoAdapter = new WebCryptoProtocolCryptoAdapter()
 const hmcVector = phase1.sd_jwt_vc_trust_list
 const expectedVct = 'https://humanmoney.example/credentials/TrustList/v1'
 const verificationTime = new Date('2026-04-22T10:00:00Z')
+
+function readFixture(relativePath: string): string {
+  const fixtureUrl = new URL(`./${relativePath}`, import.meta.url)
+  const candidates = [
+    ...(fixtureUrl.protocol === 'file:' ? [fileURLToPath(fixtureUrl)] : []),
+    resolve(process.cwd(), 'tests', relativePath),
+    resolve(process.cwd(), 'packages/wot-core/tests', relativePath),
+  ]
+  const fixturePath = candidates.find((candidate) => existsSync(candidate))
+  if (!fixturePath) throw new Error(`Missing fixture: ${relativePath}`)
+  return readFileSync(fixturePath, 'utf8')
+}
 
 function hexToBytes(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) throw new Error('Invalid hex string')
@@ -55,6 +69,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
     })
 
     expect(verified.issuerPayload.vct).toBe(expectedVct)
+    expect(verified.issuerKid).toBe(phase1.identity.kid)
     expect(verified.issuerPayload._sd_alg).toBe('sha-256')
     expect(verified.issuerPayload.exp).toBe(1808050800)
     expect(verified.issuerPayload.iat).toBe(1776514800)
@@ -69,7 +84,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         expectedVct: 'https://example.invalid/credentials/OtherTrustList/v1',
         now: verificationTime,
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid HMC Trust List vct')
   })
 
   it('rejects a Trust List whose iss does not match the signing kid DID', async () => {
@@ -83,7 +98,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         expectedVct,
         now: verificationTime,
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid HMC Trust List issuer')
   })
 
   it('rejects missing or unsupported _sd_alg after generic SD-JWT VC verification', async () => {
@@ -101,7 +116,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'missing _sd_alg',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid HMC Trust List _sd_alg')
     await expect(
       verifyHmcTrustListSdJwtVc(wrongSdAlg, {
         crypto: cryptoAdapter,
@@ -109,7 +124,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'wrong _sd_alg',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid HMC Trust List _sd_alg')
   })
 
   it('rejects missing or expired exp at the injectable verification time', async () => {
@@ -127,7 +142,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'missing exp',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Missing HMC Trust List exp')
     await expect(
       verifyHmcTrustListSdJwtVc(expiredExp, {
         crypto: cryptoAdapter,
@@ -135,7 +150,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'expired exp',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Expired HMC Trust List exp')
   })
 
   it('rejects missing or future iat at the injectable verification time', async () => {
@@ -153,7 +168,7 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'missing iat',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Missing HMC Trust List iat')
     await expect(
       verifyHmcTrustListSdJwtVc(futureIat, {
         crypto: cryptoAdapter,
@@ -161,6 +176,6 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'future iat',
-    ).rejects.toThrow()
+    ).rejects.toThrow('Future HMC Trust List iat')
   })
 })

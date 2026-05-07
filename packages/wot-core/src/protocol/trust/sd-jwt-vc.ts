@@ -6,6 +6,7 @@ import { decodeJws, verifyJwsWithPublicKey } from '../crypto/jws'
 import { didKeyToPublicKeyBytes, didOrKidToDid } from '../identity/did-key'
 
 export interface VerifiedSdJwtVc {
+  issuerKid: string
   issuerPayload: Record<string, unknown>
   disclosures: JsonValue[]
   disclosureDigests: string[]
@@ -57,6 +58,7 @@ export async function verifySdJwtVc(
   assertDisclosureDigestsPresent(verifiedJws.payload as Record<string, unknown>, disclosureDigests)
 
   return {
+    issuerKid: decodedJws.header.kid,
     issuerPayload: verifiedJws.payload as Record<string, unknown>,
     disclosures: encodedDisclosures.map(decodeDisclosure),
     disclosureDigests,
@@ -67,18 +69,23 @@ export async function verifyHmcTrustListSdJwtVc(
   sdJwtCompact: string,
   options: VerifyHmcTrustListSdJwtVcOptions,
 ): Promise<VerifiedSdJwtVc> {
-  const issuerKid = readIssuerKid(sdJwtCompact)
   const verified = await verifySdJwtVc(sdJwtCompact, options)
-  const { issuerPayload } = verified
+  const { issuerKid, issuerPayload } = verified
 
+  // HMC H01 `#sd-jwt-vc-validation-muss` item 1: verify the issuer-signed JWT against `iss`.
+  // For the current did:key slice, the JOSE `kid` used for signature verification must derive to `iss`.
   if (issuerPayload.iss !== didOrKidToDid(issuerKid)) throw new Error('Invalid HMC Trust List issuer')
+  // HMC H01 `#sd-jwt-vc-validation-muss` item 6.
   if (issuerPayload._sd_alg !== 'sha-256') throw new Error('Invalid HMC Trust List _sd_alg')
+  // HMC H01 `#sd-jwt-vc-validation-muss` item 2; real-life-org/wot-spec#37 tracks the final vct value.
   if (issuerPayload.vct !== options.expectedVct) throw new Error('Invalid HMC Trust List vct')
 
   const verificationTimeSeconds = readVerificationTimeSeconds(options.now)
+  // HMC H01 `#sd-jwt-vc-validation-muss` item 3.
   const exp = readNumericDate(issuerPayload.exp, 'exp')
   if (exp <= verificationTimeSeconds) throw new Error('Expired HMC Trust List exp')
 
+  // HMC H01 `#sd-jwt-vc-validation-muss` item 4.
   const iat = readNumericDate(issuerPayload.iat, 'iat')
   if (iat > verificationTimeSeconds) throw new Error('Future HMC Trust List iat')
 
@@ -87,13 +94,6 @@ export async function verifyHmcTrustListSdJwtVc(
 
 function decodeDisclosure(encodedDisclosure: string): JsonValue {
   return JSON.parse(new TextDecoder().decode(decodeBase64Url(encodedDisclosure))) as JsonValue
-}
-
-function readIssuerKid(sdJwtCompact: string): string {
-  const issuerSignedJwt = sdJwtCompact.split('~', 1)[0]
-  const decodedJws = decodeJws<{ kid?: string }, Record<string, unknown>>(issuerSignedJwt)
-  if (!decodedJws.header.kid) throw new Error('Missing SD-JWT issuer kid')
-  return decodedJws.header.kid
 }
 
 function assertDisclosureDigestsPresent(payload: Record<string, unknown>, disclosureDigests: string[]): void {
