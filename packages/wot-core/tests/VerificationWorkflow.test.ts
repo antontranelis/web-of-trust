@@ -224,6 +224,13 @@ describe('VerificationWorkflow', () => {
     })
     expect(workflow.acceptVerifiedVerificationAttestation(anna, {
       ...payload,
+      jti: `urn:uuid:verification-123e4567-e89b-42d3-a456-426614174000-${nonce}-ben`,
+    })).toEqual({
+      decision: 'reject',
+      reason: 'nonce-consumed',
+    })
+    expect(workflow.acceptVerifiedVerificationAttestation(anna, {
+      ...payload,
       jti: 'urn:uuid:verification-123e4567-e89b-42d3-a456-426614174000-ben',
     })).toEqual({
       decision: 'remote-unbound',

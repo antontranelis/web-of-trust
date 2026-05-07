@@ -238,15 +238,16 @@ export class VerificationWorkflow {
 
   private findConsumedNonce(jti: string | undefined): string | null {
     if (!jti) return null
-    const nonce = parseVerificationJtiNonce(jti)
-    return nonce && this.consumedNonces.has(nonce) ? nonce : null
+    for (const nonce of parseVerificationJtiNonces(jti)) {
+      if (this.consumedNonces.has(nonce)) return nonce
+    }
+    return null
   }
 }
 
-function parseVerificationJtiNonce(jti: string): string | null {
+function parseVerificationJtiNonces(jti: string): string[] {
   const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ig
-  for (const match of jti.matchAll(uuidPattern)) return match[0].toLowerCase()
-  return null
+  return Array.from(jti.matchAll(uuidPattern), (match) => match[0].toLowerCase())
 }
 
 function encodeJson(value: unknown): string {
