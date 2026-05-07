@@ -109,7 +109,10 @@ function readNumericDate(value: unknown, claimName: 'exp' | 'iat'): number {
   if (value === undefined) {
     throw new Error(`Missing HMC Trust List ${claimName}`)
   }
-  if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`Invalid HMC Trust List ${claimName}`)
+  // [NEEDS CLARIFICATION: HMC Trust List NumericDate integer-second semantics; real-life-org/wot-spec#40]
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(`Invalid HMC Trust List ${claimName}`)
+  }
   return value
 }
 
@@ -120,7 +123,7 @@ function readRequiredString(value: unknown, claimName: 'iss'): string {
 }
 
 function readVerificationTimeSeconds(now: Date): number {
-  const seconds = now.getTime() / 1000
-  if (!Number.isFinite(seconds)) throw new Error('Invalid HMC Trust List verification time')
-  return seconds
+  const milliseconds = now.getTime()
+  if (!Number.isFinite(milliseconds)) throw new Error('Invalid HMC Trust List verification time')
+  return Math.floor(milliseconds / 1000)
 }

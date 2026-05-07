@@ -154,6 +154,12 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
     const invalidExp = await signedTrustListWithPayload((payload) => {
       payload.exp = '1776851999'
     })
+    const fractionalExp = await signedTrustListWithPayload((payload) => {
+      payload.exp = 1776851999.5
+    })
+    const negativeExp = await signedTrustListWithPayload((payload) => {
+      payload.exp = -1
+    })
     const expAtVerificationTime = await signedTrustListWithPayload((payload) => {
       payload.exp = 1776852000
     })
@@ -183,6 +189,22 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
       'invalid exp',
     ).rejects.toThrow('Invalid HMC Trust List exp')
     await expect(
+      verifyHmcTrustListSdJwtVc(fractionalExp, {
+        crypto: cryptoAdapter,
+        expectedVct,
+        now: verificationTime,
+      }),
+      'fractional exp',
+    ).rejects.toThrow('Invalid HMC Trust List exp')
+    await expect(
+      verifyHmcTrustListSdJwtVc(negativeExp, {
+        crypto: cryptoAdapter,
+        expectedVct,
+        now: verificationTime,
+      }),
+      'negative exp',
+    ).rejects.toThrow('Invalid HMC Trust List exp')
+    await expect(
       verifyHmcTrustListSdJwtVc(expAtVerificationTime, {
         crypto: cryptoAdapter,
         expectedVct,
@@ -201,6 +223,12 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
     })
     const invalidIat = await signedTrustListWithPayload((payload) => {
       payload.iat = '1776852001'
+    })
+    const fractionalIat = await signedTrustListWithPayload((payload) => {
+      payload.iat = 1776852000.5
+    })
+    const negativeIat = await signedTrustListWithPayload((payload) => {
+      payload.iat = -1
     })
     const iatAtVerificationTime = await signedTrustListWithPayload((payload) => {
       payload.iat = 1776852000
@@ -229,6 +257,22 @@ describe('HMC H01 SD-JWT VC Trust List verifier', () => {
         now: verificationTime,
       }),
       'invalid iat',
+    ).rejects.toThrow('Invalid HMC Trust List iat')
+    await expect(
+      verifyHmcTrustListSdJwtVc(fractionalIat, {
+        crypto: cryptoAdapter,
+        expectedVct,
+        now: verificationTime,
+      }),
+      'fractional iat',
+    ).rejects.toThrow('Invalid HMC Trust List iat')
+    await expect(
+      verifyHmcTrustListSdJwtVc(negativeIat, {
+        crypto: cryptoAdapter,
+        expectedVct,
+        now: verificationTime,
+      }),
+      'negative iat',
     ).rejects.toThrow('Invalid HMC Trust List iat')
     await expect(
       verifyHmcTrustListSdJwtVc(iatAtVerificationTime, {
