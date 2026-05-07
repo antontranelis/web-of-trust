@@ -68,6 +68,8 @@ The conformance profiles defined in [`wot-spec/CONFORMANCE.md`](https://github.c
 
 Coverage status for individual vectors lives in [`packages/wot-core/src/protocol/COVERAGE.md`](../../packages/wot-core/src/protocol/COVERAGE.md).
 
+Application-level Trust coverage is tracked in [`wot-trust-conformance.md`](./wot-trust-conformance.md), including the Trust 002 online verification QR challenge and nonce-history slice.
+
 ## Slice Plan
 
 Vertical slices are tracked in [`docs/reference-implementation-refactor.md`](../reference-implementation-refactor.md). At the time of this inventory the slices are:
