@@ -152,11 +152,20 @@ function hasValidDateTimeParts(match: RegExpExecArray): boolean {
   const minute = Number.parseInt(match[5], 10)
   const second = Number.parseInt(match[6], 10)
   const timezone = match[8]
-  const date = new Date(Date.UTC(year, month - 1, day))
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false
+  if (month < 1 || month > 12) return false
+  if (day < 1 || day > daysInMonth(year, month)) return false
   if (hour > 23 || minute > 59 || second > 59) return false
   if (timezone === 'Z') return true
   const offsetHour = Number.parseInt(timezone.slice(1, 3), 10)
   const offsetMinute = Number.parseInt(timezone.slice(4, 6), 10)
   return offsetHour <= 23 && offsetMinute <= 59
+}
+
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) return isLeapYear(year) ? 29 : 28
+  return [4, 6, 9, 11].includes(month) ? 30 : 31
+}
+
+function isLeapYear(year: number): boolean {
+  return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
 }

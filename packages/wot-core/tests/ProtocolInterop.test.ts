@@ -818,7 +818,7 @@ describe('WoT protocol interop vectors', () => {
         payload: { ...validPayload, audience: 'web-of-trust:alice' },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid capability audience')
     await expect(
       createSpaceCapabilityJws({
         payload: { ...validPayload, audience: 'did:key:%' },
@@ -839,16 +839,26 @@ describe('WoT protocol interop vectors', () => {
     ).resolves.toMatch(/^.+\..+\..+$/)
     await expect(
       createSpaceCapabilityJws({
+        payload: {
+          ...validPayload,
+          issuedAt: '0099-02-28T03:04:05Z',
+          validUntil: '0099-03-01T03:04:05Z',
+        },
+        signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
+      }),
+    ).resolves.toMatch(/^.+\..+\..+$/)
+    await expect(
+      createSpaceCapabilityJws({
         payload: { ...validPayload, permissions: ['read', 'read'] },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Duplicate capability permission')
     await expect(
       createSpaceCapabilityJws({
         payload: { ...validPayload, validUntil: '2026-10-22' },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid capability validUntil')
   })
 
   it('rejects malformed or context-mismatched space capability JWS values before returning a payload', async () => {
