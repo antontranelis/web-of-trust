@@ -1,7 +1,21 @@
 import type { IdentitySession } from '../identity'
 import type { Verification, VerificationChallenge, VerificationResponse } from '../../types/verification'
-import type { ProtocolCryptoAdapter } from '../../protocol'
-import { decodeBase64Url, didKeyToPublicKeyBytes, ed25519MultibaseToPublicKeyBytes } from '../../protocol'
+import type {
+  AttestationVcPayload,
+  ProtocolCryptoAdapter,
+  QrChallenge,
+  VerificationAttestationAcceptanceDecision,
+} from '../../protocol'
+import {
+  decodeBase64Url,
+  decideVerificationAttestationAcceptance,
+  didKeyToPublicKeyBytes,
+  ed25519MultibaseToPublicKeyBytes,
+  encodeBase64Url,
+  parseQrChallenge,
+} from '../../protocol'
+
+const CONSUMED_NONCE_RETENTION_MS = 24 * 60 * 60 * 1000
 
 export interface VerificationWorkflowOptions {
   crypto: ProtocolCryptoAdapter
@@ -19,10 +33,21 @@ export interface CreateResponseResult {
   code: string
 }
 
+export interface CreateOnlineQrChallengeOptions {
+  broker?: string
+}
+
+export interface CreateOnlineQrChallengeResult {
+  challenge: QrChallenge
+  rawJson: string
+}
+
 export class VerificationWorkflow {
   private readonly crypto: ProtocolCryptoAdapter
   private readonly randomId: () => string
   private readonly now: () => Date
+  private activeQrChallenge: QrChallenge | null = null
+  private readonly consumedNonces = new Map<string, number>()
 
   constructor(options: VerificationWorkflowOptions) {
     this.crypto = options.crypto
@@ -39,6 +64,59 @@ export class VerificationWorkflow {
       fromName: name,
     }
     return { challenge, code: encodeJson(challenge) }
+  }
+
+  async createOnlineQrChallenge(
+    identity: IdentitySession,
+    name: string,
+    options: CreateOnlineQrChallengeOptions = {},
+  ): Promise<CreateOnlineQrChallengeResult> {
+    const challenge: QrChallenge = {
+      did: identity.getDid(),
+      name,
+      enc: encodeBase64Url(await identity.getEncryptionPublicKeyBytes()),
+      nonce: this.randomId(),
+      ts: this.now().toISOString(),
+    }
+    if (options.broker !== undefined) challenge.broker = options.broker
+
+    const parsedChallenge = parseQrChallenge(JSON.stringify(challenge))
+    const rawJson = JSON.stringify(parsedChallenge)
+    this.activeQrChallenge = { ...parsedChallenge }
+    return { challenge: { ...parsedChallenge }, rawJson }
+  }
+
+  getActiveQrChallenge(): QrChallenge | null {
+    return this.activeQrChallenge === null ? null : { ...this.activeQrChallenge }
+  }
+
+  resetActiveQrChallenge(): void {
+    this.activeQrChallenge = null
+  }
+
+  acceptVerifiedVerificationAttestation(
+    identity: IdentitySession,
+    payload: AttestationVcPayload,
+  ): VerificationAttestationAcceptanceDecision {
+    const now = this.now()
+    this.pruneConsumedNonces(now)
+
+    const decision = decideVerificationAttestationAcceptance({
+      payload,
+      localDid: identity.getDid(),
+      activeChallenge: this.activeQrChallenge ?? undefined,
+      now,
+      consumedNonces: new Set(this.consumedNonces.keys()),
+    })
+    const consumedNonce = this.findConsumedNonce(payload.jti)
+    if (decision.decision === 'remote-unbound' && consumedNonce) {
+      return { decision: 'reject', reason: 'nonce-consumed' }
+    }
+    if (decision.decision === 'accept-in-person') {
+      this.consumedNonces.set(decision.nonce.toLowerCase(), now.getTime())
+      this.activeQrChallenge = null
+    }
+    return decision
   }
 
   decodeChallenge(code: string): VerificationChallenge {
@@ -150,6 +228,26 @@ export class VerificationWorkflow {
       },
     }
   }
+
+  private pruneConsumedNonces(now: Date): void {
+    const nowMs = now.getTime()
+    for (const [nonce, consumedAtMs] of this.consumedNonces) {
+      if (nowMs - consumedAtMs > CONSUMED_NONCE_RETENTION_MS) this.consumedNonces.delete(nonce)
+    }
+  }
+
+  private findConsumedNonce(jti: string | undefined): string | null {
+    if (!jti) return null
+    for (const nonce of parseVerificationJtiNonces(jti)) {
+      if (this.consumedNonces.has(nonce)) return nonce
+    }
+    return null
+  }
+}
+
+function parseVerificationJtiNonces(jti: string): string[] {
+  const uuidPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/ig
+  return Array.from(jti.matchAll(uuidPattern), (match) => match[0].toLowerCase())
 }
 
 function encodeJson(value: unknown): string {
