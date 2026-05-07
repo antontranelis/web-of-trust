@@ -812,7 +812,7 @@ describe('WoT protocol interop vectors', () => {
         payload: { ...validPayload, spaceId: '7f3a2b10-4c5d-5e6f-8a7b-9c0d1e2f3a4b' },
         signingSeed: hexToBytes(phase1.space_capability_jws.signing_seed_hex),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow('Invalid capability spaceId')
     await expect(
       createSpaceCapabilityJws({
         payload: { ...validPayload, audience: 'web-of-trust:alice' },
@@ -868,8 +868,14 @@ describe('WoT protocol interop vectors', () => {
       { name: 'duplicate permission', payload: { ...validPayload, permissions: ['read', 'read'] } },
       { name: 'unknown permission', payload: { ...validPayload, permissions: ['read', 'admin'] } },
       { name: 'invalid UUID spaceId', payload: { ...validPayload, spaceId: '7f3a2b10' } },
-      { name: 'uppercase UUID spaceId', payload: { ...validPayload, spaceId: validPayload.spaceId.toUpperCase() } },
-      { name: 'non-v4 UUID spaceId', payload: { ...validPayload, spaceId: '7f3a2b10-4c5d-5e6f-8a7b-9c0d1e2f3a4b' } },
+      {
+        name: 'uppercase UUID spaceId',
+        payload: { ...validPayload, spaceId: validPayload.spaceId.toUpperCase() },
+      },
+      {
+        name: 'non-v4 UUID spaceId',
+        payload: { ...validPayload, spaceId: '7f3a2b10-4c5d-5e6f-8a7b-9c0d1e2f3a4b' },
+      },
       { name: 'invalid DID audience', payload: { ...validPayload, audience: 'alice' } },
       {
         name: 'DID audience with trailing garbage',

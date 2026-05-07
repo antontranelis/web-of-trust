@@ -37,7 +37,7 @@ const CAPABILITY_PAYLOAD_KEYS = [
   'type',
   'validUntil',
 ]
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const DID_PATTERN = /^did:[a-z0-9]+:(?:[A-Za-z0-9._-]|%[0-9A-Fa-f]{2})+(?::(?:[A-Za-z0-9._-]|%[0-9A-Fa-f]{2})+)*$/
 const RFC3339_DATE_TIME_PATTERN =
   /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/
@@ -79,7 +79,7 @@ function assertSpaceCapabilityPayload(payload: unknown): asserts payload is Spac
 
   const candidate = payload as Record<string, unknown>
   if (candidate.type !== 'capability') throw new Error('Invalid capability type')
-  if (typeof candidate.spaceId !== 'string' || !UUID_PATTERN.test(candidate.spaceId)) {
+  if (typeof candidate.spaceId !== 'string' || !UUID_V4_PATTERN.test(candidate.spaceId)) {
     throw new Error('Invalid capability spaceId')
   }
   if (typeof candidate.audience !== 'string' || !DID_PATTERN.test(candidate.audience)) {
@@ -98,7 +98,6 @@ function assertSpaceCapabilityContext(
   payload: SpaceCapabilityPayload,
   options: VerifySpaceCapabilityJwsOptions,
 ): void {
-  if (payload.type !== 'capability') throw new Error('Invalid capability type')
   if (options.expectedSpaceId !== undefined && payload.spaceId !== options.expectedSpaceId) {
     throw new Error('Capability spaceId mismatch')
   }
