@@ -34,7 +34,7 @@ import {
   buildSpaceInviteBody, applySpaceInviteBody, buildKeyRotationBody, applyKeyRotationBody,
   deliverInboxMessage, receiveInboxMessage,
   runTwoPhaseRemoval, recoverPendingRemovals,
-  openLifecycleLease,
+  openLifecycleLease, isSameAdmission,
 } from '@web_of_trust/core/application'
 import type { LocalImpact, SecureRemovalDeps, LifecycleLease } from '@web_of_trust/core/application'
 import type { MembershipActivityCapable, SecureSelfLeaveCapable } from '@web_of_trust/core/ports'
@@ -49,7 +49,7 @@ import {
   isDidcommMessage, isEncryptedInboxMessageType, INBOX_MESSAGE_TYPE,
   createAckMessage, evaluateInboxAckDisposition, createDidKeyResolver,
   encryptionKeyMultibaseFromDidDocument, x25519MultibaseToPublicKeyBytes,
-  formatMembershipEventKey, parseMembershipEventKey, resolveActiveMembers, resolveMembershipWinner, assertMembershipEvent,
+  formatMembershipEventKey, parseMembershipEventKey, resolveActiveMembers, resolveMembershipWinner, resolveAdmission, assertMembershipEvent,
   resolveActiveAdmins, assertAdminEntry,
   LogSyncCoordinator, AuthorMismatchError, LocalAppendFailedError, CapabilityKeysUnavailableError, createSpaceCapabilityJws,
   createSpaceRegisterMessageWithSigner, createSpaceRotateMessageWithSigner, createAdminRemoveMessageWithSigner,
@@ -1068,6 +1068,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
       doc.getMap<AdminEntry>('_admins').set(myDid, selfAdmin)
     }, 'local')
 
+    // RLS-Spec 12 Regel 4: die Aufnahme-Kennung ist eine Projektion des
+    // _members-Event-Sets — beim Creator sein eigenes active@0 aus dem Seed
+    // oben. Ein Resume liest sie aus dem bereits geseedeten Doc, vergibt also
+    // keine 0 an einen Bestands-Space, der nie eingeladen wurde.
+    info.admission = resolveAdmission(this.readMembershipEvents(doc), myDid)
+
     // Create group key + capability key pair + owner self-capability. The
     // deterministic path (private space) uses the derived genesis material and is
     // idempotent at generation 0 (multi-device / recovery / crash-safe).
@@ -1076,6 +1082,8 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
     } else {
       await lease.step(createSpaceKey({ crypto: this.crypto, keyPort: this.keyManagement, spaceId, ownerDid: this.identity.getDid(), validityDurationMs: this.capabilityValidityMs }))
     }
+
+
 
     // Store state (include own encryption key for multi-device key rotation)
     let state: YjsSpaceState
@@ -1573,6 +1581,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
     for (const event of candidates) {
       // Existing staging is the cross-observer/recovery dedup key.  A current
       // generation at or past the declaration is already enforced (or superseded).
+      // GRENZE (gemessen): zwei EXAKT gleichzeitig laufende Beobachter lesen beide
+      // ein leeres Staging, stagen beide und senden beide einen space-rotate.
+      // Wirksam wird trotzdem genau EINER — das Generations-Gate des Brokers weist
+      // jeden weiteren ab. Diese Pruefung deduppt den SEQUENTIELLEN Re-Trigger
+      // (erneute Beobachtung, Restore, Recovery), nicht das Rennen.
       const store = await this.ensureDocLogStore()
       if (!store || (await this.keyManagement.getCurrentGeneration(state.info.id)) >= event.sinceGeneration) continue
       const existing = await store.getPendingRemoval(state.info.id, event.did)
@@ -3385,6 +3398,12 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
       if (membershipEvents.length > 0) {
         meta.info.members = resolveActiveMembers(membershipEvents)
       }
+      // RLS-Spec 12 Regel 4: die Aufnahme-Kennung wird NICHT persistiert,
+      // sondern aus dem restaurierten Doc abgeleitet (CompactStore/Vault). Ohne
+      // Ereignisse (Alt-Space, Doc noch nicht geladen) bleibt sie offen, bis der
+      // Sync sie liefert — der _members-Observer traegt sie dann nach.
+      meta.info.admission = resolveAdmission(membershipEvents, this.identity.getDid())
+      if (meta.info.admission === undefined) delete meta.info.admission
       // VE-6: info.admins identisch zu members AUS dem Doc re-projizieren — die
       // persistierte info.admins ist nur ein Pre-Load-Cache, das _admins-Set im
       // Doc ist die durable Quelle. Ein zwischen Save und Restore als Member
@@ -3448,6 +3467,20 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
       // restore). Doppelt zugleich als Z.253-Wiederholung des
       // Bestaetigungs-Syncs bei App-Start (SPEC-APPROX Old-World-Mechanik).
       void this.sendSpaceSyncRequest(meta.info.id).catch(() => {})
+
+      // Sync 005 §Self-Leave (#298): ein Crash NACH der persistierten
+      // Membership-Beobachtung, aber VOR dem Staging hinterlaesst ein
+      // kanonisches removed ohne Rotation und ohne Pending. Der _members-
+      // Observer feuert danach nie wieder (das Event-Set aendert sich nicht
+      // mehr), und recoverPendingRemovalsOnce findet nichts. Deshalb das
+      // Enforcement beim Restore EINMAL pro geladenem Space anstossen — auf
+      // DERSELBEN Chain wie im Observer, sequenziell, Fehler geloggt statt den
+      // Restore abzubrechen.
+      const restoredEvents = this.readMembershipEvents(state.doc)
+      state.membershipResolutionChain = (state.membershipResolutionChain ?? Promise.resolve())
+        .catch(() => {})
+        .then(() => this.enforceCanonicalSelfRemovalRotation(state, restoredEvents))
+        .catch((err) => console.warn('[YjsReplication] restore self-removal enforcement failed:', err))
 
       // Vault pull happens later in _pullAllFromVault() with concurrency limit
       } catch (err) {
@@ -3562,11 +3595,19 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
       this.pruneRemovedMemberEncryptionKeys(state, events)
       const membersChanged = JSON.stringify(members) !== JSON.stringify(state.info.members)
       if (membersChanged) state.info = { ...state.info, members }
+      // RLS-Spec 12 Regel 4: die Aufnahme-Kennung ist eine Projektion DESSELBEN
+      // Event-Sets — hier nachgefuehrt, damit ein Geraet, das die Einladung nie
+      // gesehen hat (Zweitgeraet, Offline-Phase), sie allein aus dem Doc-Sync
+      // bekommt. Sie faellt nie weg: ein removed-Gewinner liefert undefined,
+      // und wer entfernt ist, hat keine Aufnahme mehr.
+      const admission = resolveAdmission(events, this.identity.getDid())
+      const admissionChanged = !isSameAdmission(admission, state.info.admission)
+      if (admissionChanged) state.info = { ...state.info, admission }
       // Risk 1/Risk 5: eine Member-Aenderung kann einem Admin die Eigenschaft
       // entziehen (resolveActiveAdmins ∩ aktive Members) — info.admins auf
       // DEMSELBEN Update-Pfad re-projizieren (kein paralleler Pfad).
       const adminsChanged = this.projectActiveAdmins(state)
-      if (membersChanged || adminsChanged) this.notifySpaceListeners()
+      if (membersChanged || adminsChanged || admissionChanged) this.notifySpaceListeners()
       // Lektion #181b: der Metadata-Fingerprint traegt den _members-Digest —
       // auch reine Event-Aenderungen ohne Projektion-Aenderung persistieren.
       // Danach die VE-4-Resolution (Sync 005 Z.194-198) — sequenziell, damit
@@ -3993,7 +4034,16 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
         // sync) must ALSO persist the signing seed — else a recovery device of this
         // member stays read-only. The new-space branch persists below; do it here too.
         await this.persistGroupKeyWithSeed(spaceId, body.currentKeyGeneration, groupKey)
-        this.emitSpaceInvite({ spaceId, spaceName: existing.info.name, fromDid: decoded.senderDid, inviteMessageId: decoded.outerId })
+        // RLS-Spec 12 Regel 4: die Aufnahme-Kennung kommt aus dem _members-Set
+        // des (ggf. gerade gemergten) Docs, NICHT aus body.currentKeyGeneration.
+        // Nur so bleibt eine erneut zugestellte Einladung an ein weiterhin
+        // aktives Mitglied folgenlos, auch wenn inzwischen rotiert wurde.
+        const mergedAdmission = resolveAdmission(this.readMembershipEvents(existing.doc), this.identity.getDid())
+        if (!isSameAdmission(mergedAdmission, existing.info.admission)) {
+          existing.info = { ...existing.info, admission: mergedAdmission }
+          this.notifySpaceListeners()
+        }
+        this.emitSpaceInvite({ spaceId, spaceName: existing.info.name, fromDid: decoded.senderDid, inviteMessageId: decoded.outerId, admission: existing.info.admission })
         return { kind: 'applied', durable: true }
       }
 
@@ -4039,6 +4089,11 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
         members,
         admins,
         createdAt: new Date().toISOString(),
+        // RLS-Spec 12 Regel 4: Kennung aus dem _members-Set des Invite-
+        // Snapshots. Ohne Snapshot (spec-konformer Invite ohne Extension) bleibt
+        // sie offen, bis der Doc-Sync die Ereignisse liefert — der
+        // _members-Observer traegt sie dann nach.
+        admission: resolveAdmission(membershipEvents, this.identity.getDid()),
       }
 
       const state: YjsSpaceState = {
@@ -4064,7 +4119,7 @@ export class YjsReplicationAdapter implements ReplicationAdapter, MembershipActi
       await this.replayBlockedByKeyForSpace(spaceId)
 
       this.notifySpaceListeners()
-      this.emitSpaceInvite({ spaceId, spaceName: info.name, fromDid: decoded.senderDid, inviteMessageId: decoded.outerId })
+      this.emitSpaceInvite({ spaceId, spaceName: info.name, fromDid: decoded.senderDid, inviteMessageId: decoded.outerId, admission: info.admission })
       return { kind: 'applied', durable: true }
     } catch (err) {
       console.debug('[YjsReplication] Failed to handle space invite:', err)

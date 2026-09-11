@@ -180,11 +180,14 @@ describe('Yjs inbox wire form (C5/C6/S2 + Inner-JWS + ack/1.0)', () => {
     // eindeutig): die Notification-Identität für den generischen Dialog-
     // Lifecycle — ein per-Space-Key würde Re-Invites dauerhaft blockieren.
     const inviteEnvelope = bobInbox.find((m) => m.type === SPACE_INVITE_MESSAGE_TYPE)!
+    // admission = Aufnahme-Kennung dieser Einladung (RLS-Spec 12 Regel 4);
+    // Detail-Abdeckung in YjsSpaceAdmission.test.ts.
     expect(events[0]).toEqual({
       spaceId: space.id,
       spaceName: 'Garten',
       fromDid: alice.getDid(),
       inviteMessageId: inviteEnvelope.id,
+      admission: { keyGeneration: 0 },
     })
     const bobSpace = await receiver.getSpace(space.id)
     expect(bobSpace?.name).toBe('Garten')

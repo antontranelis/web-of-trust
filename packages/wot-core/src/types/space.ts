@@ -1,5 +1,25 @@
 export type ReplicationState = 'idle' | 'syncing' | 'error'
 
+/**
+ * Kennung der Aufnahme in einen Space (RLS-Spec 12 Regel 4): die Generation, ab
+ * der die aktuelle, ununterbrochene Mitgliedschaft der eigenen DID im
+ * synchronisierten `_members`-Event-Set laeuft (Sync 005) — das erste `active`
+ * nach dem letzten `removed`.
+ *
+ * ABGELEITET, nie gespeichert (`resolveAdmission`, protocol/sync/
+ * membership-events). Damit ist sie auf jedem Geraet derselben Identitaet
+ * gleich, sobald das Doc gesynct ist, und kann nicht per Last-Writer-Wins in
+ * einer Metadata veralten. Sie aendert sich NUR durch ein neues
+ * `active`-Ereignis, also durch eine Wiederaufnahme nach `removed`. Eine
+ * Schluesselrotation (ein Dritter wird entfernt), eine erneut zugestellte
+ * Einladung an ein bereits aktives Mitglied und jeder Metadata-Schreibvorgang
+ * beruehren sie nicht. Alt-Spaces ohne Event-Set haben keine Kennung.
+ */
+export interface SpaceAdmission {
+  /** `sinceGeneration` des ersten active-Ereignisses des laufenden Mitgliedschafts-Laufs; beim Creator 0 */
+  keyGeneration: number
+}
+
 export interface SpaceInfo {
   id: string
   type: 'personal' | 'shared'
@@ -36,6 +56,13 @@ export interface SpaceInfo {
    * ended up cache-only and vanished on reload (rls#234).
    */
   appData?: Record<string, unknown>
+  /**
+   * Aufnahme-Kennung dieser Mitgliedschaft (RLS-Spec 12 Regel 4) — read-only
+   * Projektion des `_members`-Event-Sets, wie `members` und `admins`. Optional:
+   * ohne Ereignisse fuer die eigene DID (Alt-Space, Doc noch nicht gesynct)
+   * gibt es keine Kennung.
+   */
+  admission?: SpaceAdmission
 }
 
 export interface SpaceDocMeta {
@@ -76,4 +103,11 @@ export interface IncomingSpaceInvite {
    * one invite was resolved. Required so tsc forces every emit site to pass it.
    */
   inviteMessageId: string
+  /**
+   * Aufnahme-Kennung dieser Einladung (RLS-Spec 12 Regel 4) — identisch zu
+   * `SpaceInfo.admission` nach dem Apply, abgeleitet aus dem `_members`-Set des
+   * Invite-Snapshots. Optional: ein spec-konformer Invite ohne Snapshot traegt
+   * noch keine Ereignisse; die Kennung kommt dann mit dem Doc-Sync nach.
+   */
+  admission?: SpaceAdmission
 }

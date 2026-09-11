@@ -14,6 +14,8 @@
  * `members: string[]`-Projektion (Sync 005 Z.109-130) via `resolveActiveMembers`.
  */
 
+import type { SpaceAdmission } from '../../types/space'
+
 export type MembershipStatus = 'active' | 'removed'
 
 export interface MembershipEvent {
@@ -114,6 +116,49 @@ export function resolveMembershipWinner(events: Iterable<MembershipEvent>, did: 
     }
   }
   return winner
+}
+
+/**
+ * Aufnahme-Kennung EINER DID (RLS-Spec 12 Regel 4): die Generation, AB DER die
+ * aktuelle, ununterbrochene Mitgliedschaft laeuft — die niedrigste
+ * `active`-Generation nach der letzten `removed`-Generation dieser DID.
+ *
+ * Aktiv-Sein entscheidet dieselbe Gewinnerregel wie `resolveActiveMembers`:
+ * ist der Gewinner `removed` (oder gibt es kein Ereignis), gibt es keine
+ * Aufnahme — `undefined`.
+ *
+ * Warum nicht einfach die Generation des Gewinner-Ereignisses: `addMember`
+ * schreibt fuer ein BEREITS aktives Mitglied ein weiteres `active` auf der
+ * dann aktuellen Generation (etwa wenn zwischenzeitlich wegen der Entfernung
+ * eines Dritten rotiert wurde und die Einladung erneut zugestellt wird). Die
+ * Mitgliedschaft endete dabei nie, also darf die Kennung nicht steigen — sonst
+ * sieht ein Geraet eine Wiederaufnahme, die nie stattfand. Erst ein `removed`
+ * schneidet den Lauf: das naechste `active` danach ist die neue Aufnahme.
+ *
+ * Rotation (ein Dritter wird entfernt), erneute Zustellung derselben Einladung
+ * und jeder Metadata-Schreibvorgang lassen die Kennung damit unveraendert.
+ */
+export function resolveAdmission(events: Iterable<MembershipEvent>, did: string): SpaceAdmission | undefined {
+  // Einmal materialisieren: ein Iterable darf ein Einweg-Iterator sein, unten
+  // wird mehrfach gelesen.
+  const own: MembershipEvent[] = []
+  for (const event of events) {
+    if (event.did === did) own.push(event)
+  }
+  const winner = resolveMembershipWinner(own, did)
+  if (winner === undefined || winner.status !== 'active') return undefined
+
+  let lastRemoved = -1
+  for (const event of own) {
+    if (event.status === 'removed' && event.sinceGeneration > lastRemoved) lastRemoved = event.sinceGeneration
+  }
+  let admitted = winner.sinceGeneration
+  for (const event of own) {
+    if (event.status === 'active' && event.sinceGeneration > lastRemoved && event.sinceGeneration < admitted) {
+      admitted = event.sinceGeneration
+    }
+  }
+  return { keyGeneration: admitted }
 }
 
 // Bei Generation-Gleichstand gewinnt 'removed': konservativer Tie-Break, ein entfernter
